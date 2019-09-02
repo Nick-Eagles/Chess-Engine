@@ -1,3 +1,10 @@
-latest_game.pgn
-.R*
+visualization/latest_game.pgn
+
+visualization/.R*
+
+visualization/costs
 __pycache__
+
+nets/*
+
+*.pyc

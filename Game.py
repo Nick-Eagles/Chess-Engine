@@ -396,7 +396,7 @@ class Game:
         txt = txt + self.annotation + result
 
         #   Write to pgn in current directory
-        filename = 'latest_game.pgn'
+        filename = 'visualization/latest_game.pgn'
         try:
             costFile = open(filename, 'w')
             with open(filename, 'w') as pgn_file:

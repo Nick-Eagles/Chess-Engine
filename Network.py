@@ -326,7 +326,7 @@ class Network:
                 costIndex += 1
 
         #   Open "costs.csv" and write the cost data
-        filename = "costs.csv"
+        filename = "visualization/costs.csv"
         try:
             #   Want to combine episodes into one big table
             if append:
