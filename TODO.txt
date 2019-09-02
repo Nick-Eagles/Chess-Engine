@@ -1,0 +1,15 @@
+TODO:
+
+-fix insufficient material rules: 1 lightsquared bishop now isn't a draw
+-finish toFEN() function probably for viewing checkmate positions in excel sheet
+-allow switching between current policy rule and epsilon-greedy policy, probably through config
+-store first validation cost for each episode as a NN attribute, to better visualize progress
+
+Eventually:
+
+-allow the network freedom to parameterize its own training: namely at least having it
+ compute some metric rating its competency, and weight the relative values of material to
+ wins/losses accordingly.
+-automate hyperparameter optimization: consider having a different network do monte carlo
+ sampling over a discrete "grid" of hyperparameter values, then observe the cost data after
+ running many episodes of training
