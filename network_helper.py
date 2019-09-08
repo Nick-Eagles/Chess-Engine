@@ -100,18 +100,19 @@ def toFEN(NN_vec, filename):
     # Loop through ranks backward
     for i in range(8):
         j = 0
+        empty_count = 0
         while j < 8:
-            piece = board[j][7-i]
+            piece = int(board[j][7-i]) - 6
             if piece >= 1:
                 game_str += letters[piece - 1]
             elif piece == 0:
                 empty_count += 1
                 # If on the last of some group of contiguous empty squares
-                if j == 7 or board[j+1][7-i] != 0:
+                if j == 7 or board[j+1][7-i] - 6 != 0:
                     game_str += str(empty_count)
                     empty_count = 0
             else:
-                game_str += lower(letters[-1*piece - 1])
+                game_str += letters[-1*piece - 1].lower()
 
             j += 1
 
@@ -154,10 +155,10 @@ def toFEN(NN_vec, filename):
         else:
             game_str += '- '
     else:
-        game_str = '- '
+        game_str += '- '
 
     #   Moves since action/ halfmove counter
-    game_str += str(NN_vec[70]) + ' '
+    game_str += str(int(NN_vec[70])) + ' '
 
     #   Full move counter, fabricated since my move representations lose this info,
     #   and this info is unimportant for my purposes
@@ -169,7 +170,7 @@ def toFEN(NN_vec, filename):
 
     print("Writing position to .fen file...")
     with open(filename, 'w') as fenFile:
-        write(game_str)
+        fenFile.write(game_str)
     print("Done.")
 
 def normalize(xBatch, gamma, beta, eps):
