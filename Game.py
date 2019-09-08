@@ -398,7 +398,6 @@ class Game:
         #   Write to pgn in current directory
         filename = 'visualization/latest_game.pgn'
         try:
-            costFile = open(filename, 'w')
             with open(filename, 'w') as pgn_file:
                 pgn_file.write(txt)
         except:
