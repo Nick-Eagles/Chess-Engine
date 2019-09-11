@@ -13,7 +13,7 @@ import Traversal
 import Move
 
 class Network:
-    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], costs=([],[])):
+    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[]):
         #   Weights and biases "beta"
         if len(weights) == 0:
             temp = [839] + layers
@@ -52,7 +52,8 @@ class Network:
         self.last_dC_dg = [np.zeros(lay.shape) for lay in self.gamma]
 
         #   For analysis of cost vs. epoch after training
-        self.tCosts, self.vCosts = costs
+        self.tCosts = tCosts
+        self.vCosts = vCosts
 
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
@@ -60,9 +61,8 @@ class Network:
         gamma = [lay.copy() for lay in self.gamma]
         popMean = [lay.copy() for lay in self.popMean]
         popVar = [lay.copy() for lay in self.popVar]
-        #   No need to copy costs ---
         
-        return Network(self.layers, weights, beta, gamma, popMean, popVar)
+        return Network(self.layers, weights, beta, gamma, popMean, popVar, self.tCosts, self.vCosts)
         
     #   Prints an annotated game of the neural network playing itself
     def showGame(self, verbose=True):
@@ -114,7 +114,6 @@ class Network:
             synchronicity = 0
             for i in range(len(rActual)-p['rDepth']):
                 x, y = rExpected[i], sum(rActual[i:(i+1+p['rDepth'])])
-                temp = x * y / max(abs(x), abs(y))**2
                 synchronicity += x * y / max(abs(x), abs(y))**2
             synchronicity /= (len(rExpected)-1)
 
@@ -176,7 +175,7 @@ class Network:
     #
     #   nu:     as per convention, the learning rate of the NN.
     #   batchSize: the number of games per batch for SGD
-    def train(self, games, vGames, p, iterNum):
+    def train(self, games, vGames, p):
         print("----------------------")
         print("Beginning training...")
         print("----------------------")
@@ -200,7 +199,7 @@ class Network:
                 batches.append((bGames, bOuts))
                           
             #   Baseline calculation of cost on training, validation data
-            if epoch == 0 and iterNum == 0:
+            if epoch == 0 and len(self.tCosts) == 0:
                 self.tCosts = [self.totalCost(games)]
                 self.vCosts = [self.totalCost(vGames)]
 
@@ -220,7 +219,7 @@ class Network:
         print("Done training.")
         
         #   Write cost analytics to file
-        self.costToCSV(iterNum, epochs)
+        self.costToCSV(epochs)
 
     #   Backprop is performed at once on the entire batch, where:
     #       -a, z, and zNorm are lists of 2d np arrays, with index of axis 1 in each array
@@ -305,11 +304,11 @@ class Network:
     #   Writes the info about costs vs. epoch, that was saved during training,
     #   to a .csv file. This is designed to produce a temporary file that an
     #   R script can read and generate informative plots from.
-    def costToCSV(self, iterNum, epochs):
+    def costToCSV(self, epochs):
         #   Generate a a list of "epochNum, cost, cost type label" sets for each
         #   cost type recorded: this format is designed to take advantage of R's
         #   "ggplot2" package
-        append = iterNum > 0
+        append = len(self.tCosts) > epochs + 1
         if append:
             costData = []
         else:
@@ -317,11 +316,12 @@ class Network:
 
         costTypes = [self.tCosts, self.vCosts]
         costLabels = ["t_cost", "v_cost"]
-            
-        for epoch in range(epochs):
+
+        latestEpochs = epochs + int(len(self.tCosts) == epochs + 1)
+        for epoch in range(latestEpochs):
             costIndex = 0
             for costType in costTypes:
-                e = iterNum * epochs + epoch
+                e = len(self.tCosts) - latestEpochs + epoch
                 costData.append([e, costType[e], costLabels[costIndex]])
                 costIndex += 1
 

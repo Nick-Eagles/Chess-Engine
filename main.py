@@ -58,7 +58,7 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
 
         if (i + 1) % p['updatePeriod'] == 0:       
             #   Train on data in the buffer  
-            fastNet.train(tBuffer, vBuffer, p, iterNum)
+            fastNet.train(tBuffer, vBuffer, p)
             iterNum += 1
 
             print('------------------------------')
@@ -137,7 +137,7 @@ while choice > 0 and choice < len(options):
         network_helper.dead_neurons(net, tBuffer+vBuffer)
     elif choice == 5:
         p = input_handling.readConfig(0)
-        net.train(tBuffer, vBuffer, p, 0)
+        net.train(tBuffer, vBuffer, p)
     elif choice == 6:
         #   Find a way to not hardcode these?
         filepath = 'data/checkmates.csv'
