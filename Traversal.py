@@ -126,7 +126,7 @@ def sampleMoves(net, game, breadth, curiosity, mateRew, reqMove=None):
         if reqMoveInd == 0:
             cumProbs[reqMove] = 0
         else:
-            cumProbs[reqMove] = cumProbs[reqMove-1]
+            cumProbs[reqMove] = cumProbs[reqMoveInd-1]
 
         #   Add the required move manually
         finalMoves.append(moves.pop(reqMoveInd))
@@ -141,15 +141,20 @@ def sampleMoves(net, game, breadth, curiosity, mateRew, reqMove=None):
 #   the reward from the position associated with that element.
 def processNode(node, breadth, clarity, alpha):
     #   Take softmax of rewards (interpreted as probabilities of playing them)
-    r = np.array(node[1]) * (2 * node[2].whiteToMove - 1)
-    softR = np.exp(clarity * r)
-    softR = softR / np.sum(softR)
+    #r = np.array(node[1]) * (2 * node[2].whiteToMove - 1)
+    #softR = np.exp(clarity * r)
+    #softR = softR / np.sum(softR)
     
     #   Sum of "probabilities" * rewards (aka the expected reward from this node),
     #   scaled by uncertainty (see readme for explanation of math)
     realBreadth = min(breadth, node[3])
-    uncertainty = 1 - (node[3] - realBreadth) * (1 - alpha)**realBreadth / node[3] 
-    return float(softR @ np.array(node[1]).T) * uncertainty
+    uncertainty = 1 - (node[3] - realBreadth) * (1 - alpha)**realBreadth / node[3]
+    if node[2].whiteToMove:
+        r = max(node[1])
+    else:
+        r = min(node[1])
+    #return float(softR @ np.array(node[1]).T) * uncertainty
+    return float(r * uncertainty)
 
 def full_high_R(net):
     p = input_handling.readConfig(1)
