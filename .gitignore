@@ -1,11 +1,8 @@
 visualization/latest_game.pgn
-
 visualization/.R*
-
 visualization/costs.csv
 visualization/random_position.fen
 __pycache__
-
+config.txt
 nets/*
-
 *.pyc
