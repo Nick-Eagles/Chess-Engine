@@ -69,8 +69,10 @@ def readGames(filepath):
 
 #   Return only the positions in newGames that are not present in the file specified by filepath
 def filterByNovelty(newGames, filepath):
-    fileGames = readGames(filepath)
+    if not os.path.exists(filepath):
+        return newGames
 
+    fileGames = readGames(filepath)
     novelGames = []
     for nG in newGames:
         gNum = 0
