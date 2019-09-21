@@ -32,17 +32,21 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         print('\tStarting episode ', i+1, ' of ', numEps, '!', sep='')
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
             
-        #data = Traversal.full_high_R(slowNet)
-        #data = Traversal.full_low_R(slowNet)
-        data = Traversal.full_broad(slowNet)
         #   Add checkmates from file
         if i % p['updatePeriod'] == 0:  
-            temp = network_helper.readGames('data/checkmates.csv')
-            fGames = network_helper.decompressGames(temp)
-            data += misc.divvy(fGames, p['fracFromFile'], False)[0]
+            temp = network_helper.readGames('data/checkmates_t.csv')
+            tGames = network_helper.decompressGames(temp)
+            tBuffer += misc.divvy(tGames, p['fracFromFile'], False)[0]
+            #print("Adding", len(tGames)*p['fracFromFile'], "games to tBuffer...")
+
+            temp = network_helper.readGames('data/checkmates_v.csv')
+            vGames = network_helper.decompressGames(temp)
+            fracForV = len(tGames) * p['fracFromFile'] * p['fracValidation'] / ((1 - p['fracValidation']) * len(vGames))
+            vBuffer += misc.divvy(vGames, fracForV, False)[0]
+            #print("Adding", len(vGames)*fracForV, "games to vBuffer...")
 
         #   Randomly separate examples into training and validation buffers
-        temp = misc.divvy(data, p['fracValidation'])
+        temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
         vBuffer += temp[0]
         tBuffer += temp[1]
 
@@ -151,10 +155,19 @@ while choice > 0 and choice < len(options):
     elif choice == 7:
         p = input_handling.readConfig(1) # get mate reward
         
-        messDef = "Generate how many checkmate positions?"
+        messDef = "Generate how many checkmate positions? "
         messOnErr = "Not a valid input."
         cond = 'var > 0'
         numPos = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+
+        messDef = "Add to training (t) or validation (v) position file? "
+        messOnErr = "Invalid input."
+        fileChoice = input_handling.getUserInput(messDef, messOnErr, 'str', 'var == "t" or var == "v"')
+
+        if fileChoice == 't':
+            filename = 'data/checkmates_t.csv'
+        else:
+            filename = 'data/checkmates_v.csv'
 
         examples = []
         for i in range(numPos):
@@ -168,5 +181,5 @@ while choice > 0 and choice < len(options):
             assert abs(g.gameResult) == 1, g.gameResult
             examples.append(network_helper.compressNNinput(temp[0]) + [expit(r)])
             examples.append(network_helper.compressNNinput(temp[1]) + [expit(-1 * r)])
-        novelGames = network_helper.filterByNovelty(examples, 'data/checkmates.csv')
-        network_helper.writeCheckmates(novelGames, 'data/checkmates.csv')
+        novelGames = network_helper.filterByNovelty(examples, filename)
+        network_helper.writeCheckmates(novelGames, filename)
