@@ -3,6 +3,7 @@ import board_helper
 import input_handling
 import network_helper
 import misc
+import policy
 
 import numpy as np
 import random
@@ -18,6 +19,13 @@ class Traversal:
         self.nodeHops = 0
         self.baseR = 0
         self.tData = []
+        
+        if p['policy'] == 'sampleMovesEG':
+            self.policy = policy.sampleMovesEG
+            self.policyVar = p['epsGreedy']
+        else:
+            self.policy = policy.sampleMovesSoft
+            self.policyVar = p['curiosity']
 
         self.p = p.copy()
         if not isBase:
@@ -43,7 +51,7 @@ class Traversal:
             reqMove = self.reqMoves.pop(0)
         else:
             reqMove = None
-        moves, fullMovesLen = sampleMoves(self.net, self.game, p['breadth'], p['curiosity'], p['mateReward'], reqMove)
+        moves, fullMovesLen = self.policy(self.net, self.game, p['breadth'], self.policyVar, p['mateReward'], reqMove)
         stack = [[moves, [], self.game, fullMovesLen]]
         while len(stack) > 0:
             assert len(stack) <= p['tDepth'] + p['rDepth'] + 1, "Tried to explore too far"
@@ -68,7 +76,7 @@ class Traversal:
                             reqMove = self.reqMoves.pop(0)
                         else:
                             reqMove = None
-                        moves, fullMovesLen = sampleMoves(self.net, g, p['breadth'], p['curiosity'], p['mateReward'], reqMove)
+                        moves, fullMovesLen = self.policy(self.net, g, p['breadth'], self.policyVar, p['mateReward'], reqMove)
                         stack.append([moves, [], g, fullMovesLen])
                         self.nodeHops += 1
                     elif g.gameResult == 0:
@@ -102,41 +110,7 @@ class Traversal:
                     stack[-1][1][-1] += r
                 elif len(stack) == 0 and not self.isBase:
                     self.baseR = r
-
-def sampleMoves(net, game, breadth, curiosity, mateRew, reqMove=None):
-    #   Get legal moves and NN evaluations on the positions that result from them
-    moves = board_helper.getLegalMoves(game)
-    fullMovesLen = len(moves)
-    rPairs = [game.getReward(m, mateRew) for m in moves]
-    evals = np.array([x + float(logit(net.feedForward(y))) for x,y in rPairs])
-    if not game.whiteToMove:
-        evals = -1 * evals
-
-    temp = np.exp(curiosity * evals)
-    probs = temp / np.sum(temp) # softmax of evals
-    cumProbs = np.cumsum(probs)
-
-    finalMoves = []
-    if reqMove == None:
-        numToChoose = min(breadth, len(moves))
-    else:
-        #   Get the index of the required move and make sure it can't be chosen
-        #   (by setting its probability to 0, essentially)
-        reqMoveInd = [i for i in range(len(moves)) if moves[i].equals(reqMove)][0]
-        if reqMoveInd == 0:
-            cumProbs[reqMove] = 0
-        else:
-            cumProbs[reqMove] = cumProbs[reqMoveInd-1]
-
-        #   Add the required move manually
-        finalMoves.append(moves.pop(reqMoveInd))
-        numToChoose = min(breadth-1, len(moves))
-
-    finalMoves += [moves[i] for i in misc.sampleCDF(cumProbs, numToChoose)]
-
-    assert len(finalMoves) > 0 and len(finalMoves) <= breadth, len(finalMoves)
-    return(finalMoves, fullMovesLen)
-
+    
 #   Given a list (element on the stack during traversal), return the expected value of
 #   the reward from the position associated with that element.
 def processNode(node, breadth, clarity, alpha):

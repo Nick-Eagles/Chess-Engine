@@ -1,24 +1,26 @@
 #train
-memDecay 0.1
-weightDec 0.0001
-nu 0.04
+memDecay 0.75
+weightDec 0.0004
+nu 0.01
 mom 0.9
-batchSize 60
-epochs 5
-updatePeriod 1
+batchSize 50
+epochs 15
+updatePeriod 4
 fracValidation 0.15
-fracFromFile 0.01
+fracFromFile 0.057
 #traverse
 alpha 0.05
-epsilon 0.3
+epsilon 0.5
 baseBreadth 8
 breadth 3
 tDepth 1
 rDepth 2
 gBuffer 7
 mateReward 3
-clarity 15
-curiosity 6
+clarity 12
+curiosity 5
+epsGreedy 0.5
+policy "sampleMovesEG"
 #hyper-param optim
 div 20
 step 0.1
