@@ -79,7 +79,9 @@ def readConfig(mode, fName="config.txt"):
     for i in lineList[sectDivs[mode]+1:sectDivs[mode+1]]:
         var = i[:i.index(" ")]
         val = i[i.index(" ")+1:]
-        if "." in val:
+        if '"' in val:
+            p[var] = val[1:-1]
+        elif "." in val:
             p[var] = float(val)
         else:
             p[var] = int(val)
