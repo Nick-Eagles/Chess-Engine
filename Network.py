@@ -13,7 +13,7 @@ import Traversal
 import Move
 
 class Network:
-    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[]):
+    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0):
         #   Weights and biases "beta"
         if len(weights) == 0:
             temp = [839] + layers
@@ -32,7 +32,7 @@ class Network:
         else:
             self.gamma = gamma
 
-        #   Population mean and variances for inputs to each layer
+        #   Population mean, variance, and stddev for inputs to each layer
         if len(popMean) == 0:
             self.popMean = [np.full((x, 1), -0.1) for x in layers]
         else:
@@ -41,9 +41,11 @@ class Network:
             self.popVar = [np.ones((x, 1)) for x in layers]
         else:
             self.popVar = popVar
-
+            
         self.eps = 0.000001
         self.popDev = [np.sqrt(np.add(lay, self.eps)) for lay in self.popVar]
+
+        #   List of lengths of hidden layers, in forward order
         self.layers = layers
 
         #   For momentum term in SGD
@@ -55,6 +57,9 @@ class Network:
         self.tCosts = tCosts
         self.vCosts = vCosts
 
+        self.age = age  # number of training steps
+        self.experience = experience # number of unique training examples seen
+
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
         beta = [lay.copy() for lay in self.beta]
@@ -62,7 +67,7 @@ class Network:
         popMean = [lay.copy() for lay in self.popMean]
         popVar = [lay.copy() for lay in self.popVar]
         
-        return Network(self.layers, weights, beta, gamma, popMean, popVar, self.tCosts, self.vCosts)
+        return Network(self.layers, weights, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience)
         
     #   Prints an annotated game of the neural network playing itself
     def showGame(self, verbose=True):
@@ -216,6 +221,7 @@ class Network:
 
         print('Updating pop stats...')
         self.setPopStats(games + vGames)
+        self.age += numBatches
         print("Done training.")
         
         #   Write cost analytics to file
@@ -372,7 +378,8 @@ class Network:
         print('First 5 input vars:')
         for lay in self.popVar:
             print(lay[:5])
-        
+        print('Number of training steps total:', self.age)
+        print('Unique examples seen: ~', self.experience, sep="")       
 
     def save(self, filename):
         print("About to save:")
@@ -383,7 +390,9 @@ class Network:
                 "beta": [b.tolist() for b in self.beta],
                 "gamma": [g.tolist() for g in self.gamma],
                 "popMean": [m.tolist() for m in self.popMean],
-                "popVar": [v.tolist() for v in self.popVar]}
+                "popVar": [v.tolist() for v in self.popVar],
+                "age": self.age,
+                "experience": self.experience}
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
@@ -402,6 +411,8 @@ def load(filename):
     net.popMean = [np.array(m) for m in data["popMean"]]
     net.popVar = [np.array(v) for v in data["popVar"]]
     net.popDev = [np.sqrt(np.add(m, net.eps)) for m in net.popVar]
+    net.age = data["age"]
+    net.experience = data["experience"]
     return net
              
                 

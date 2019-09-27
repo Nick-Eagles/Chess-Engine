@@ -49,6 +49,7 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
         vBuffer += temp[0]
         tBuffer += temp[1]
+        fastNet.experience += len(temp[1])
 
         #   QC stats for the examples generated
         mags = [abs(x[1] - 0.5) for x in tBuffer+vBuffer]
