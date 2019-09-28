@@ -89,19 +89,33 @@ messOnErr = "Not a valid option."
 cond = "var == 'n' or var == 'l'"
 choice = input_handling.getUserInput(messDef, messOnErr, 'str', cond)
 if choice == "n":
+    ##################################################################
     #   Define network architecture and initialize Network object
+    ##################################################################
+    
+    #   Number of residual blocks
     layers = []  # size of the input layer
-    messDef = "Define network architecture: how many hidden layers? "
-    messOnErr = "Not a valid number of layers"
-    cond = 'var >= 0 and var < 15'
-    numLayers = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+    messDef = "Define network architecture: how many residual blocks? "
+    messOnErr = "Not a valid number of blocks"
+    cond = 'var >= 0 and var < 50'
+    numBlocks = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+
+    #   Layers per residual block
+    messDef = "Number of layers in one residual block? "
+    messOnErr = "Not a valid number."
+    cond = 'var > 0 and var < 10'
+    blockWidth = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+
+    #   Number of neurons in each block
     for i in range(numLayers):
-        print("Length of hidden layer", i, "?")
+        print("Length of hidden layers in block", i, "?")
         layLen = int(input(": "))
-        layers.append(layLen)
+        for j in range(blockWidth):
+            layers.append(layLen)
+
     layers.append(1)    #   output of NN is a single value
 
-    net = Network.Network(layers)
+    net = Network.Network(layers, blockWidth)
 elif choice == "l":
     filename = input("Load from what file? ")
     net = Network.load('nets/' + filename)
