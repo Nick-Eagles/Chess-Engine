@@ -80,7 +80,7 @@ def readConfig(mode, fName="config.txt"):
         var = i[:i.index(" ")]
         val = i[i.index(" ")+1:]
         if '"' in val:
-            p[var] = val[1:-1]
+            p[var] = val[1:-2]
         elif "." in val:
             p[var] = float(val)
         else:
