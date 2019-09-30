@@ -93,29 +93,33 @@ if choice == "n":
     #   Define network architecture and initialize Network object
     ##################################################################
     
-    #   Number of residual blocks
+    #   Number of groups of residual blocks
     layers = []  # size of the input layer
-    messDef = "Define network architecture: how many residual blocks? "
-    messOnErr = "Not a valid number of blocks"
+    messDef = "Define network architecture: how many residual groups? "
+    messOnErr = "Not a valid number."
     cond = 'var >= 0 and var < 50'
-    numBlocks = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+    numGroups = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+
+    #   Number of blocks in a group
+    messDef = "Number of residual blocks per group? "
+    blocksPerGroup = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
 
     #   Layers per residual block
     messDef = "Number of layers in one residual block? "
-    messOnErr = "Not a valid number."
     cond = 'var > 0 and var < 10'
     blockWidth = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
-
-    #   Number of neurons in each block
-    for i in range(numLayers):
-        print("Length of hidden layers in block", i, "?")
-        layLen = int(input(": "))
-        for j in range(blockWidth):
+    
+    #   Number of neurons in one layer of each block
+    for i in range(numBlocks):
+        messDef = "Length of neurons in group " + str(i+1) + "? "
+        cond = 'var > 0 and var < 10000'
+        layLen = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+        for j in range(blockWidth * blocksPerGroup + 1):
             layers.append(layLen)
 
     layers.append(1)    #   output of NN is a single value
 
-    net = Network.Network(layers, blockWidth)
+    net = Network.Network(layers, blockWidth, blocksPerGroup)
 elif choice == "l":
     filename = input("Load from what file? ")
     net = Network.load('nets/' + filename)
