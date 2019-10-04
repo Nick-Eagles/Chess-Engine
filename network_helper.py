@@ -242,26 +242,3 @@ def generateAnnLine(evalList, game):
     line += "\n"
 
     return line
-
-def getBestMove(game, legalMoves, net, p):
-    eps = p['epsilon']
-    if eps == 1:
-        #   Shortcut for completely random move choice
-        return legalMoves[np.random.randint(len(legalMoves))]
-    else:
-        #   Get the expected future reward
-        vals = np.zeros(len(legalMoves), dtype=np.float32)
-        for i, m in enumerate(legalMoves):
-            rTuple = game.getReward(m, p['mateReward'])
-            vals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
-
-        #   Return the best move as the legal move maximizing the linear combination of:
-        #       1. The expected future reward vector
-        #       2. A noise vector matching the first 2 moments of the reward vector
-        noise = np.random.normal(np.mean(vals), np.std(vals), vals.shape[0])
-        if game.whiteToMove:
-            bestMove = legalMoves[np.argmax((1 - eps) * vals + eps * noise)]
-        else:
-            bestMove = legalMoves[np.argmin((1 - eps) * vals + eps * noise)]
-            
-        return bestMove
