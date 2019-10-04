@@ -57,17 +57,14 @@ def sampleMovesSoft(net, game, breadth, curiosity, mateRew, reqMove=None):
 #   probability that the most highly evaluated move is one of the N chosen
 #   moves is 1 - eps. Here N = min(breadth, len(getLegalMoves(game)))
 def sampleMovesEG(net, game, breadth, eps, mateRew, reqMove=None):
-    #   Get legal moves and NN evaluations on the positions that result from them
     moves = board_helper.getLegalMoves(game)
+
+    #   Simply choose all moves if the breadth spans this far
     fullMovesLen = len(moves)
     if breadth >= fullMovesLen:
         return (moves, fullMovesLen)
     
-    rPairs = [game.getReward(m, mateRew) for m in moves]
-    evals = np.array([x + float(logit(net.feedForward(y))) for x,y in rPairs])
-    if not game.whiteToMove:
-        evals = -1 * evals
-
+    #   Determine which moves should be chosen randomly
     subMovesLen = min(breadth, fullMovesLen)
     #   This is the choice of epsilon such that if [subMovesLen] moves are chosen under
     #   an epsilon-greedy strategy, with each move constrained to be distinct, then the probability
@@ -76,16 +73,30 @@ def sampleMovesEG(net, game, breadth, eps, mateRew, reqMove=None):
     inds = []
     remainInds = list(range(fullMovesLen))
     chooseBest = [p > epsEffective for p in np.random.uniform(size=subMovesLen)]
-    for i in range(subMovesLen):
-        if chooseBest[i]:
-            temp = np.argmax(evals)
-            evals[temp] = -2 * mateRew # which should be less than any eval
-            inds.append(temp)
-            remainInds.remove(temp)
-        else:
+    
+    #   If all moves are to be chosen randomly, don't even compute their evals
+    if not any(chooseBest):
+        for i in range(subMovesLen):
             temp = remainInds.pop(np.random.randint(len(remainInds)))
-            evals[temp] = -2 * mateRew
             inds.append(temp)
+    else:
+        #   Compute evaluations on each move
+        rPairs = [game.getReward(m, mateRew) for m in moves]
+        evals = np.array([x + float(logit(net.feedForward(y))) for x,y in rPairs])
+        if not game.whiteToMove:
+            evals = -1 * evals
+
+        #   Select distinct moves via an epsilon-greedy policy
+        for i in range(subMovesLen):
+            if chooseBest[i]:
+                temp = np.argmax(evals)
+                evals[temp] = -2 * mateRew # which should be less than any eval
+                inds.append(temp)
+                remainInds.remove(temp)
+            else:
+                temp = remainInds.pop(np.random.randint(len(remainInds)))
+                evals[temp] = -2 * mateRew
+                inds.append(temp)
 
     return ([moves[i] for i in inds], fullMovesLen)
 
