@@ -80,7 +80,7 @@ def sampleMovesEG(net, game, breadth, eps, mateRew, reqMove=None):
         if chooseBest[i]:
             temp = np.argmax(evals)
             evals[temp] = -2 * mateRew # which should be less than any eval
-            inds.append(remainInds.index(temp))
+            inds.append(temp)
             remainInds.remove(temp)
         else:
             temp = remainInds.pop(np.random.randint(len(remainInds)))
