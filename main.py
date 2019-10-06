@@ -6,10 +6,11 @@ import Traversal
 import traverse_io
 import Game
 import misc
+import csv
 
 import random
 import numpy as np
-from scipy.special import expit
+from scipy.special import expit, logit
 
 #   Given a network, asks the user for training hyper-parameters,
 #   trains the network, and asks what to do next.
@@ -33,7 +34,7 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
             
         #   Add checkmates from file
-        if i % p['updatePeriod'] == 0:  
+        if i % p['updatePeriod'] == 0: 
             temp = network_helper.readGames('data/checkmates_t.csv')
             tGames = network_helper.decompressGames(temp)
             tBuffer += misc.divvy(tGames, p['fracFromFile'], False)[0]
@@ -52,14 +53,22 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         fastNet.experience += len(temp[1])
 
         #   QC stats for the examples generated
-        mags = [abs(x[1] - 0.5) for x in tBuffer+vBuffer]
-        avMag = sum(mags) / len(mags)
-        avDev = sum([abs(x - avMag) for x in mags])/len(mags)
-        print("--- Stats on examples generated ---")
-        print("Number of t-examples:", len(tBuffer))
-        print("Mean magnitude:", avMag)
-        print("Average mag of deviation:", avDev)
-        print("Mean reward:", sum([x[1] for x in tBuffer+vBuffer]) / len(mags))
+        if p['mode'] >= 1:
+            temp = [[float(logit(x[1])) for x in tBuffer+vBuffer]]
+            if p['mode'] >= 2:
+                print("Writing reward values to csv..."
+                filename = "visualization/rewards.csv"
+                with open(filename, 'w') as rFile:
+                    writer = csv.writer(rFile)
+                    writer.writerows(temp)
+                print("Done.")
+            rewards = np.array(temp)
+            mags = abs(rewards)
+            print("--- Stats on examples generated ---")
+            print("Number of t-examples:", len(tBuffer))
+            print("Mean reward:", np.mean(rewards))
+            print("Std. deviation:", np.std(rewards))
+            print("Mean magnitude:", np.mean(mags))
 
         if (i + 1) % p['updatePeriod'] == 0:       
             #   Train on data in the buffer  
