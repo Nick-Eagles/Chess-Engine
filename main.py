@@ -38,13 +38,15 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             temp = network_helper.readGames('data/checkmates_t.csv')
             tGames = network_helper.decompressGames(temp)
             tBuffer += misc.divvy(tGames, p['fracFromFile'], False)[0]
-            #print("Adding", len(tGames)*p['fracFromFile'], "games to tBuffer...")
+            if p['mode'] >= 2:
+                print("Adding", len(tGames)*p['fracFromFile'], "games to tBuffer...")
 
             temp = network_helper.readGames('data/checkmates_v.csv')
             vGames = network_helper.decompressGames(temp)
             fracForV = len(tGames) * p['fracFromFile'] * p['fracValidation'] / ((1 - p['fracValidation']) * len(vGames))
             vBuffer += misc.divvy(vGames, fracForV, False)[0]
-            #print("Adding", len(vGames)*fracForV, "games to vBuffer...")
+            if p['mode'] >= 2:
+                print("Adding", len(vGames)*fracForV, "games to vBuffer...")
 
         #   Randomly separate examples into training and validation buffers
         temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
@@ -56,7 +58,7 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         if p['mode'] >= 1:
             temp = [[float(logit(x[1])) for x in tBuffer+vBuffer]]
             if p['mode'] >= 2:
-                print("Writing reward values to csv..."
+                print("Writing reward values to csv...")
                 filename = "visualization/rewards.csv"
                 with open(filename, 'w') as rFile:
                     writer = csv.writer(rFile)
@@ -141,8 +143,9 @@ while choice > 0 and choice < len(options):
     
         net, tBuffer, vBuffer = trainOption(net, tBuffer, vBuffer)
     elif choice == 2:
+        p = input_handling.readConfig(0)
         print("Generating the current network's 'best' game...")
-        net.showGame()
+        net.showGame(verbose = p['mode'] >= 2)
     elif choice == 3:
         filename = input("Name a file to save the network to: ")
         net.save('nets/' + filename)
