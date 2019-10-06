@@ -1,16 +1,17 @@
 #train
-memDecay 0.75
-weightDec 0.0004
-nu 0.01
+memDecay 0.5
+weightDec 0.00008
+nu 0.001
 mom 0.9
-batchSize 50
-epochs 15
+batchSize 40
+epochs 10
 updatePeriod 4
 fracValidation 0.15
-fracFromFile 0.056
+fracFromFile 0.054
+mode 1
 #traverse
 alpha 0.05
-epsilon 0.5
+epsilon 0.3
 baseBreadth 8
 breadth 3
 tDepth 1
@@ -19,5 +20,5 @@ gBuffer 0
 mateReward 3
 clarity 12
 curiosity 5
-epsGreedy 0.35
+epsGreedy 0.4
 policy "sampleMovesEG"
