@@ -1,4 +1,3 @@
-import sys
 import Network
 import network_helper
 import input_handling
@@ -6,8 +5,10 @@ import Traversal
 import traverse_io
 import Game
 import misc
-import csv
+import q_learn
 
+import sys
+import csv
 import random
 import numpy as np
 from scipy.special import expit, logit
@@ -15,7 +16,7 @@ from scipy.special import expit, logit
 #   Given a network, asks the user for training hyper-parameters,
 #   trains the network, and asks what to do next.
 def trainOption(slowNet, tBuffer=[], vBuffer=[]): 
-    p = input_handling.readConfig(0)
+    p = input_handling.readConfig(2)
  
     #   traverseCount
     messDef = "Enter the number of sets of tree traversals to perform: "
@@ -39,17 +40,18 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             tGames = network_helper.decompressGames(temp)
             tBuffer += misc.divvy(tGames, p['fracFromFile'], False)[0]
             if p['mode'] >= 2:
-                print("Adding", len(tGames)*p['fracFromFile'], "games to tBuffer...")
+                print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
 
             temp = network_helper.readGames('data/checkmates_v.csv')
             vGames = network_helper.decompressGames(temp)
             fracForV = len(tGames) * p['fracFromFile'] * p['fracValidation'] / ((1 - p['fracValidation']) * len(vGames))
             vBuffer += misc.divvy(vGames, fracForV, False)[0]
             if p['mode'] >= 2:
-                print("Adding", len(vGames)*fracForV, "games to vBuffer...")
+                print("Adding", int(len(vGames)*fracForV), "games to vBuffer...")
 
         #   Randomly separate examples into training and validation buffers
-        temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
+        #temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
+        temp = misc.divvy(q_learn.aync_q_learn(slowNet), p['fracValidation'])
         vBuffer += temp[0]
         tBuffer += temp[1]
         fastNet.experience += len(temp[1])
@@ -85,6 +87,8 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             fastNet.setPopStats(tBuffer + vBuffer)
             slowNet = fastNet.copy()
             if i < numEps-1:
+                if p['mode'] >= 2:
+                    print("Filtering buffers to", 1 - p['memDecay'], "times their current size...")
                 tBuffer = misc.divvy(tBuffer, 1 - p['memDecay'], False)[0]
                 vBuffer = misc.divvy(vBuffer, 1 - p['memDecay'], False)[0]
 
@@ -137,13 +141,13 @@ while choice > 0 and choice < len(options):
     if choice == 1:
         #   Keep a fraction of examples
         if len(tBuffer) > 0 and len(vBuffer) > 0:
-            p = input_handling.readConfig(0)
+            p = input_handling.readConfig(2)
             tBuffer = misc.divvy(tBuffer, 1 - p['memDecay'], False)[0]
             vBuffer = misc.divvy(vBuffer, 1 - p['memDecay'], False)[0]
     
         net, tBuffer, vBuffer = trainOption(net, tBuffer, vBuffer)
     elif choice == 2:
-        p = input_handling.readConfig(0)
+        p = input_handling.readConfig(2)
         print("Generating the current network's 'best' game...")
         net.showGame(verbose = p['mode'] >= 2)
     elif choice == 3:
@@ -153,7 +157,7 @@ while choice > 0 and choice < len(options):
     elif choice == 4:
         network_helper.dead_neurons(net, tBuffer+vBuffer)
     elif choice == 5:
-        p = input_handling.readConfig(0)
+        p = input_handling.readConfig(2)
         net.train(tBuffer, vBuffer, p)
     elif choice == 6:
         #   Find a way to not hardcode these?
