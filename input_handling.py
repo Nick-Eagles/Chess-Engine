@@ -74,9 +74,9 @@ def readConfig(mode, fName="config.txt"):
     f.close()
 
     #   Each line contains the variable name and its value; store the lines
-    #   from the correct section in a dictionary and return
+    #   from the correct section (and general section) in a dictionary and return
     p = {}
-    for i in lineList[sectDivs[mode]+1:sectDivs[mode+1]]:
+    for i in lineList[1:sectDivs[1]] + lineList[sectDivs[mode]+1:sectDivs[mode+1]]:
         var = i[:i.index(" ")]
         val = i[i.index(" ")+1:]
         if '"' in val:
