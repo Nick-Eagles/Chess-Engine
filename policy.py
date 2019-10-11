@@ -90,6 +90,7 @@ def sampleMovesEG(net, game, breadth, eps, mateRew, reqMove=None):
         for i in range(subMovesLen):
             if chooseBest[i]:
                 temp = np.argmax(evals)
+                assert min(evals) >= -2 * mateRew, min(evals)
                 evals[temp] = -2 * mateRew # which should be less than any eval
                 inds.append(temp)
                 remainInds.remove(temp)
@@ -134,8 +135,7 @@ def getBestMoveHuman(game, legalMoves, net, p):
 #   Return a move decision, given the current game, network, and choice of epsilon.
 #   This is meant to be a faster alternative to getBestMoveHuman. The move is simply
 #   chosen via an epsilon-greedy strategy.
-def getBestMoveEG(game, legalMoves, net, p):
-    eps = p['epsilon']
+def getBestMoveEG(game, legalMoves, net, eps, mateRew):
     if eps == 1 or np.random.uniform() < eps:
         #   Shortcut for completely random move choice
         return legalMoves[np.random.randint(len(legalMoves))]

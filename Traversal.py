@@ -296,7 +296,7 @@ def initializeGame(net, strict, trackCaptures=False):
         while (game.gameResult == 17):
             #   Find the best legal move
             legalMoves = board_helper.getLegalMoves(game)
-            bestMove = policy.getBestMoveEG(game, legalMoves, net, p)
+            bestMove = policy.getBestMoveEG(game, legalMoves, net, p['epsilon'], p['mateReward'])
             bestMoves.append(bestMove)
 
             #   Track number of possible captures

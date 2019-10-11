@@ -20,7 +20,7 @@ def generateExamples(net, p):
         while (game.gameResult == 17 and step < p['maxSteps']):
             #   Get best move (epsilon-greedy policy)
             legalMoves = board_helper.getLegalMoves(game)
-            bestMove = policy.getBestMoveEG(game, legalMoves, net, p)
+            bestMove = policy.getBestMoveEG(game, legalMoves, net, p['epsGreedy'], p['mateReward'])
 
             #   Append the reward received from the best move
             rewards[len(game_results)].append(game.getReward(bestMove, p['mateReward'])[0])
