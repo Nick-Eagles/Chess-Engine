@@ -1,8 +1,10 @@
 TODO:
 
--fix insufficient material rules: 1 lightsquared bishop now isn't a draw
--finish toFEN() function probably for viewing checkmate positions in excel sheet
--allow switching between current policy rule and epsilon-greedy policy, probably through config
+-Implement a more sophisticated method for determining the network's competency and provide
+ a way to relate it back to a suggested value for epsilon used for the EG-policy. Consider
+ maybe a normalized dot product of expected vs. received cumulative reward over the set of
+ states in a played game: <= 0 would imply complete uncertainty in an average position, and
+ 1 would be complete certainty
 -store first validation cost for each episode as a NN attribute, to better visualize progress
 
 Eventually:
@@ -10,6 +12,3 @@ Eventually:
 -allow the network freedom to parameterize its own training: namely at least having it
  compute some metric rating its competency, and weight the relative values of material to
  wins/losses accordingly.
--automate hyperparameter optimization: consider having a different network do monte carlo
- sampling over a discrete "grid" of hyperparameter values, then observe the cost data after
- running many episodes of training
