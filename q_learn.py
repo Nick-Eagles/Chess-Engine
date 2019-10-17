@@ -94,7 +94,7 @@ def aync_q_learn(net):
     if p['mode'] >= 2:
         print(os.cpu_count(), "cores available.")
 
-    print("Performing asynchronous Q-learning on", p['baseBreadth'], "threads...")
+    print("Performing asynchronous Q-learning (" + str(p['baseBreadth']) + " tasks)...")
     pool = Pool()
     thread_data = pool.map_async(runThread, inList).get()
     pool.close()

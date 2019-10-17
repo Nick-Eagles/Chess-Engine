@@ -368,16 +368,16 @@ class Network:
         print('Layers:', self.layers)
         print('First 5 weights for each layer:')
         for lay in self.weights:
-            print(lay[0][:5])
+            print(np.round_(lay[0][:5], 4))
         print('First 5 biases:')
         for lay in self.beta:
-            print(lay[:5])
+            print(np.round_(lay[:5], 4).T)
         print('First 5 input means:')
         for lay in self.popMean:
-            print(lay[:5])
+            print(np.round_(lay[:5], 4).T)
         print('First 5 input vars:')
         for lay in self.popVar:
-            print(lay[:5])
+            print(np.round_(lay[:5], 4).T)
         print('Number of training steps total:', self.age)
         print('Unique examples seen: ~', self.experience, sep="")       
 

@@ -70,9 +70,9 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             mags = abs(rewards)
             print("--- Stats on examples generated ---")
             print("Number of t-examples:", len(tBuffer))
-            print("Mean reward:", np.mean(rewards))
-            print("Std. deviation:", np.std(rewards))
-            print("Mean magnitude:", np.mean(mags))
+            print("Mean reward:", np.round_(np.mean(rewards), 5))
+            print("Std. deviation:", np.round_(np.std(rewards), 5))
+            print("Mean magnitude:", np.round_(np.mean(mags), 5))
 
         if (i + 1) % p['updatePeriod'] == 0:       
             #   Train on data in the buffer  
@@ -121,7 +121,6 @@ elif choice == "l":
     filename = input("Load from what file? ")
     net = Network.load('nets/' + filename)
     print("Loaded successfully.")
-    net.print()
 
 messDef = 'Which of the following would you like to do:\n'
 options = ['Train the current network including new data',
@@ -130,13 +129,14 @@ options = ['Train the current network including new data',
             'Write existing novel checkmates to file', 'Run new games to generate checkmate positions']
 for i, opt in enumerate(options):
     messDef += '(' + str(i+1) + ') ' + opt + '\n'
+messDef += 'Enter 0 to exit: '
 messOnErr = "Not a valid choice"
 
 choice = 1
 tBuffer, vBuffer = [], []
 while choice > 0 and choice < len(options):
     net.print()
-    choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'True')
+    choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= 7')
 
     if choice == 1:
         #   Keep a fraction of examples
