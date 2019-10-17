@@ -143,7 +143,7 @@ def getBestMoveEG(game, legalMoves, net, eps, mateRew):
         #   Get the expected future reward
         vals = np.zeros(len(legalMoves), dtype=np.float32)
         for i, m in enumerate(legalMoves):
-            rTuple = game.getReward(m, p['mateReward'])
+            rTuple = game.getReward(m, mateRew)
             vals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
 
         if game.whiteToMove:
