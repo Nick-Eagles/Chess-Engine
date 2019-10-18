@@ -14,7 +14,7 @@ def generateExamples(net, p):
     rewards = [[]]  # Each element is a list representing rewards for moves during one game
     NN_vecs = [] #  This follows 'rewards' but is flattened, and trimmed at the end of each game
     game_results = []
-    
+
     #   Continue taking actions and receiving rewards (start a new game if necessary)
     while step < p['maxSteps']:
         while (game.gameResult == 17 and step < p['maxSteps']):
@@ -38,12 +38,12 @@ def generateExamples(net, p):
             NN_vecs.pop()
 
         game_results.append(game.gameResult)
-        
+
         #   Begin a new game if one ended but we still have more steps to take
         if step < p['maxSteps']:
             game = Game.Game()
             rewards.append([])
-            
+
 
     #   "Unravel" reward sequences: assign each state an expected cumulative reward value,
     #   with minimum depth given by p['rDepth']
@@ -102,6 +102,20 @@ def aync_q_learn(net):
     tData = []
     for data in thread_data:
         tData += data
-        
     print("Done. Generated " + str(len(tData)) + " training examples.")
+
+    if p['mode'] >= 2:
+        print("Determining certainty of network on the generated examples...")
+        getCertainty(net, tData)
+
     return tData
+
+def getCertainty(net, data):
+    #   Form vectors of expected and actual rewards received
+    expRew = logit(np.array([net.feedForward(data[i][0]) for i in range(len(data)) if i % 2 == 0]).flatten())
+    actRew = logit(np.array([data[i][1] for i in range(len(data)) if i % 2 == 0]).flatten())
+
+    #   Normalized dot product of expected and actual reward vectors
+    certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
+
+    print("Certainty of network on", int(len(data)/2), "examples:", certainty)
