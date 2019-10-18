@@ -48,7 +48,7 @@ def writeCheckmates(games, filepath, compress=False):
     
 #   Reads game from a file as specified by the user; returns data as a list of tuples with
 #   the first entry (the game) in compressed form
-def readGames(filepath):
+def readGames(filepath, p):
     flatData = []
 
     #   Open and read file
@@ -58,7 +58,8 @@ def readGames(filepath):
         for line in reader:
             flatData.append(line)
 
-    print("Found", len(flatData), "position(s) in this file.")
+    if p['mode'] >= 2:
+        print("Found", len(flatData), "position(s) in", os.path.basename(filepath) + ".")
 
     #   Convert data to list of tuples as required
     games = []
@@ -68,11 +69,11 @@ def readGames(filepath):
     return games
 
 #   Return only the positions in newGames that are not present in the file specified by filepath
-def filterByNovelty(newGames, filepath):
+def filterByNovelty(newGames, filepath, p):
     if not os.path.exists(filepath):
         return newGames
 
-    fileGames = readGames(filepath)
+    fileGames = readGames(filepath, p)
     novelGames = []
     for nG in newGames:
         gNum = 0
