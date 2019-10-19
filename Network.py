@@ -307,6 +307,17 @@ class Network:
 
         return cost
 
+    #   Return a numpy array of shape (1, len(data)), corresponding to the loss for
+    #   each data point/ training example in data.
+    def individualCosts(self, data):
+        inBatch = np.array([x[0].flatten() for x in data]).T
+        labels = np.array([g[1] for g in games]).reshape(1,-1)
+
+        outBatch = self.ff_track(outBatch)[2][-1]
+        costs = -1 * labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch)
+
+        return costs
+
     #   Writes the info about costs vs. epoch, that was saved during training,
     #   to a .csv file. This is designed to produce a temporary file that an
     #   R script can read and generate informative plots from.
