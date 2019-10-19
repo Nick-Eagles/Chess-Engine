@@ -1,8 +1,8 @@
 import Network
 import network_helper
+import file_IO
 import input_handling
 import Traversal
-import traverse_io
 import Game
 import misc
 import q_learn
@@ -36,14 +36,14 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             
         #   Add checkmates from file
         if i % p['updatePeriod'] == 0: 
-            temp = network_helper.readGames('data/checkmates_t.csv', p)
-            tGames = network_helper.decompressGames(temp)
+            temp = file_IO.readGames('data/checkmates_t.csv', p)
+            tGames = file_IO.decompressGames(temp)
             tBuffer += misc.divvy(tGames, p['fracFromFile'], False)[0]
             if p['mode'] >= 2:
                 print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
 
-            temp = network_helper.readGames('data/checkmates_v.csv', p)
-            vGames = network_helper.decompressGames(temp)
+            temp = file_IO.readGames('data/checkmates_v.csv', p)
+            vGames = file_IO.decompressGames(temp)
             fracForV = len(tGames) * p['fracFromFile'] * p['fracValidation'] / ((1 - p['fracValidation']) * len(vGames))
             vBuffer += misc.divvy(vGames, fracForV, False)[0]
             if p['mode'] >= 2:
@@ -126,7 +126,8 @@ messDef = 'Which of the following would you like to do:\n'
 options = ['Train the current network including new data',
             'Show a sample game for the current network', 'Save the current network',
             'Check for dead neurons using current data', 'Train the network from previous data only',
-            'Write existing novel checkmates to file', 'Run new games to generate checkmate positions']
+            'Write existing novel checkmates to file', 'Run new games to generate checkmate positions',
+            'Write the N least and greatest-loss positions to file']
 for i, opt in enumerate(options):
     messDef += '(' + str(i+1) + ') ' + opt + '\n'
 messDef += 'Enter 0 to exit: '
@@ -165,9 +166,9 @@ while choice > 0 and choice < len(options):
         tol = 0.001
         p = input_handling.readConfig(1) # get mate reward
         temp = expit(p['mateReward']) - 0.5 - tol
-        compressedGs = [network_helper.compressNNinput(g[0]) + [g[1]] for g in tBuffer+vBuffer if abs(g[1] - 0.5) > temp]
-        novelGs = network_helper.filterByNovelty(compressedGs, filepath, p)
-        network_helper.writeCheckmates(novelGs, filepath)
+        compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]] for g in tBuffer+vBuffer if abs(g[1] - 0.5) > temp]
+        novelGs = file_IO.filterByNovelty(compressedGs, filepath, p)
+        file_IO.writeCheckmates(novelGs, filepath)
         print("Wrote", len(novelGs), "positions to file.")
     elif choice == 7:
         p = input_handling.readConfig(1) # get mate reward
@@ -196,7 +197,10 @@ while choice > 0 and choice < len(options):
             g.doMove(bestMoves[-1]) # to produce the proper result
             r = g.gameResult * p['mateReward']
             assert abs(g.gameResult) == 1, g.gameResult
-            examples.append(network_helper.compressNNinput(temp[0]) + [expit(r)])
-            examples.append(network_helper.compressNNinput(temp[1]) + [expit(-1 * r)])
-        novelGames = network_helper.filterByNovelty(examples, filename, p)
-        network_helper.writeCheckmates(novelGames, filename)
+            examples.append(file_IO.compressNNinput(temp[0]) + [expit(r)])
+            examples.append(file_IO.compressNNinput(temp[1]) + [expit(-1 * r)])
+        novelGames = file_IO.filterByNovelty(examples, filename, p)
+        file_IO.writeCheckmates(novelGames, filename)
+    elif choice == 8:
+        allData = tData + vData
+        costs = net.individualCosts(allData)
