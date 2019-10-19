@@ -104,7 +104,7 @@ def aync_q_learn(net):
         tData += data
     print("Done. Generated " + str(len(tData)) + " training examples.")
 
-    if p['mode'] >= 2:
+    if p['mode'] >= 1:
         print("Determining certainty of network on the generated examples...")
         getCertainty(net, tData)
 
