@@ -1,11 +1,11 @@
 TODO:
 
--Implement a more sophisticated method for determining the network's competency and provide
- a way to relate it back to a suggested value for epsilon used for the EG-policy. Consider
- maybe a normalized dot product of expected vs. received cumulative reward over the set of
- states in a played game: <= 0 would imply complete uncertainty in an average position, and
- 1 would be complete certainty
--store first validation cost for each episode as a NN attribute, to better visualize progress
+-More visualizations to better understand network progress:
+	-Euclidean distance of current weight vector relative to initial vector
+	-Save some diverse set of examples, and graph activation sparsity on the set by layer
+	-Top N lowest and N highest cost examples from a large data set
+-Implement a running average of the competency metric and save as a Network attribute
+-add computational time as Network attribute (to supplement 'age' and 'experience')
 
 Eventually:
 
