@@ -33,28 +33,30 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print('\tStarting episode ', i+1, ' of ', numEps, '!', sep='')
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-            
-        #   Add checkmates from file
-        if i % p['updatePeriod'] == 0: 
-            temp = file_IO.readGames('data/checkmates_t.csv', p)
-            tGames = file_IO.decompressGames(temp)
-            tBuffer += misc.divvy(tGames, p['fracFromFile'], False)[0]
-            if p['mode'] >= 2:
-                print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
-
-            temp = file_IO.readGames('data/checkmates_v.csv', p)
-            vGames = file_IO.decompressGames(temp)
-            fracForV = len(tGames) * p['fracFromFile'] * p['fracValidation'] / ((1 - p['fracValidation']) * len(vGames))
-            vBuffer += misc.divvy(vGames, fracForV, False)[0]
-            if p['mode'] >= 2:
-                print("Adding", int(len(vGames)*fracForV), "games to vBuffer...")
 
         #   Randomly separate examples into training and validation buffers
         #temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
         temp = misc.divvy(q_learn.aync_q_learn(slowNet), p['fracValidation'])
         vBuffer += temp[0]
         tBuffer += temp[1]
-        fastNet.experience += len(temp[1])
+        numGenExamples = len(temp[1])
+        fastNet.experience += numGenExamples
+
+        #   Add checkmates from file
+        if i % p['updatePeriod'] == 0: 
+            temp = file_IO.readGames('data/checkmates_t.csv', p)
+            tGames = file_IO.decompressGames(temp)
+            fracToUse = p['fracFromFile'] * numGenExamples / (len(tGames) * (1 - p['fracFromFile']))
+            tBuffer += misc.divvy(tGames, fracToUse, False)[0]
+            if p['mode'] >= 2:
+                print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
+
+            temp = file_IO.readGames('data/checkmates_v.csv', p)
+            vGames = file_IO.decompressGames(temp)
+            fracToUse = p['fracValidation'] * fracToUse * len(tGames) / (len(vGames) * (1 - p['fracValidation']))
+            vBuffer += misc.divvy(vGames, fracToUse, False)[0]
+            if p['mode'] >= 2:
+                print("Adding", int(len(vGames)*fracToUse), "games to vBuffer...")
 
         #   QC stats for the examples generated
         if p['mode'] >= 1:
@@ -137,7 +139,7 @@ choice = 1
 tBuffer, vBuffer = [], []
 while choice > 0 and choice < len(options):
     net.print()
-    choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= 7')
+    choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= 8')
 
     if choice == 1:
         #   Keep a fraction of examples
@@ -202,5 +204,26 @@ while choice > 0 and choice < len(options):
         novelGames = file_IO.filterByNovelty(examples, filename, p)
         file_IO.writeCheckmates(novelGames, filename)
     elif choice == 8:
-        allData = tData + vData
+        messDef = "Value of N? "
+        messOnErr = "Large or negative values not supported."
+        cond = 'var > 0 and var < 20'
+        N = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+
+        print("Computing costs and writing positions...")
+
+        allData = tBuffer + vBuffer
         costs = net.individualCosts(allData)
+
+        #   Write positions for top N largest costs
+        for i, index in enumerate(misc.topN(costs, N)):
+            filename = "visualization/edge_positions/highest_" + str(i) + ".fen"
+            position = file_IO.compressNNinput(allData[index][0])
+            file_IO.toFEN(position, filename)
+
+        #   Write positions for top N smallest costs
+        for i, index in enumerate(misc.topN(-1 * costs, N)):
+            filename = "visualization/edge_positions/lowest_" + str(i) + ".fen"
+            position = file_IO.compressNNinput(allData[index][0])
+            file_IO.toFEN(position, filename)
+
+        print("Done. See 'visualization/edge_positions/'.")

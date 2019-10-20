@@ -217,7 +217,7 @@ class Network:
             #   that epoch is complete)
             self.tCosts.append(self.totalCost(games))
             self.vCosts.append(self.totalCost(vGames))
-            print("Finished epoch", epoch+1, ".")
+            print("Finished epoch ", epoch+1, ".", sep="")
 
         print('Updating pop stats...')
         self.setPopStats(games + vGames)
@@ -307,16 +307,16 @@ class Network:
 
         return cost
 
-    #   Return a numpy array of shape (1, len(data)), corresponding to the loss for
+    #   Return a numpy array of shape (len(data), ), corresponding to the loss for
     #   each data point/ training example in data.
     def individualCosts(self, data):
         inBatch = np.array([x[0].flatten() for x in data]).T
-        labels = np.array([g[1] for g in games]).reshape(1,-1)
+        labels = np.array([x[1] for x in data]).reshape(1,-1)
 
-        outBatch = self.ff_track(outBatch)[2][-1]
+        outBatch = self.ff_track(inBatch)[2][-1]
         costs = -1 * labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch)
 
-        return costs
+        return costs.flatten()
 
     #   Writes the info about costs vs. epoch, that was saved during training,
     #   to a .csv file. This is designed to produce a temporary file that an
@@ -393,9 +393,6 @@ class Network:
         print('Unique examples seen: ~', self.experience, sep="")       
 
     def save(self, filename):
-        print("About to save:")
-        self.print()
-        """Save the neural network to the file ``filename``."""
         data = {"layers": self.layers,
                 "weights": [w.tolist() for w in self.weights],
                 "beta": [b.tolist() for b in self.beta],
@@ -409,9 +406,6 @@ class Network:
         f.close()
         
 def load(filename):
-    """Load a neural network from the file ``filename``.  Returns an
-    instance of Network.
-    """
     f = open(filename, "r")
     data = json.load(f)
     f.close()
