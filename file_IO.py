@@ -89,7 +89,7 @@ def filterByNovelty(newGames, filepath, p):
 
 #   Given the compressed game representation used for storage in files,
 #   write the corresponding .fen file representation
-def toFEN(NN_vec, filename):
+def toFEN(NN_vec, filename, verbose=True):
     ###########################################################
     #   Pieces on board
     ###########################################################
@@ -169,7 +169,9 @@ def toFEN(NN_vec, filename):
     #   Write to .fen file
     ###########################################################
 
-    print("Writing position to .fen file...")
+    if verbose:
+        print("Writing position to " + filename + "...")
     with open(filename, 'w') as fenFile:
         fenFile.write(game_str)
-    print("Done.")
+    if verbose:
+        print("Done.")
