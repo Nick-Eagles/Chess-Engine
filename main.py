@@ -8,6 +8,8 @@ import misc
 import q_learn
 
 import sys
+import os
+import shutil
 import csv
 import random
 import numpy as np
@@ -137,7 +139,7 @@ messOnErr = "Not a valid choice"
 
 choice = 1
 tBuffer, vBuffer = [], []
-while choice > 0 and choice < len(options):
+while choice > 0 and choice <= len(options):
     net.print()
     choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= 8')
 
@@ -175,14 +177,14 @@ while choice > 0 and choice < len(options):
     elif choice == 7:
         p = input_handling.readConfig(1) # get mate reward
         
-        messDef = "Generate how many checkmate positions? "
+        messDef2 = "Generate how many checkmate positions? "
         messOnErr = "Not a valid input."
         cond = 'var > 0'
-        numPos = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+        numPos = input_handling.getUserInput(messDef2, messOnErr, 'int', cond)
 
-        messDef = "Add to training (t) or validation (v) position file? "
+        messDef2 = "Add to training (t) or validation (v) position file? "
         messOnErr = "Invalid input."
-        fileChoice = input_handling.getUserInput(messDef, messOnErr, 'str', 'var == "t" or var == "v"')
+        fileChoice = input_handling.getUserInput(messDef2, messOnErr, 'str', 'var == "t" or var == "v"')
 
         if fileChoice == 't':
             filename = 'data/checkmates_t.csv'
@@ -204,26 +206,33 @@ while choice > 0 and choice < len(options):
         novelGames = file_IO.filterByNovelty(examples, filename, p)
         file_IO.writeCheckmates(novelGames, filename)
     elif choice == 8:
-        messDef = "Value of N? "
+        p = input_handling.readConfig()
+        
+        messDef2 = "Value of N? "
         messOnErr = "Large or negative values not supported."
         cond = 'var > 0 and var < 20'
-        N = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+        N = input_handling.getUserInput(messDef2, messOnErr, 'int', cond)
 
         print("Computing costs and writing positions...")
 
         allData = tBuffer + vBuffer
         costs = net.individualCosts(allData)
 
+        #   Get rid of any old positions (to cover the case where the last choice
+        #   of N is larger than the current choice)
+        shutil.rmtree('visualization/edge_positions')
+        os.makedirs('visualization/edge_positions')
+
         #   Write positions for top N largest costs
         for i, index in enumerate(misc.topN(costs, N)):
-            filename = "visualization/edge_positions/highest_" + str(i) + ".fen"
+            filename = "visualization/edge_positions/highest_" + str(i+1) + ".fen"
             position = file_IO.compressNNinput(allData[index][0])
-            file_IO.toFEN(position, filename)
+            file_IO.toFEN(position, filename, p['mode'] >= 2)
 
         #   Write positions for top N smallest costs
         for i, index in enumerate(misc.topN(-1 * costs, N)):
-            filename = "visualization/edge_positions/lowest_" + str(i) + ".fen"
+            filename = "visualization/edge_positions/lowest_" + str(i+1) + ".fen"
             position = file_IO.compressNNinput(allData[index][0])
-            file_IO.toFEN(position, filename)
+            file_IO.toFEN(position, filename, p['mode'] >= 2)
 
         print("Done. See 'visualization/edge_positions/'.")
