@@ -89,8 +89,9 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             #   Adjust slowNet's expected input mean and variances for each layer.
             #   Then drop a fraction of the buffers
             fastNet.setPopStats(tBuffer + vBuffer)
-            slowNet = fastNet.copy()
+            fastNet.certainty = slowNet.certainty
             if i < numEps-1:
+                slowNet = fastNet.copy()
                 if p['mode'] >= 2:
                     print("Filtering buffers to", 1 - p['memDecay'], "times their current size...")
                 tBuffer = misc.divvy(tBuffer, 1 - p['memDecay'], False)[0]

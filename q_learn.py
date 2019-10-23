@@ -106,11 +106,11 @@ def aync_q_learn(net):
 
     if p['mode'] >= 1:
         print("Determining certainty of network on the generated examples...")
-        getCertainty(net, tData)
+        getCertainty(net, tData, p)
 
     return tData
 
-def getCertainty(net, data):
+def getCertainty(net, data, p):
     #   Form vectors of expected and actual rewards received
     expRew = logit(np.array([net.feedForward(data[i][0]) for i in range(len(data)) if i % 2 == 0]).flatten())
     actRew = logit(np.array([data[i][1] for i in range(len(data)) if i % 2 == 0]).flatten())
@@ -118,4 +118,9 @@ def getCertainty(net, data):
     #   Normalized dot product of expected and actual reward vectors
     certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
 
-    print("Certainty of network on", int(len(data)/2), "examples:", certainty)
+    #   Adjust certainty (an exponentially weighted moving average)
+    net.certainty = net.certainty * p['persist'] + certainty * (1 - p['persist'])
+    
+    if p['mode'] >= 1:
+        print("Certainty of network on", int(len(data)/2), "examples:", certainty)
+        print("Moving certainty:", net.certainty)
