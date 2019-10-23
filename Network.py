@@ -13,7 +13,7 @@ import Traversal
 import Move
 
 class Network:
-    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0):
+    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0):
         #   Weights and biases "beta"
         if len(weights) == 0:
             temp = [839] + layers
@@ -59,6 +59,7 @@ class Network:
 
         self.age = age  # number of training steps
         self.experience = experience # number of unique training examples seen
+        self.certainty = certainty # see README- a measure of how much observed recent events match expected ones
 
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
@@ -67,7 +68,7 @@ class Network:
         popMean = [lay.copy() for lay in self.popMean]
         popVar = [lay.copy() for lay in self.popVar]
         
-        return Network(self.layers, weights, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience)
+        return Network(self.layers, weights, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience, self.certainty)
         
     #   Prints an annotated game of the neural network playing itself
     def showGame(self, verbose=True):
@@ -390,7 +391,8 @@ class Network:
         for lay in self.popVar:
             print(np.round_(lay[:5], 4).T)
         print('Number of training steps total:', self.age)
-        print('Unique examples seen: ~', self.experience, sep="")       
+        print('Unique examples seen: ~', self.experience, sep="")
+        print('Certainty:', round(self.certainty, 4))
 
     def save(self, filename):
         data = {"layers": self.layers,
@@ -400,7 +402,8 @@ class Network:
                 "popMean": [m.tolist() for m in self.popMean],
                 "popVar": [v.tolist() for v in self.popVar],
                 "age": self.age,
-                "experience": self.experience}
+                "experience": self.experience,
+                "certainty": self.certainty}
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
@@ -409,6 +412,7 @@ def load(filename):
     f = open(filename, "r")
     data = json.load(f)
     f.close()
+    
     net = Network(data["layers"])
     net.weights = [np.array(w) for w in data["weights"]]
     net.beta = [np.array(b) for b in data["beta"]]
@@ -418,6 +422,8 @@ def load(filename):
     net.popDev = [np.sqrt(np.add(m, net.eps)) for m in net.popVar]
     net.age = data["age"]
     net.experience = data["experience"]
+    net.certainty = data["certainty"]
+    
     return net
              
                 
