@@ -4,6 +4,8 @@ import copy
 import json
 import random
 import csv
+from multiprocessing import Pool
+import time
 
 import Game
 import board_helper
@@ -171,7 +173,6 @@ class Network:
         z.append(self.weights[-1] @ a[-1])
         zNorm.append(network_helper.normalize(z[-1], self.gamma[-1], self.beta[-1], self.eps))
         a.append(expit(zNorm[-1]))
-        #a.pop(0)    # input is not considered a layer
         
         return (z, zNorm, a)
 
@@ -194,6 +195,7 @@ class Network:
         #   Training via SGD
         numVGames = len(vGames)
         numBatches = int(len(games) / batchSize)
+        start_time = time.time()
         for epoch in range(epochs):
             random.shuffle(games)
             bs = batchSize
@@ -208,17 +210,33 @@ class Network:
             if epoch == 0 and len(self.tCosts) == 0:
                 self.tCosts = [self.totalCost(games)]
                 self.vCosts = [self.totalCost(vGames)]
+            
+            #   Collect gradients, parallelized by batch
+            pool = Pool()
+            inList = [(self, batch, p) for batch in batches]
+            gradients = pool.map_async(train_thread, inList).get()
+            pool.close()
 
-            for batch in batches:
-                assert batch[0].shape[1] == bs
-                z, zNorm, a = self.ff_track(batch[0])
-                self.backprop(np.array(z), np.array(zNorm), np.array(a), batch[1], p)            
+            #   Gradient descent with momentum
+            for batchNum in range(len(gradients)):
+                for i in range(len(self.layers)):
+                    self.last_dC_dw[i] = gradients[batchNum][0][i] + p['mom'] * self.last_dC_dw[i]
+                    self.weights[i] -= nu * self.last_dC_dw[i]
+
+                    self.last_dC_db[i] = gradients[batchNum][1][i].reshape((-1,1)) + p['mom'] * self.last_dC_db[i]
+                    self.beta[i] -= nu * self.last_dC_db[i]
+
+                    self.last_dC_dg[i] = gradients[batchNum][2][i].reshape((-1,1)) + p['mom'] * self.last_dC_dg[i]
+                    self.gamma[i] -= nu * self.last_dC_dg[i]
 
             #   Compute cost on all training and validation examples (now
             #   that epoch is complete)
             self.tCosts.append(self.totalCost(games))
             self.vCosts.append(self.totalCost(vGames))
             print("Finished epoch ", epoch+1, ".", sep="")
+
+        speed = (time.time() - start_time) / (epochs * numBatches * bs)
+        print("Averaged", speed, "seconds per training example")
 
         print('Updating pop stats...')
         self.setPopStats(games + vGames)
@@ -284,19 +302,7 @@ class Network:
                 dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[:,j].reshape((-1,1)), a[-2-i][:,j].reshape((1,-1)))
             dC_dw[-1-i] = dC_dw[-1-i] / batchSize + p['weightDec'] * self.weights[-1-i]
 
-        ###########################################################################
-        #   Gradient descent with momentum
-        ###########################################################################
-
-        for i in range(len(self.layers)):
-            self.last_dC_dw[i] = dC_dw[i] + mom * self.last_dC_dw[i]
-            self.weights[i] -= nu * self.last_dC_dw[i]
-
-            self.last_dC_db[i] = dC_db[i].reshape((-1,1)) + mom * self.last_dC_db[i]
-            self.beta[i] -= nu * self.last_dC_db[i]
-
-            self.last_dC_dg[i] = dC_dg[i].reshape((-1,1)) + mom * self.last_dC_dg[i]
-            self.gamma[i] -= nu * self.last_dC_dg[i]
+        return (dC_dw, dC_db, dC_dg)
 
     #   Given the entire set of training examples, returns the average cost per example
     def totalCost(self, games):
@@ -407,7 +413,15 @@ class Network:
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
-        
+
+def train_thread(inTuple):
+    net = inTuple[0]
+    batch = inTuple[1]
+    p = inTuple[2]
+    
+    z, zNorm, a = net.ff_track(batch[0])
+    return net.backprop(np.array(z), np.array(zNorm), np.array(a), batch[1], p)
+      
 def load(filename):
     f = open(filename, "r")
     data = json.load(f)
