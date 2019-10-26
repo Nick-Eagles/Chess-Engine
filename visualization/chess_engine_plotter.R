@@ -6,5 +6,8 @@ costData = read.csv(file="costs.csv")
 #costData = tail(costData, 40)
 ggplot(costData) +
   geom_point(mapping = aes(x=epochNum, y=cost, color=costType)) +
-  labs(title="Cost on data vs. epoch")
+  labs(title="Cost on data vs. epoch") +
+  geom_smooth(data = costData[costData$costType == 'v_cost',],
+              mapping = aes(x=epochNum, y=cost),
+              method='loess')
  
