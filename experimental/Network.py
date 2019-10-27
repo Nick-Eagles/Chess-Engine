@@ -4,7 +4,6 @@ import copy
 import json
 import random
 import csv
-import os
 from multiprocessing import Pool
 import time
 
@@ -14,6 +13,12 @@ import network_helper
 import input_handling
 import Traversal
 import Move
+
+#   This version has training parallelized by batch- that is, the gradients are computed at a single value of
+#   the Network's parameters, then updated with momentum for each batch's gradient. This is atypical and
+#   originally implemented as an accident (due to not carefully thinking through the concept), as gradients
+#   are not for the appropriate parameter values after the first update. However, results are surprisingly
+#   good for low learning rates.
 
 class Network:
     def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0):
@@ -189,76 +194,53 @@ class Network:
         print("----------------------")
 
         nu = p['nu']
-        bs = p['batchSize']
+        batchSize = p['batchSize']
         epochs = p['epochs']
         updatePer = p['updatePeriod']
-        numCPUs = os.cpu_count()
         
         #   Training via SGD
         numVGames = len(vGames)
-        numBatches = int(len(games) / bs)
+        numBatches = int(len(games) / batchSize)
         start_time = time.time()
-        pool = Pool()
         for epoch in range(epochs):
             random.shuffle(games)
-
+            bs = batchSize
+            batches = []
+            for i in range(numBatches):
+                temp = games[bs*i: bs*(i+1)]
+                bGames = np.array([g[0].flatten() for g in temp]).T
+                bOuts = np.array([g[1] for g in temp]).reshape(1,-1)
+                batches.append((bGames, bOuts))
+                          
             #   Baseline calculation of cost on training, validation data
             if epoch == 0 and len(self.tCosts) == 0:
                 self.tCosts = [self.totalCost(games)]
                 self.vCosts = [self.totalCost(vGames)]
             
-            #   Reformat data as tensors of correct dimension
-            inTensor = np.array([g[0].flatten() for g in games]).T
-            outTensor = np.array([g[1] for g in games]).reshape(1,-1)
-            for i in range(numBatches):
-                #   Subset all data to make batch
-                bIns = inTensor[:, bs*i: bs*(i+1)]
-                bOuts = outTensor[:, bs*i: bs*(i+1)]
+            #   Collect gradients, parallelized by batch
+            pool = Pool()
+            inList = [(self, batch, p) for batch in batches]
+            gradients = pool.map_async(train_thread, inList).get()
+            pool.close()
 
-                ###############################################################
-                #   Break the batch into pieces to submit as multicore job
-                ###############################################################
-                chunkSize = int(bOuts.shape[1] / numCPUs)
-                remainder = bOuts.shape[1] % numCPUs
-                bChunks = []
-                c = 0
-                for j in range(numCPUs):
-                    thisSize = chunkSize + (j < remainder)
-                    bChunks.append((bIns[:, c:c+thisSize], bOuts[:,c:c+thisSize]))
-                    c += thisSize
-                    
-                ###############################################################
-                #   Submit the multicore 'job' and average returned gradients
-                ###############################################################
-                inList = [(self, chunk, p) for chunk in bChunks]
-                gradients_list = pool.map_async(train_thread, inList).get()
+            #   Gradient descent with momentum
+            for batchNum in range(len(gradients)):
+                for i in range(len(self.layers)):
+                    self.last_dC_dw[i] = gradients[batchNum][0][i] + p['mom'] * self.last_dC_dw[i]
+                    self.weights[i] -= nu * self.last_dC_dw[i]
 
-                #   Add up gradients by batch and parameter
-                gradient = gradients_list[0]
-                for j in range(1,len(gradients_list)):
-                    #   Loop through each parameter (eg. weights, beta, etc)
-                    for k in range(len(gradients_list[0])):
-                        gradient[k] += gradients_list[j][k]
+                    self.last_dC_db[i] = gradients[batchNum][1][i].reshape((-1,1)) + p['mom'] * self.last_dC_db[i]
+                    self.beta[i] -= nu * self.last_dC_db[i]
 
-                ###############################################################
-                #   Update parameters via SGD with momentum
-                ###############################################################
-                self.last_dC_dw[i] = gradient[0][i] + p['mom'] * self.last_dC_dw[i]
-                self.weights[i] -= nu * self.last_dC_dw[i]
+                    self.last_dC_dg[i] = gradients[batchNum][2][i].reshape((-1,1)) + p['mom'] * self.last_dC_dg[i]
+                    self.gamma[i] -= nu * self.last_dC_dg[i]
 
-                self.last_dC_db[i] = gradient[1][i].reshape((-1,1)) + p['mom'] * self.last_dC_db[i]
-                self.beta[i] -= nu * self.last_dC_db[i]
-
-                self.last_dC_dg[i] = gradient[2][i].reshape((-1,1)) + p['mom'] * self.last_dC_dg[i]
-                self.gamma[i] -= nu * self.last_dC_dg[i]
-                
-
-            #   Compute ending cost on all training and validation examples
+            #   Compute cost on all training and validation examples (now
+            #   that epoch is complete)
             self.tCosts.append(self.totalCost(games))
             self.vCosts.append(self.totalCost(vGames))
             print("Finished epoch ", epoch+1, ".", sep="")
 
-        pool.close()
         speed = (time.time() - start_time) / (epochs * numBatches * bs)
         print("Averaged", speed, "seconds per training example")
 
@@ -285,7 +267,6 @@ class Network:
         dC_db = [np.zeros(self.beta[i].shape) for i in range(len(self.beta))]
 
         batchSize = y.shape[1]
-        assert batchSize > 0, "Attempted to do backprop on a batch of size 0"
         for i in range(len(z)):
             ###########################################################################
             #   First compute up to dC_dzNorm, the partial w/ respect to the batch
@@ -299,9 +280,9 @@ class Network:
             #print("dC_dzNorm.shape:", dC_dzNorm.shape)
             #   Sum up partials w/ respect to gamma and beta over the batch, and divide by batchSize
             dC_dg[-1-i] = np.sum(dC_dzNorm * (zNorm[-1-i] - self.beta[-1-i]) \
-                                 / self.gamma[-1-i], axis = 1) / p['batchSize']
+                                 / self.gamma[-1-i], axis = 1) / batchSize
             #print("dC_dg[-1-1].shape:", dC_dg[-1-i].shape)
-            dC_db[-1-i] = np.sum(dC_dzNorm, axis=1) / p['batchSize']
+            dC_db[-1-i] = np.sum(dC_dzNorm, axis=1) / batchSize
             #print("dC_db[-1-1].shape:", dC_db[-1-i].shape)
                 
             ###########################################################################
@@ -325,9 +306,9 @@ class Network:
             #   Sum up the partials w/ respect to the weights one training example at a time
             for j in range(batchSize):
                 dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[:,j].reshape((-1,1)), a[-2-i][:,j].reshape((1,-1)))
-            dC_dw[-1-i] = dC_dw[-1-i] / p['batchSize'] + p['weightDec'] * self.weights[-1-i]
+            dC_dw[-1-i] = dC_dw[-1-i] / batchSize + p['weightDec'] * self.weights[-1-i]
 
-        return [dC_dw, dC_db, dC_dg]
+        return (dC_dw, dC_db, dC_dg)
 
     #   Given the entire set of training examples, returns the average cost per example
     def totalCost(self, games):
