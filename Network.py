@@ -243,14 +243,15 @@ class Network:
                 ###############################################################
                 #   Update parameters via SGD with momentum
                 ###############################################################
-                self.last_dC_dw[i] = gradient[0][i] + p['mom'] * self.last_dC_dw[i]
-                self.weights[i] -= nu * self.last_dC_dw[i]
+                for lay in range(len(self.weights)):
+                    self.last_dC_dw[lay] = gradient[0][lay] + p['mom'] * self.last_dC_dw[lay]
+                    self.weights[lay] -= nu * self.last_dC_dw[lay]
 
-                self.last_dC_db[i] = gradient[1][i].reshape((-1,1)) + p['mom'] * self.last_dC_db[i]
-                self.beta[i] -= nu * self.last_dC_db[i]
+                    self.last_dC_db[lay] = gradient[1][lay].reshape((-1,1)) + p['mom'] * self.last_dC_db[lay]
+                    self.beta[lay] -= nu * self.last_dC_db[lay]
 
-                self.last_dC_dg[i] = gradient[2][i].reshape((-1,1)) + p['mom'] * self.last_dC_dg[i]
-                self.gamma[i] -= nu * self.last_dC_dg[i]
+                    self.last_dC_dg[lay] = gradient[2][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dg[lay]
+                    self.gamma[lay] -= nu * self.last_dC_dg[lay]
                 
 
             #   Compute ending cost on all training and validation examples
