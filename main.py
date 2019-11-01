@@ -29,7 +29,6 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
     #   Set fastNet to slowNet
     fastNet = slowNet.copy()
         
-    iterNum = 0
     numEps = p['traverseCount'] * p['updatePeriod']
     for i in range(numEps):
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
@@ -81,14 +80,12 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         if (i + 1) % p['updatePeriod'] == 0:       
             #   Train on data in the buffer  
             fastNet.train(tBuffer, vBuffer, p)
-            iterNum += 1
 
             print('------------------------------')
             print('Syncing slowNet to fastNet...')
             print('------------------------------')
             #   Adjust slowNet's expected input mean and variances for each layer.
             #   Then drop a fraction of the buffers
-            fastNet.setPopStats(tBuffer + vBuffer)
             fastNet.certainty = slowNet.certainty
             if i < numEps-1:
                 slowNet = fastNet.copy()
