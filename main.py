@@ -28,8 +28,24 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         
     #   Set fastNet to slowNet
     fastNet = slowNet.copy()
+
+    #   Determine if/ how many episodes to delay training in order to fill up the
+    #   buffers to above the specified fraction (p['delayFrac']) of the limiting capacity
+    if len(tBuffer) == 0:
+        delayPeriod = max(0, int(np.ceil(p['delayFrac'] / p['memDecay']) - 1))
+    else:
+        delayPeriod = 0
+    if p['mode'] >= 2:
+        if len(tBuffer) == 0:
+            outStr = str(delayPeriod) + " episode(s) will be added to what was specified, in" +\
+                     " order to get data buffers up to " + str(p['delayFrac']) + " times" +\
+                     " their limiting size. To suppress this behavior, set delayFrac to 0" +\
+                     " in config.txt."
+            print(outStr)
+        else:
+            print("No episodes will be added, as the data buffers are non-empty.")
         
-    numEps = p['traverseCount'] * p['updatePeriod']
+    numEps = p['traverseCount'] * p['updatePeriod'] + delayPeriod
     for i in range(numEps):
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print('\tStarting episode ', i+1, ' of ', numEps, '!', sep='')
@@ -77,7 +93,7 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             print("Std. deviation:", np.round_(np.std(rewards), 5))
             print("Mean magnitude:", np.round_(np.mean(mags), 5))
 
-        if (i + 1) % p['updatePeriod'] == 0:       
+        if (i + 1) % p['updatePeriod'] == 0 and i  >= delayPeriod:       
             #   Train on data in the buffer  
             fastNet.train(tBuffer, vBuffer, p)
 
