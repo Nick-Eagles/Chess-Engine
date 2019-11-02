@@ -206,31 +206,16 @@ class Network:
             if epoch == 0:
                 self.tCosts.append(self.totalCost(games))
                 self.vCosts.append(self.totalCost(vGames))
-            
-            #   Reformat data as tensors of correct dimension
-            inTensor = np.array([g[0].flatten() for g in games]).T
-            outTensor = np.array([g[1] for g in games]).reshape(1,-1)
-            for i in range(numBatches):
-                #   Subset all data to make batch
-                bIns = inTensor[:, bs*i: bs*(i+1)]
-                bOuts = outTensor[:, bs*i: bs*(i+1)]
 
-                ###############################################################
-                #   Break the batch into pieces to submit as multicore job
-                ###############################################################
-                chunkSize = int(bOuts.shape[1] / numCPUs)
-                remainder = bOuts.shape[1] % numCPUs
-                bChunks = []
-                c = 0
-                for j in range(numCPUs):
-                    thisSize = chunkSize + (j < remainder)
-                    bChunks.append((bIns[:, c:c+thisSize], bOuts[:,c:c+thisSize]))
-                    c += thisSize
-                    
+            #   Divide data into batches, which each are divided into chunks-
+            #   computation of the gradients will be parallelized by chunk
+            chunkedGames = network_helper.toBatchChunks(games, bs, numCPUs)
+            
+            for i in range(numBatches):
                 ###############################################################
                 #   Submit the multicore 'job' and average returned gradients
                 ###############################################################
-                inList = [(self, chunk, p) for chunk in bChunks]
+                inList = [(self, chunk, p) for chunk in chunkedGames[i]]
                 gradients_list = pool.map_async(train_thread, inList).get()
 
                 #   Add up gradients by batch and parameter
@@ -264,7 +249,7 @@ class Network:
         print("Averaged", speed, "seconds per training example")
 
         print('Updating pop stats...')
-        self.setPopStats(games + vGames)
+        self.setPopStats(games + vGames, p)
         self.age += numBatches
         print("Done training.")
         
@@ -396,14 +381,48 @@ class Network:
 
     #   Takes a list of tuples representing training data, and sets population mean, variance
     #   and standard deviation for the network (used for feedForward())
-    def setPopStats(self, pop):
-        pop = np.array([g[0].flatten() for g in pop]).T
-        z = self.ff_track(pop)[0]
-        popMean, popVar = [], []
-        for lay in z:
-            bStats = network_helper.batchStats(lay)
-            popMean.append(bStats[2].reshape((-1,1)))
-            popVar.append(bStats[0].reshape((-1,1)))
+    def setPopStats(self, pop, p, method=1):
+        #   naive computation of population statistics: compute the mean and variance
+        #   of the entire dataset
+        if method == 0:
+            pop = np.array([g[0].flatten() for g in pop]).T
+            z = self.ff_track(pop)[0]
+            popMean, popVar = [], []
+            for lay in z:
+                bStats = network_helper.batchStats(lay)
+                popMean.append(bStats[2].reshape((-1,1)))
+                popVar.append(bStats[0].reshape((-1,1)))
+
+        #   "unbiased" estimate of population statistics: compute mean and variance
+        #   in batches and average over these, as suggested in https://arxiv.org/pdf/1502.03167.pdf
+        else:
+            bs = p['batchSize']
+            numCPUs = os.cpu_count()
+            numBatches = int(len(pop) / bs)
+
+            #   Compute stats in chunks (so pop stats are computed in a consistent way as stats
+            #   are used during training)- this is equivalent to using a batch size of bs/numCPUs
+            random.shuffle(pop)
+            chunkedData = network_helper.toBatchChunks(pop, bs, numCPUs)
+
+            pool = Pool()
+
+            popMean = [np.zeros((lay, 1)) for lay in self.layers]
+            popVar = [np.zeros((lay, 1)) for lay in self.layers]
+            for i in range(numBatches):
+                #   This is a list of tuples of lists: popStatList[chunkNum[statType[layerNum]]] is
+                #   a numpy array representing the mean or variance of the activations for one layer
+                #   from feeding forward one chunk
+                inList = [(self, x[0]) for x in chunkedData[i]]
+                popStatList = pool.map_async(network_helper.pop_stat_thread, inList).get()
+
+                for chunk in popStatList:
+                    for lay in range(len(self.layers)):
+                        popMean[lay] += chunk[0][lay] / (numBatches * numCPUs)
+                        popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
+
+            pool.close()                       
+                
         self.popMean = popMean
         self.popVar = popVar
         self.popDev = [np.sqrt(np.add(lay, self.eps)) for lay in popVar]
