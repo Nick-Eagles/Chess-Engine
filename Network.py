@@ -203,9 +203,9 @@ class Network:
             random.shuffle(games)
 
             #   Baseline calculation of cost on training, validation data
-            if epoch == 0 and len(self.tCosts) == 0:
-                self.tCosts = [self.totalCost(games)]
-                self.vCosts = [self.totalCost(vGames)]
+            if epoch == 0:
+                self.tCosts.append(self.totalCost(games))
+                self.vCosts.append(self.totalCost(vGames))
             
             #   Reformat data as tensors of correct dimension
             inTensor = np.array([g[0].flatten() for g in games]).T
@@ -362,17 +362,17 @@ class Network:
         if append:
             costData = []
         else:
-            costData = [["epochNum", "cost", "costType"]]
+            costData = [["epochNum", "cost", "costType", "isStart"]]
 
         costTypes = [self.tCosts, self.vCosts]
         costLabels = ["t_cost", "v_cost"]
 
-        latestEpochs = epochs + int(len(self.tCosts) == epochs + 1)
-        for epoch in range(latestEpochs):
+        numEpisodes = int(len(self.tCosts) / (epochs + 1))
+        for epoch in range(epochs + 1):
             costIndex = 0
             for costType in costTypes:
-                e = len(self.tCosts) - latestEpochs + epoch
-                costData.append([e, costType[e], costLabels[costIndex]])
+                e = len(self.tCosts) - 1 - epochs + epoch
+                costData.append([e - numEpisodes + 1, costType[e], costLabels[costIndex], int(epoch == 0)])
                 costIndex += 1
 
         #   Open "costs.csv" and write the cost data
