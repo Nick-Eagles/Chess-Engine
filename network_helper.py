@@ -34,6 +34,53 @@ def batchStats(xBatch):
     dev = xBatch - np.dot(mean.reshape((-1,1)), np.ones((1, xBatch.shape[1])))
     return (np.sum(dev * dev, axis = 1) / xBatch.shape[1], dev * dev, mean)
 
+def toBatchChunks(data, bs, numCPUs):
+    numBatches = int(len(data) / bs)
+    chunkSize = int(bs / numCPUs)
+    remainder = bs % numCPUs
+    
+    #   Reformat data as tensors of correct dimension
+    inTensor = np.array([x[0].flatten() for x in data]).T
+    outTensor = np.array([x[1] for x in data]).reshape(1,-1)
+
+    chunkedData = []
+    for i in range(numBatches): 
+        #   Subset all data to make batch
+        bIns = inTensor[:, bs*i: bs*(i+1)]
+        bOuts = outTensor[:, bs*i: bs*(i+1)]
+
+        #   Break the batch into chunks
+        bChunks = []
+        c = 0
+        for j in range(numCPUs):
+            thisSize = chunkSize + (j < remainder)
+            bChunks.append((bIns[:, c:c+thisSize], bOuts[:,c:c+thisSize]))
+            c += thisSize
+
+        #   Add the chunked batch to the list of chunk batches
+        chunkedData.append(bChunks)
+
+    #   Some dimensionality checks
+    assert len(chunkedData) == numBatches
+    assert len(chunkedData[0]) == numCPUs
+    assert len(chunkedData[0][0]) <= bs + 1
+    
+    return chunkedData
+
+def get_pop_stats(net, chunk):
+    z = net.ff_track(chunk)[0]
+    
+    popMean, popVar = [], []
+    for lay in z:
+        bStats = batchStats(lay)
+        popMean.append(bStats[2].reshape((-1,1)))
+        popVar.append(bStats[0].reshape((-1,1)))
+
+    return (popMean, popVar)
+
+def pop_stat_thread(inTuple):
+    return get_pop_stats(inTuple[0], inTuple[1])
+
 #   Intended to provide numerical stability when computing costs. y is the actual
 #   reward for a given example, which can only be outside of [0,1] due to floating
 #   point imprecision. 'tol' sets the threshold for acceptable level of deviation
