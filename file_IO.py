@@ -78,9 +78,9 @@ def filterByNovelty(newGames, filepath, p):
         match = False
         while not match and gNum < len(fileGames):
             i = 0
-            while i < len(nG) and nG[i] == fileGames[i]:
+            while i < len(nG)-2 and nG[i] == fileGames[i]:
                 i += 1
-            match = i == len(nG)
+            match = i == len(nG)-2
             gNum += 1
         if gNum == len(fileGames):
             novelGames.append(nG)
