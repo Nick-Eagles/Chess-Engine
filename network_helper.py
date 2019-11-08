@@ -97,24 +97,23 @@ def stabilize(y, cutoff, tol):
     return y
 
 #   Given the Network "net" and training examples in typical tuple form "tData",
-#   print the percentage of neurons in each layer which have negative
-#   activation for all training examples (are "dead", since leaky ReLU is the
-#   activation function for all layers except the output).
-def dead_neurons(net, tData):
+def net_activity(net, tData):
     p = input_handling.readConfig(0)
     bigBatch = np.array([g[0].flatten() for g in tData]).T
     z, zNorm, a = net.ff_track(bigBatch)
 
-    deadNeurons = []
+    activities = []
     for lay in zNorm:
         temp = []
         for neuron in lay:
-            temp.append(int(all([x < 0 for x in neuron]))) # across batch for 1 neuron
-        deadNeurons.append(temp)
+            temp.append(sum([x >= 0 for x in neuron]) / lay.shape[1]) # across batch for 1 neuron
+        activities.append(temp)
 
     print("Dead neurons by layer:")
-    for i, lay in enumerate(deadNeurons):
-        print("Layer" + str(i+1) + ": " + str(100 * sum(lay)/len(lay)) + "% dead")
+    for i, lay in enumerate(activities):
+        percDead = round(100 * sum([int(x < 0) for x in lay]) / len(lay), 2)
+        percAct = round(100 * sum(lay) / len(lay), 2)
+        print("Layer ", i+1, ": ", percAct, "% active; ", percDead, "% dead.", sep='')
 
 #   A helper function for Network.showGame. Returns the string that is output for
 #   a game at its current state (the list of evaluations for whichever player is

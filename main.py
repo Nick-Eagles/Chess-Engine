@@ -174,22 +174,36 @@ while choice > 0 and choice <= len(options):
         net.save('nets/' + filename)
         print("Saved. Continuing...")
     elif choice == 4:
-        network_helper.dead_neurons(net, tBuffer+vBuffer)
+        network_helper.net_activity(net, tBuffer+vBuffer)
     elif choice == 5:
         p = input_handling.readConfig(2)
         net.train(tBuffer, vBuffer, p)
     elif choice == 6:
-        #   Find a way to not hardcode these?
-        filepath = 'data/checkmates.csv'
+        p = input_handling.readConfig(0) # get mate reward
+        
+        messDef2 = "Add to training (t) or validation (v) position file? "
+        messOnErr = "Invalid input."
+        fileChoice = input_handling.getUserInput(messDef2, messOnErr, 'str', 'var == "t" or var == "v"')
+
+        #   Find a way to not hardcode this?
         tol = 0.001
-        p = input_handling.readConfig(1) # get mate reward
         temp = expit(p['mateReward']) - 0.5 - tol
-        compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]] for g in tBuffer+vBuffer if abs(g[1] - 0.5) > temp]
-        novelGs = file_IO.filterByNovelty(compressedGs, filepath, p)
-        file_IO.writeCheckmates(novelGs, filepath)
+
+        #   Select only training or only validation buffer: this prevents writing checkmates from checkmates_t.csv to
+        #   checkmates_v.csv and vice versa.
+        if fileChoice == 't':
+            filename = 'data/checkmates_t.csv'
+            compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]] for g in tBuffer if abs(g[1] - 0.5) > temp]
+        else:
+            filename = 'data/checkmates_v.csv'
+            compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]] for g in vBuffer if abs(g[1] - 0.5) > temp]
+               
+        novelGs = file_IO.filterByNovelty(compressedGs, filename, p)
+        file_IO.writeCheckmates(novelGs, filename)
         print("Wrote", len(novelGs), "positions to file.")
+        
     elif choice == 7:
-        p = input_handling.readConfig(1) # get mate reward
+        p = input_handling.readConfig(0) # get mate reward
         
         messDef2 = "Generate how many checkmate positions? "
         messOnErr = "Not a valid input."
