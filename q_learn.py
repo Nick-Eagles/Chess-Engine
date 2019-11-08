@@ -7,6 +7,7 @@ import numpy as np
 from scipy.special import expit, logit
 from multiprocessing import Pool
 import os
+import time
 
 def generateExamples(net, p):
     game = Game.Game()
@@ -90,19 +91,30 @@ def runThread(inTuple):
 
 def aync_q_learn(net):
     p = input_handling.readConfig(3)
-    inList = [(net, p) for i in range(p['baseBreadth'])]
+    
     if p['mode'] >= 2:
         print(os.cpu_count(), "cores available.")
 
     print("Performing asynchronous Q-learning (" + str(p['baseBreadth']) + " tasks)...")
+    if p['mode'] >= 2:
+        start_time = time.time()
+
+    #   Run asynchronous data generation
     pool = Pool()
+    inList = [(net, p) for i in range(p['baseBreadth'])]
     thread_data = pool.map_async(runThread, inList).get()
     pool.close()
 
+    #   Collect each process's results (data) into a single list
     tData = []
     for data in thread_data:
         tData += data
-    print("Done. Generated " + str(len(tData)) + " training examples.")
+
+    if p['mode'] >= 2:
+        elapsed = round(time.time() - start_time, 2)
+        print("Done in", elapsed, "seconds. Generated " + str(len(tData)) + " training examples.\n")
+    else:
+        print("Done. Generated " + str(len(tData)) + " training examples.\n")
 
     if p['mode'] >= 1:
         print("Determining certainty of network on the generated examples...")
@@ -122,5 +134,5 @@ def getCertainty(net, data, p):
     net.certainty = net.certainty * p['persist'] + certainty * (1 - p['persist'])
     
     if p['mode'] >= 1:
-        print("Certainty of network on", int(len(data)/2), "examples:", certainty)
-        print("Moving certainty:", net.certainty)
+        print("Certainty of network on", int(len(data)/2), "examples:", round(certainty, 5))
+        print("Moving certainty:", round(net.certainty, 5), "\n")
