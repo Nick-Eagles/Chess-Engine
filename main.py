@@ -60,7 +60,7 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
 
         #   Randomly separate examples into training and validation buffers
         #temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
-        temp = misc.divvy(q_learn.aync_q_learn(slowNet), p['fracValidation'])
+        temp = misc.divvy(q_learn.async_q_learn(slowNet), p['fracValidation'])
         vBuffer += temp[0]
         tBuffer += temp[1]
         numGenExamples = len(temp[1])

@@ -10,6 +10,8 @@ import os
 import time
 
 def generateExamples(net, p):
+    np.random.seed()
+    
     game = Game.Game()
     step = 0
     rewards = [[]]  # Each element is a list representing rewards for moves during one game
@@ -89,7 +91,7 @@ def generateExamples(net, p):
 def runThread(inTuple):
     return generateExamples(inTuple[0], inTuple[1])
 
-def aync_q_learn(net):
+def async_q_learn(net):
     p = input_handling.readConfig(3)
     
     if p['mode'] >= 2:
