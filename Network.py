@@ -193,12 +193,13 @@ class Network:
         epochs = p['epochs']
         updatePer = p['updatePeriod']
         numCPUs = os.cpu_count()
+        numBatches = int(len(games) / bs)
         
         #   Training via SGD
-        numVGames = len(vGames)
-        numBatches = int(len(games) / bs)
-        start_time = time.time()
+        if p['mode'] >= 2:
+            start_time = time.time()
         pool = Pool()
+        
         for epoch in range(epochs):
             random.shuffle(games)
 
@@ -245,8 +246,9 @@ class Network:
             print("Finished epoch ", epoch+1, ".", sep="")
 
         pool.close()
-        speed = (time.time() - start_time) / (epochs * numBatches * bs)
-        print("Averaged", speed, "seconds per training example")
+        if p['mode'] >= 2:
+            speed = (time.time() - start_time) / (epochs * numBatches * bs)
+            print("Averaged", speed, "seconds per training example")
 
         print('Updating pop stats...')
         self.setPopStats(games + vGames, p)
@@ -495,7 +497,7 @@ def leakyReLU(x):
             if x[i][j] >= 0:
                 y[i][j] = x[i][j]
             else:
-                y[i][j] = 0.1 * x[i][j]
+                y[i][j] = 0.01 * x[i][j]
     return y
             
 
@@ -504,5 +506,5 @@ def d_dx_leakyReLU(x):
     for j in range(x.shape[1]):
         for i in range(x.shape[0]):    
             if x[i][j] < 0:
-                y[i][j] = 0.1
+                y[i][j] = 0.01
     return y
