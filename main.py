@@ -37,10 +37,14 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         delayPeriod = 0
     if p['mode'] >= 2:
         if len(tBuffer) == 0:
-            outStr = str(delayPeriod) + " episode(s) will be added to what was specified, in" +\
-                     " order to get data buffers up to " + str(p['delayFrac']) + " times" +\
-                     " their limiting size. To suppress this behavior, set delayFrac to 0" +\
-                     " in config.txt."
+            if delayPeriod > 0:
+                outStr = str(delayPeriod) + " episode(s) will be added to what was specified, in" +\
+                         " order to get data buffers up to " + str(p['delayFrac']) + " times" +\
+                         " their limiting size. To suppress this behavior, set delayFrac to 0" +\
+                         " in config.txt."
+            else:
+                outStr = "No episodes needed to be added to what was specified, as the first episode" +\
+                         " brings the buffers up to a sufficiently large size."
             print(outStr)
         else:
             print("No episodes will be added, as the data buffers are non-empty.")
@@ -50,6 +54,9 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print('\tStarting episode ', i+1, ' of ', numEps, '!', sep='')
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        print("------------------")
+        print("Generating data...")
+        print("------------------")
 
         #   Randomly separate examples into training and validation buffers
         #temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
@@ -73,7 +80,9 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             fracToUse = p['fracValidation'] * fracToUse * len(tGames) / (len(vGames) * (1 - p['fracValidation']))
             vBuffer += misc.divvy(vGames, fracToUse, False)[0]
             if p['mode'] >= 2:
-                print("Adding", int(len(vGames)*fracToUse), "games to vBuffer...")
+                print("Adding", int(len(vGames)*fracToUse), "games to vBuffer...\n")
+            elif p['mode'] == 1:
+                print()
 
         #   QC stats for the examples generated
         if p['mode'] >= 1:
@@ -91,15 +100,14 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
             print("Number of t-examples:", len(tBuffer))
             print("Mean reward:", np.round_(np.mean(rewards), 5))
             print("Std. deviation:", np.round_(np.std(rewards), 5))
-            print("Mean magnitude:", np.round_(np.mean(mags), 5))
+            print("Mean magnitude:", np.round_(np.mean(mags), 5), "\n")
 
         if (i + 1) % p['updatePeriod'] == 0 and i  >= delayPeriod:       
             #   Train on data in the buffer  
             fastNet.train(tBuffer, vBuffer, p)
 
-            print('------------------------------')
             print('Syncing slowNet to fastNet...')
-            print('------------------------------')
+
             #   Adjust slowNet's expected input mean and variances for each layer.
             #   Then drop a fraction of the buffers
             fastNet.certainty = slowNet.certainty
@@ -156,6 +164,7 @@ tBuffer, vBuffer = [], []
 while choice > 0 and choice <= len(options):
     net.print()
     choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= 8')
+    print()
 
     if choice == 1:
         #   Keep a fraction of examples
