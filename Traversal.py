@@ -45,6 +45,7 @@ class Traversal:
     #   list of training examples (NN input, actual reward) of size
     #   (breadth ^ tDepth) / (breadth - 1)
     def traverse(self):
+        np.random.seed()
         p = self.p
         
         if self.numReqMoves > 0:
