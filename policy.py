@@ -136,7 +136,6 @@ def getBestMoveHuman(game, legalMoves, net, p):
 #   This is meant to be a faster alternative to getBestMoveHuman. The move is simply
 #   chosen via an epsilon-greedy strategy.
 def getBestMoveEG(game, legalMoves, net, eps, mateRew):
-    np.random.seed()
     if eps == 1 or np.random.uniform() < eps:
         #   Shortcut for completely random move choice
         return legalMoves[np.random.randint(len(legalMoves))]
