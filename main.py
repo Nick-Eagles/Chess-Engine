@@ -17,7 +17,7 @@ from scipy.special import expit, logit
 
 #   Given a network, asks the user for training hyper-parameters,
 #   trains the network, and asks what to do next.
-def trainOption(slowNet, tBuffer=[], vBuffer=[]): 
+def trainOption(net, tBuffer=[], vBuffer=[]): 
     p = input_handling.readConfig(2)
  
     #   traverseCount
@@ -25,9 +25,6 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
     cond = 'var > 0'
     messOnErr = "Not a valid input."
     p['traverseCount'] = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
-        
-    #   Set fastNet to slowNet
-    fastNet = slowNet.copy()
 
     #   Determine if/ how many episodes to delay training in order to fill up the
     #   buffers to above the specified fraction (p['delayFrac']) of the limiting capacity
@@ -59,12 +56,14 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
         print("------------------")
 
         #   Randomly separate examples into training and validation buffers
-        #temp = misc.divvy(Traversal.full_broad(slowNet), p['fracValidation'])
-        temp = misc.divvy(q_learn.async_q_learn(slowNet), p['fracValidation'])
+        #temp = []
+        #for j in range(p['updatePeriod']):
+            #temp += misc.divvy(Traversal.full_broad(net), p['fracValidation'])
+        temp = misc.divvy(q_learn.async_q_learn(net), p['fracValidation'])
         vBuffer += temp[0]
         tBuffer += temp[1]
         numGenExamples = len(temp[1])
-        fastNet.experience += numGenExamples
+        net.experience += numGenExamples
 
         #   Add checkmates from file
         if i % p['updatePeriod'] == 0: 
@@ -104,21 +103,17 @@ def trainOption(slowNet, tBuffer=[], vBuffer=[]):
 
         if (i + 1) % p['updatePeriod'] == 0 and i  >= delayPeriod:       
             #   Train on data in the buffer  
-            fastNet.train(tBuffer, vBuffer, p)
+            net.train(tBuffer, vBuffer, p)
 
-            print('Syncing slowNet to fastNet...')
-
-            #   Adjust slowNet's expected input mean and variances for each layer.
+            #   Adjust net's expected input mean and variances for each layer.
             #   Then drop a fraction of the buffers
-            fastNet.certainty = slowNet.certainty
             if i < numEps-1:
-                slowNet = fastNet.copy()
                 if p['mode'] >= 2:
                     print("Filtering buffers to", 1 - p['memDecay'], "times their current size...")
                 tBuffer = misc.divvy(tBuffer, 1 - p['memDecay'], False)[0]
                 vBuffer = misc.divvy(vBuffer, 1 - p['memDecay'], False)[0]
 
-    return (fastNet, tBuffer, vBuffer)
+    return (net, tBuffer, vBuffer)
 
 def analyzeOption(network):
     return
