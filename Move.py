@@ -141,7 +141,7 @@ class Move:
             #   Use the less efficient, but convenient workaround for the remaining piece types:
             #   Pretend the end square holds the opposite king. Remove pieces of the target type until
             #   inCheck == False, and keep track of the ranks and files of the offending pieces.
-            newBoard = board.copy()
+            newBoard = [x.copy() for x in board]
             hits = 0
             xHits = 0
             yHits = 0

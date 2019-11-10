@@ -6,7 +6,7 @@ import Move
 #   returns true iff white is in check; to simplify its applications, the function also
 #   considers adjacent kings to be a form of check
 def inCheck(board):
-    assert board.shape == (8, 8), "inCheck() was passed an illegitimate board"
+    assert len(board) == 8 and len(board[0]) == 8, "inCheck() was passed an illegitimate board"
         
     #   find the rank and file of the white king
     for file in range(8):
@@ -89,8 +89,8 @@ def canCastle(game):
         backRank = 7
     #   Kingside check
     if castleVars[0] and game.board[5][backRank] == 0 and game.board[6][backRank] == 0:
-        newBoard = game.board.copy()
-        newBoard2 = game.board.copy()
+        newBoard = [x.copy() for x in game.board]
+        newBoard2 = [x.copy() for x in game.board]
         newBoard[4][backRank] = 0
         newBoard2[4][backRank] = 0
         newBoard[5][backRank] = 6 * coeff
@@ -106,8 +106,8 @@ def canCastle(game):
 
     #   Queenside check
     if castleVars[1] and game.board[1][backRank] == 0 and game.board[2][backRank] == 0 and game.board[3][backRank] == 0:
-        newBoard = game.board.copy()
-        newBoard2 = game.board.copy()
+        newBoard = [x.copy() for x in game.board]
+        newBoard2 = [x.copy() for x in game.board]
         newBoard[4][backRank] = 0
         newBoard2[4][backRank] = 0
         newBoard[2][backRank] = 6 * coeff
@@ -145,7 +145,7 @@ def getLegalMoves(game):
     if game.enPassant:
         #   Look to the left for a white pawn
         if game.lastMove.endSq[0] > 0 and game.board[game.lastMove.endSq[0]-1][game.lastMove.endSq[1]] == coeff:
-            newBoard = game.board.copy()
+            newBoard = [x.copy() for x in game.board]
             #   Move above the black pawn
             newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]+coeff] = coeff
             #   Capture the black pawn
@@ -156,7 +156,7 @@ def getLegalMoves(game):
                 moves.append(Move.Move((game.lastMove.endSq[0]-1, game.lastMove.endSq[1]),(game.lastMove.endSq[0],game.lastMove.endSq[1]+coeff),coeff))
         #   Look to the right for a white pawn
         if game.lastMove.endSq[0] < 7 and game.board[game.lastMove.endSq[0]+1][game.lastMove.endSq[1]] == coeff:
-            newBoard = game.board.copy()
+            newBoard = [x.copy() for x in game.board]
             #   Move above the black pawn
             newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]+coeff] = coeff
             #   Capture the black pawn
@@ -286,12 +286,12 @@ def inBounds(square, perturb):
 #   castling move or en passant.
 def tryMove(game, move):
     if game.whiteToMove:
-        newBoard = game.board.copy()
+        newBoard = [x.copy() for x in game.board]
         startSq = move.startSq
         endSq = move.endSq
         endPiece = move.endPiece
     else:
-        newBoard = game.invBoard.copy()
+        newBoard = [x.copy() for x in game.invBoard]
         startSq = (7 - move.startSq[0], 7 - move.startSq[1])
         endSq = (7 - move.endSq[0], 7 - move.endSq[1])
         endPiece = -1 * move.endPiece

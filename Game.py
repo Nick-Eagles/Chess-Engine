@@ -6,11 +6,11 @@ import board_helper
 
 class Game:
     def __init__(self, quiet=True):
-        self.board = np.array([[4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2], \
-                          [3, 1, 0, 0, 0, 0, -1, -3], [5, 1, 0, 0, 0, 0, -1, -5], \
-                          [6, 1, 0, 0, 0, 0, -1, -6], [3, 1, 0, 0, 0, 0, -1, -3], \
-                          [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]])
-        self.invBoard = np.zeros((8,8), dtype=np.int8)
+        self.board = [[4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2], \
+                     [3, 1, 0, 0, 0, 0, -1, -3], [5, 1, 0, 0, 0, 0, -1, -5], \
+                     [6, 1, 0, 0, 0, 0, -1, -6], [3, 1, 0, 0, 0, 0, -1, -3], \
+                     [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]]
+        self.invBoard = [[0 for i in range(8)] for j in range(8)]
         
         #   Amount of the pieces on the board: P, N, light B, dark B, R, Q
         self.wPieces = np.array([8, 2, 1, 1, 2, 1])
@@ -40,7 +40,7 @@ class Game:
     def copy(self):
         g = Game()
 
-        g.board = self.board.copy()
+        g.board = [x.copy() for x in self.board]
         g.wPieces = self.wPieces.copy()
         g.bPieces = self.bPieces.copy()
         g.canW_K_Castle = self.canW_K_Castle
@@ -83,7 +83,6 @@ class Game:
         else:
             return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), g.toNN_vecs()[0])
 
-    #   Probably can eliminate; np arrays print the correct way I think
     def printBoard(self):
         print("board:  -----")
         for rank in range(8):
