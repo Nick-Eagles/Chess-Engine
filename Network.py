@@ -247,8 +247,9 @@ class Network:
 
         pool.close()
         if p['mode'] >= 2:
-            speed = (time.time() - start_time) / (epochs * numBatches * bs)
-            print("Averaged", speed, "seconds per training example")
+            elapsed = time.time() - start_time
+            speed = elapsed / (epochs * numBatches * bs)
+            print("Done training in ", round(elapsed, 2), " seconds (", round(speed, 6), " seconds per training example).", sep="")
 
         print('Updating pop stats...')
         self.setPopStats(games + vGames, p)
