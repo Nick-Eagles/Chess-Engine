@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 import input_handling
 
@@ -11,7 +12,8 @@ import input_handling
 #   return the batch normalized input (which does not involve the application
 #   of an activation function- this is done afterward)
 def normalize(xBatch, gamma, beta, eps):
-    assert len(xBatch.shape) == 2
+    assert xBatch.shape[0] > 0, "Tried to normalize an empty batch"
+    assert len(xBatch.shape) == 2, "normalize() passed an illegitimate shaped array"
     assert len(gamma.shape) == 2 and gamma.shape[1] == 1, gamma.shape
     assert len(beta.shape) == 2 and beta.shape[1] == 1, beta.shape
     layLen = xBatch.shape[0]
@@ -35,6 +37,8 @@ def batchStats(xBatch):
     return (np.sum(dev * dev, axis = 1) / xBatch.shape[1], dev * dev, mean)
 
 def toBatchChunks(data, bs, numCPUs):
+    random.shuffle(data)
+    
     numBatches = int(len(data) / bs)
     chunkSize = int(bs / numCPUs)
     remainder = bs % numCPUs
@@ -69,12 +73,13 @@ def toBatchChunks(data, bs, numCPUs):
 
 def get_pop_stats(net, chunk):
     z = net.ff_track(chunk)[0]
+    bs = chunk.shape[1]
     
     popMean, popVar = [], []
     for lay in z:
         bStats = batchStats(lay)
         popMean.append(bStats[2].reshape((-1,1)))
-        popVar.append(bStats[0].reshape((-1,1)))
+        popVar.append((bs * bStats[0] / (bs - 1)).reshape((-1,1)))
 
     return (popMean, popVar)
 

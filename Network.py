@@ -16,7 +16,7 @@ import Traversal
 import Move
 
 class Network:
-    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0):
+    def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0, certaintyRate=0):
         #   Weights and biases "beta"
         if len(weights) == 0:
             temp = [839] + layers
@@ -63,6 +63,7 @@ class Network:
         self.age = age  # number of training steps
         self.experience = experience # number of unique training examples seen
         self.certainty = certainty # see README- a measure of how much observed recent events match expected ones
+        self.certaintyRate = certaintyRate
 
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
@@ -71,7 +72,7 @@ class Network:
         popMean = [lay.copy() for lay in self.popMean]
         popVar = [lay.copy() for lay in self.popVar]
         
-        return Network(self.layers, weights, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience, self.certainty)
+        return Network(self.layers, weights, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience, self.certainty, self.certaintyRate)
         
     #   Prints an annotated game of the neural network playing itself
     def showGame(self, verbose=True):
@@ -201,12 +202,10 @@ class Network:
         pool = Pool()
         
         for epoch in range(epochs):
-            random.shuffle(games)
-
             #   Baseline calculation of cost on training, validation data
             if epoch == 0:
-                self.tCosts.append(self.totalCost(games))
-                self.vCosts.append(self.totalCost(vGames))
+                self.tCosts.append(self.totalCost(games, p))
+                self.vCosts.append(self.totalCost(vGames, p))
 
             #   Divide data into batches, which each are divided into chunks-
             #   computation of the gradients will be parallelized by chunk
@@ -241,8 +240,9 @@ class Network:
                 
 
             #   Compute ending cost on all training and validation examples
-            self.tCosts.append(self.totalCost(games))
-            self.vCosts.append(self.totalCost(vGames))
+            self.setPopStats(games + vGames, p)
+            self.tCosts.append(self.totalCost(games, p))
+            self.vCosts.append(self.totalCost(vGames, p))
             print("Finished epoch ", epoch+1, ".", sep="")
 
         pool.close()
@@ -251,8 +251,8 @@ class Network:
             speed = elapsed / (epochs * numBatches * bs)
             print("Done training in ", round(elapsed, 2), " seconds (", round(speed, 6), " seconds per training example).", sep="")
 
-        print('Updating pop stats...')
-        self.setPopStats(games + vGames, p)
+        #print('Updating pop stats...')
+        #self.setPopStats(games + vGames, p)
         self.age += numBatches
         print("Done training.")
         
@@ -319,14 +319,23 @@ class Network:
         return [dC_dw, dC_db, dC_dg]
 
     #   Given the entire set of training examples, returns the average cost per example
-    def totalCost(self, games):
-        bGames = np.array([g[0].flatten() for g in games]).T
-        bOuts = np.array([g[1] for g in games]).reshape(1,-1)
-        
-        a = self.ff_track(bGames)[2][-1]
-        cost = -1 * np.sum(bOuts * np.log(a) + (1 - bOuts) * np.log(1 - a)) / len(games)
+    def totalCost(self, games, p):
+        numCPUs = os.cpu_count()
+        chunkSize = int(len(games) / numCPUs)
+        remainder = len(games) % numCPUs
 
-        return cost
+        c = 0
+        chunks = []
+        for i in range(numCPUs):
+            thisSize = chunkSize + (i < remainder)
+            chunks.append(games[c:c+thisSize])
+            c += thisSize
+
+        pool = Pool()
+        costList = pool.map_async(self.individualCosts, chunks).get()
+        pool.close()
+
+        return sum([float(np.sum(costChunk)) for costChunk in costList]) / len(games)
 
     #   Return a numpy array of shape (len(data), ), corresponding to the loss for
     #   each data point/ training example in data.
@@ -335,8 +344,9 @@ class Network:
         labels = np.array([x[1] for x in data]).reshape(1,-1)
 
         outBatch = self.ff_track(inBatch)[2][-1]
-        costs = -1 * labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch)
+        costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
 
+        assert all(costs.flatten() >= 0), costs
         return costs.flatten()
 
     #   Writes the info about costs vs. epoch, that was saved during training,
@@ -405,7 +415,6 @@ class Network:
 
             #   Compute stats in chunks (so pop stats are computed in a consistent way as stats
             #   are used during training)- this is equivalent to using a batch size of bs/numCPUs
-            random.shuffle(pop)
             chunkedData = network_helper.toBatchChunks(pop, bs, numCPUs)
 
             pool = Pool()
@@ -447,6 +456,7 @@ class Network:
         print('Number of training steps total:', self.age)
         print('Unique examples seen: ~', self.experience, sep="")
         print('Certainty:', round(self.certainty, 4))
+        print('Rate of certainty change:', round(self.certaintyRate, 5))
 
     def save(self, filename):
         data = {"layers": self.layers,
@@ -457,7 +467,8 @@ class Network:
                 "popVar": [v.tolist() for v in self.popVar],
                 "age": self.age,
                 "experience": self.experience,
-                "certainty": self.certainty}
+                "certainty": self.certainty,
+                "certaintyRate": self.certaintyRate}
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
@@ -485,6 +496,7 @@ def load(filename):
     net.age = data["age"]
     net.experience = data["experience"]
     net.certainty = data["certainty"]
+    net.certaintyRate = data["certaintyRate"]
     
     return net
              

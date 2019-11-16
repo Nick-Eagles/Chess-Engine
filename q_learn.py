@@ -133,8 +133,10 @@ def getCertainty(net, data, p):
     certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
 
     #   Adjust certainty (an exponentially weighted moving average)
+    net.certaintyRate = net.certaintyRate * p['persist'] + (certainty - net.certainty) * (1 - p['persist'])
     net.certainty = net.certainty * p['persist'] + certainty * (1 - p['persist'])
     
     if p['mode'] >= 1:
         print("Certainty of network on", int(len(data)/2), "examples:", round(certainty, 5))
-        print("Moving certainty:", round(net.certainty, 5), "\n")
+        print("Moving certainty:", round(net.certainty, 5))
+        print("Moving rate of certainty change:", round(net.certaintyRate, 5), "\n")
