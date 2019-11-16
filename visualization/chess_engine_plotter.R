@@ -22,11 +22,13 @@ ggplot(costData) +
 temp = as.numeric(costData$epochNum[costData$isStart == 1][c(1, 3)])
 numEpochs = temp[2] - temp[1]
 
-# Print mean drop in validation cost within each episode
-startCosts = costData[(costData$isStart == 1) & (costData$costType == 'v_cost'), 'cost']
-endCosts = costData[(costData$epochNum %% numEpochs == 0) & (costData$costType == 'v_cost') & 
-                    (costData$epochNum > 0) & (costData$isStart == 0), 'cost']
-mean(startCosts - endCosts)
+# Print mean drop in cost within each episode
+for (cType in c('t_cost', 'v_cost')) {
+  startCosts = costData[(costData$isStart == 1) & (costData$costType == cType), 'cost']
+  endCosts = costData[(costData$epochNum %% numEpochs == 0) & (costData$costType == cType) & 
+                      (costData$epochNum > 0) & (costData$isStart == 0), 'cost']
+  print(paste0("Mean drop in ", cType, ": ", mean(startCosts - endCosts)))
+}
 
 # A linear model of the starting costs vs. epoch number
 lm(startCosts ~ costData$epochNum[match(startCosts, costData$cost)])
