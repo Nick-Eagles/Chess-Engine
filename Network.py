@@ -239,10 +239,16 @@ class Network:
                     self.gamma[lay] -= nu * self.last_dC_dg[lay]
                 
 
-            #   Compute ending cost on all training and validation examples
-            self.setPopStats(games + vGames, p)
-            self.tCosts.append(self.totalCost(games, p))
-            self.vCosts.append(self.totalCost(vGames, p))
+            if p['mode'] >= 1 and epoch < epochs - 1:
+                #   Approximate loss using batch statistics (biased)
+                self.tCosts.append(self.totalCost(games, p, method="batch"))
+                self.vCosts.append(self.totalCost(vGames, p, method="batch"))
+            elif epoch == epochs - 1:
+                #   "Unbiased" loss using population statistics
+                self.setPopStats(games + vGames, p)
+                self.tCosts.append(self.totalCost(games, p))
+                self.vCosts.append(self.totalCost(vGames, p))
+                
             print("Finished epoch ", epoch+1, ".", sep="")
 
         pool.close()
@@ -250,14 +256,16 @@ class Network:
             elapsed = time.time() - start_time
             speed = elapsed / (epochs * numBatches * bs)
             print("Done training in ", round(elapsed, 2), " seconds (", round(speed, 6), " seconds per training example).", sep="")
-
-        #print('Updating pop stats...')
-        #self.setPopStats(games + vGames, p)
-        self.age += numBatches
-        print("Done training.")
+        else:
+            print("Done training.")
+            
+        self.age += numBatches * epochs
         
         #   Write cost analytics to file
-        self.costToCSV(epochs)
+        if p['mode'] >= 1:
+            self.costToCSV(epochs)
+        else:
+            self.costToCSV(1)
 
     #   Backprop is performed at once on the entire batch, where:
     #       -a, z, and zNorm are lists of 2d np arrays, with index of axis 1 in each array
@@ -319,7 +327,7 @@ class Network:
         return [dC_dw, dC_db, dC_dg]
 
     #   Given the entire set of training examples, returns the average cost per example
-    def totalCost(self, games, p):
+    def totalCost(self, games, p, method="individual"):
         numCPUs = os.cpu_count()
         chunkSize = int(len(games) / numCPUs)
         remainder = len(games) % numCPUs
@@ -332,22 +340,34 @@ class Network:
             c += thisSize
 
         pool = Pool()
-        costList = pool.map_async(self.individualCosts, chunks).get()
+        if method == "individual":
+            costList = pool.map_async(self.individualLoss, chunks).get()
+        else:
+            costList = pool.map_async(self.batchLoss, chunks).get()
         pool.close()
 
-        return sum([float(np.sum(costChunk)) for costChunk in costList]) / len(games)
+        return sum(costList) / len(costList)
 
-    #   Return a numpy array of shape (len(data), ), corresponding to the loss for
-    #   each data point/ training example in data.
-    def individualCosts(self, data):
+    #   Return the average loss for examples in the typical 'list of tuples' format:
+    #   compute in chunks, as training is done (thus not relying on pop stats)
+    def batchLoss(self, data):
         inBatch = np.array([x[0].flatten() for x in data]).T
         labels = np.array([x[1] for x in data]).reshape(1,-1)
 
         outBatch = self.ff_track(inBatch)[2][-1]
         costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
 
-        assert all(costs.flatten() >= 0), costs
-        return costs.flatten()
+        return float(np.sum(costs)) / len(data)
+
+    #   Return the average loss for examples in the typical 'list of tuples' format:
+    #   rely on population statistics, thus giving the highest quality estimate of
+    #   loss (data was generated using pop stats, not grouped in batches)
+    def individualLoss(self, data):
+        a = np.array([self.feedForward(x[0]) for x in data])
+        labels = np.array([x[1] for x in data])
+
+        return -1 * float(np.mean(labels * np.log(a) + (1 - labels) * np.log(1 - a)))
+        
 
     #   Writes the info about costs vs. epoch, that was saved during training,
     #   to a .csv file. This is designed to produce a temporary file that an
@@ -394,7 +414,7 @@ class Network:
 
     #   Takes a list of tuples representing training data, and sets population mean, variance
     #   and standard deviation for the network (used for feedForward())
-    def setPopStats(self, pop, p, method=1):
+    def setPopStats(self, pop, p, method=1, sameData=False):
         #   naive computation of population statistics: compute the mean and variance
         #   of the entire dataset
         if method == 0:
@@ -426,7 +446,7 @@ class Network:
                 #   a numpy array representing the mean or variance of the activations for one layer
                 #   from feeding forward one chunk
                 inList = [(self, x[0]) for x in chunkedData[i]]
-                popStatList = pool.map_async(network_helper.pop_stat_thread, inList).get()
+                popStatList = pool.starmap_async(network_helper.get_pop_stats, inList).get()
 
                 for chunk in popStatList:
                     for lay in range(len(self.layers)):
@@ -434,10 +454,29 @@ class Network:
                         popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
 
             pool.close()                       
-                
-        self.popMean = popMean
-        self.popVar = popVar
-        self.popDev = [np.sqrt(np.add(lay, self.eps)) for lay in popVar]
+
+        #   This section establishes how much to weight the existing population statistics
+        #   relative to the new ones. The idea is that pop stats should be a somewhat smooth
+        #   moving average, but there are 2 scenarios. If [sameData]==True, the network
+        #   parameters have changed, but the data for computing the stats is the same. If
+        #   false, the reverse has occured. The moving average should have varying 'persistence'
+        #   depending on which scenario we're in.
+        #if sameData:
+            #magicFrac = p['popPersistStatic']
+        #else:
+            #   magicFrac is the final weight to give the existing population statistics. It is
+            #   computed by design to have the property that the rate of change
+            #   of self.popMean and self.popVar depends only on 'popPersist', and not 'memDecay'.
+            #pp = p['popPersist']
+            #m = p['memDecay']
+            #magicFrac = pp * m / (1 - pp - m + 2 * m * pp)
+            #assert magicFrac >= 0 and magicFrac <= 1, magicFrac
+
+        magicFrac = p['popPersist']
+        for i in range(len(self.popMean)):
+            self.popMean[i] = magicFrac * self.popMean[i] + (1 - magicFrac) * popMean[i]
+            self.popVar[i] = magicFrac * self.popVar[i] + (1 - magicFrac) * popVar[i]
+            self.popDev[i] = np.sqrt(np.add(self.popVar[i], self.eps))
 
     def print(self):
         print('Layers:', self.layers)

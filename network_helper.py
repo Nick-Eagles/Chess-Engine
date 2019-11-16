@@ -83,8 +83,6 @@ def get_pop_stats(net, chunk):
 
     return (popMean, popVar)
 
-def pop_stat_thread(inTuple):
-    return get_pop_stats(inTuple[0], inTuple[1])
 
 #   Intended to provide numerical stability when computing costs. y is the actual
 #   reward for a given example, which can only be outside of [0,1] due to floating
