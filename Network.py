@@ -239,7 +239,7 @@ class Network:
                     self.gamma[lay] -= nu * self.last_dC_dg[lay]
                 
 
-            if p['mode'] >= 1 and epoch < epochs - 1:
+            if p['mode'] >= 2 and epoch < epochs - 1:
                 #   Approximate loss using batch statistics (biased)
                 self.tCosts.append(self.totalCost(games, p, method="batch"))
                 self.vCosts.append(self.totalCost(vGames, p, method="batch"))
@@ -255,14 +255,14 @@ class Network:
         if p['mode'] >= 2:
             elapsed = time.time() - start_time
             speed = elapsed / (epochs * numBatches * bs)
-            print("Done training in ", round(elapsed, 2), " seconds (", round(speed, 6), " seconds per training example).", sep="")
+            print("Done training in ", round(elapsed, 2), " seconds (", round(speed, 6), " seconds per training example per epoch).", sep="")
         else:
             print("Done training.")
             
         self.age += numBatches * epochs
         
         #   Write cost analytics to file
-        if p['mode'] >= 1:
+        if p['mode'] >= 2:
             self.costToCSV(epochs)
         else:
             self.costToCSV(1)
@@ -481,12 +481,12 @@ class Network:
         for i in range(len(self.popMean)):
             if p['mode'] >= 2:
                 oldNorm = float(np.linalg.norm(self.popMean[i]))
-                newNorm = float(np.linalg.norm(self.popMean[i]))
+                newNorm = float(np.linalg.norm(popMean[i]))
                 concDirMean += abs(float(np.dot(self.popMean[i].T, popMean[i]))) / (oldNorm * newNorm)
                 diffMagMean += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
 
                 oldNorm = float(np.linalg.norm(self.popVar[i]))
-                newNorm = float(np.linalg.norm(self.popVar[i]))
+                newNorm = float(np.linalg.norm(popVar[i]))
                 concDirVar += abs(float(np.dot(self.popVar[i].T, popVar[i]))) / (oldNorm * newNorm)
                 diffMagVar += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
                 
