@@ -216,7 +216,7 @@ class Network:
                 #   Submit the multicore 'job' and average returned gradients
                 ###############################################################
                 inList = [(self, chunk, p) for chunk in chunkedGames[i]]
-                gradients_list = pool.map_async(train_thread, inList).get()
+                gradients_list = pool.starmap_async(train_thread, inList).get()
 
                 #   Add up gradients by batch and parameter
                 gradient = gradients_list[0]
@@ -473,10 +473,34 @@ class Network:
             #assert magicFrac >= 0 and magicFrac <= 1, magicFrac
 
         magicFrac = p['popPersist']
+        if p['mode'] >= 2:
+            concDirMean = 0
+            diffMagMean = 0
+            concDirVar = 0
+            diffMagVar = 0
         for i in range(len(self.popMean)):
+            if p['mode'] >= 2:
+                oldNorm = float(np.linalg.norm(self.popMean[i]))
+                newNorm = float(np.linalg.norm(self.popMean[i]))
+                concDirMean += abs(float(np.dot(self.popMean[i].T, popMean[i]))) / (oldNorm * newNorm)
+                diffMagMean += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
+
+                oldNorm = float(np.linalg.norm(self.popVar[i]))
+                newNorm = float(np.linalg.norm(self.popVar[i]))
+                concDirVar += abs(float(np.dot(self.popVar[i].T, popVar[i]))) / (oldNorm * newNorm)
+                diffMagVar += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
+                
             self.popMean[i] = magicFrac * self.popMean[i] + (1 - magicFrac) * popMean[i]
             self.popVar[i] = magicFrac * self.popVar[i] + (1 - magicFrac) * popVar[i]
             self.popDev[i] = np.sqrt(np.add(self.popVar[i], self.eps))
+        if p['mode'] >= 2:
+            print('Average normalized dot product of new and old pop stats:')
+            print('  Means:', round(concDirMean / len(self.popMean), 5))
+            print('  Vars:', round(concDirVar / len(self.popMean), 5))
+
+            print('Average percent difference of new and old pop stats:')
+            print('  Means:', round(100 * diffMagMean / len(self.popMean), 3))
+            print('  Vars:', round(100 * diffMagVar / len(self.popMean), 3))
 
     def print(self):
         print('Layers:', self.layers)
@@ -512,12 +536,9 @@ class Network:
         json.dump(data, f)
         f.close()
 
-def train_thread(inTuple):
-    net = inTuple[0]
-    batch = inTuple[1]
-    p = inTuple[2]
-    
+def train_thread(net, batch, p):  
     z, zNorm, a = net.ff_track(batch[0])
+    
     return net.backprop(np.array(z), np.array(zNorm), np.array(a), batch[1], p)
       
 def load(filename):
