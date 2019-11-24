@@ -87,10 +87,6 @@ def generateExamples(net, p):
 
     return data
 
-#   Simple wrapper allowing multithreading on functions w/ several parameters
-def runThread(inTuple):
-    return generateExamples(inTuple[0], inTuple[1])
-
 def async_q_learn(net):
     p = input_handling.readConfig(3)
     
@@ -104,7 +100,7 @@ def async_q_learn(net):
     #   Run asynchronous data generation
     pool = Pool()
     inList = [(net, p) for i in range(p['baseBreadth'])]
-    thread_data = pool.map_async(runThread, inList).get()
+    thread_data = pool.starmap_async(generateExamples, inList).get()
     pool.close()
 
     #   Collect each process's results (data) into a single list
