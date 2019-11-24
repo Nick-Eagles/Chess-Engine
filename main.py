@@ -109,7 +109,7 @@ def trainOption(net, tBuffer=[], vBuffer=[]):
             #   Then drop a fraction of the buffers
             if i < numEps-1:
                 if p['mode'] >= 2:
-                    print("Filtering buffers to", 1 - p['memDecay'], "times their current size...")
+                    print("Filtering buffers to", round(1 - p['memDecay'], 4), "times their current size...")
                 tBuffer = misc.divvy(tBuffer, 1 - p['memDecay'], False)[0]
                 vBuffer = misc.divvy(vBuffer, 1 - p['memDecay'], False)[0]
 
