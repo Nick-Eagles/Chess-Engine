@@ -238,13 +238,11 @@ class Network:
                     self.last_dC_dg[lay] = gradient[2][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dg[lay]
                     self.gamma[lay] -= nu * self.last_dC_dg[lay]
                 
-
-            if p['mode'] >= 2 and epoch < epochs - 1:
-                #   Approximate loss using batch statistics (biased)
-                self.tCosts.append(self.totalCost(games, p, method="batch"))
-                self.vCosts.append(self.totalCost(vGames, p, method="batch"))
+            #   Approximate loss using batch statistics (biased)
+            if p['mode'] >= 1 and epoch < epochs - 1:
+                self.tCosts.append(self.totalCost(games, p))
+                self.vCosts.append(self.totalCost(vGames, p))
             elif epoch == epochs - 1:
-                #   "Unbiased" loss using population statistics
                 self.setPopStats(games + vGames, p)
                 self.tCosts.append(self.totalCost(games, p))
                 self.vCosts.append(self.totalCost(vGames, p))
@@ -262,7 +260,7 @@ class Network:
         self.age += numBatches * epochs
         
         #   Write cost analytics to file
-        if p['mode'] >= 2:
+        if p['mode'] >= 1:
             self.costToCSV(epochs)
         else:
             self.costToCSV(1)
@@ -327,7 +325,7 @@ class Network:
         return [dC_dw, dC_db, dC_dg]
 
     #   Given the entire set of training examples, returns the average cost per example
-    def totalCost(self, games, p, method="individual"):
+    def totalCost(self, games, p, method="batch"):
         numCPUs = os.cpu_count()
         chunkSize = int(len(games) / numCPUs)
         remainder = len(games) % numCPUs
