@@ -30,30 +30,7 @@ def generateExamples(net, p):
     while step < p['maxSteps']:
         while (game.gameResult == 17 and step < p['maxSteps']):
             legalMoves = board_helper.getLegalMoves(game)
-            
-            #   Get NN evaluations on each possible move
-            evals = np.zeros(len(legalMoves))
-            rTemp = np.zeros(len(legalMoves))
-            for i, m in enumerate(legalMoves):
-                rTuple = game.getReward(m, p['mateReward'])
-                evals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
-                rTemp[i] = rTuple[0]
-
-            best_inds = misc.topN(evals, p['breadth'])
-            rTemp = rTemp[np.array(best_inds)]
-
-            #   Get best move 
-            rTemp = np.full(min(p['breadth'], len(legalMoves)), rTuple[0])
-            for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
-                g = game.copy()
-                g.quiet = True
-                g.doMove(m)
-                
-                trav = Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True)
-                trav.traverse()
-                rTemp[i] += p['gamma'] * trav.baseR
-
-            bestMove = legalMoves[best_inds[np.argmax(rTemp)]]
+            bestMove = policy.getBestMoveTreeEG(game, net, p)
 
             #   Append the reward received from the best move
             rewards[len(game_results)].append(game.getReward(bestMove, p['mateReward'])[0])
