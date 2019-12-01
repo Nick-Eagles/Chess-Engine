@@ -172,7 +172,8 @@ while choice > 0 and choice <= len(options):
     elif choice == 2:
         p = input_handling.readConfig(2)
         print("Generating the current network's 'best' game...")
-        net.showGame(verbose = p['mode'] >= 2)
+        #net.showGame(verbose = p['mode'] >= 2)
+        network_helper.bestGame(net)
     elif choice == 3:
         filename = input("Name a file to save the network to: ")
         net.save('nets/' + filename)

@@ -1,7 +1,14 @@
 import numpy as np
 import random
+from multiprocessing import Pool
+from scipy.special import expit, logit
+import os
 
 import input_handling
+import Game
+import misc
+import board_helper
+import Traversal
 
 #################################################################################
 #   Utilities that are used by Network objects, but not quite suited
@@ -133,3 +140,53 @@ def generateAnnLine(evalList, game):
     line += "\n"
 
     return line
+
+def per_thread_job(trav_obj):
+    trav_obj.traverse()
+    return trav_obj
+
+def bestGame(net):
+    p = input_handling.readConfig(1)
+
+    game = Game.Game(quiet=False)
+    #firstMove = True
+    firstMove = False
+
+    pool = Pool()
+    while (game.gameResult == 17):
+        #   For the first move, use cached legalMoves
+        if firstMove:
+            legalMoves = file_IO.readFirstMoves()
+        else:
+            legalMoves = board_helper.getLegalMoves(game)
+
+        #   Get NN evaluations on each possible move
+        evals = np.zeros(len(legalMoves))    
+        for i, m in enumerate(legalMoves):
+            rTuple = game.getReward(m, p['mateReward'])
+            evals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
+
+        best_inds = misc.topN(evals, os.cpu_count())
+
+        #   Build the Traversal objects (tree searches from the best [numCPUs]
+        #   positions after the first top-rated test moves)
+        trav_objs = []
+        for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
+            g = game.copy()
+            g.quiet = True
+            g.doMove(m)
+            trav_objs.append(Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True))
+
+        #   Perform the traversals in parallel to return the index of the first
+        #   move from this position of the most rewarding move sequence explored
+        res_objs = pool.map_async(per_thread_job, trav_objs).get()
+        rewards = np.array([ob.baseR for ob in res_objs])
+
+        #   Actually perform that move in this game
+        game.doMove(legalMoves[best_inds[np.argmax(rewards)]])
+        #firstMove = False
+
+    pool.close()
+
+    print(game.annotation)
+    game.toPGN()
