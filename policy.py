@@ -61,6 +61,7 @@ def sampleMovesEG(net, game, breadth, eps, mateRew, reqMove=None):
 
     #   Simply choose all moves if the breadth spans this far
     fullMovesLen = len(moves)
+    assert fullMovesLen > 0
     if breadth >= fullMovesLen:
         return (moves, fullMovesLen)
     
@@ -86,18 +87,21 @@ def sampleMovesEG(net, game, breadth, eps, mateRew, reqMove=None):
         if not game.whiteToMove:
             evals = -1 * evals
 
-        #   Select distinct moves via an epsilon-greedy policy
-        for i in range(subMovesLen):
-            if chooseBest[i]:
-                temp = np.argmax(evals)
-                assert min(evals) >= -2 * mateRew, min(evals)
-                evals[temp] = -2 * mateRew # which should be less than any eval
-                inds.append(temp)
-                remainInds.remove(temp)
-            else:
-                temp = remainInds.pop(np.random.randint(len(remainInds)))
-                evals[temp] = -2 * mateRew
-                inds.append(temp)
+        if eps == 0:
+            inds = misc.topN(evals, p['breadth'])
+        else:
+            #   Select distinct moves via an epsilon-greedy policy
+            for i in range(subMovesLen):
+                if chooseBest[i]:
+                    temp = np.argmax(evals)
+                    assert min(evals) >= -2 * mateRew, min(evals)
+                    evals[temp] = -2 * mateRew # which should be less than any eval
+                    inds.append(temp)
+                    remainInds.remove(temp)
+                else:
+                    temp = remainInds.pop(np.random.randint(len(remainInds)))
+                    evals[temp] = -2 * mateRew
+                    inds.append(temp)
 
     return ([moves[i] for i in inds], fullMovesLen)
 
