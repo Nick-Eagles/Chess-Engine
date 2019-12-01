@@ -11,7 +11,7 @@ from scipy.special import expit, logit
 from multiprocessing import Pool
 
 class Traversal:
-    def __init__(self, game, net, p, isBase=True, reqMoves=[]):
+    def __init__(self, game, net, p, isBase=True, reqMoves=[], collectData=True, best=False):
         #   Parameters for traversal
         self.game = game
         self.net = net.copy()
@@ -19,10 +19,14 @@ class Traversal:
         self.nodeHops = 0
         self.baseR = 0
         self.tData = []
+        self.collectData = collectData
         
         if p['policy'] == 'sampleMovesEG':
             self.policy = policy.sampleMovesEG
-            self.policyVar = p['epsGreedy']
+            if best:
+                self.policyVar = 0
+            else:
+                self.policyVar = p['epsGreedy']
         else:
             self.policy = policy.sampleMovesSoft
             self.policyVar = p['curiosity']
@@ -45,6 +49,11 @@ class Traversal:
     #   list of training examples (NN input, actual reward) of size
     #   (breadth ^ tDepth) / (breadth - 1)
     def traverse(self):
+        #   Handle the case where the game is already finished
+        if self.game.gameResult != 17:
+            self.baseR = self.p['mateReward'] * self.game.gameResult
+            return
+        
         np.random.seed()
         p = self.p
         
@@ -102,7 +111,7 @@ class Traversal:
                 node = stack.pop()
                 r = processNode(node, p['breadth'], p['clarity'], p['alpha'])
                 #   If the node is sufficiently shallow, include it as training data
-                if len(stack) <= p['tDepth']:
+                if self.collectData and len(stack) <= p['tDepth']:
                     in_vecs = node[2].toNN_vecs()
                     self.tData.append((in_vecs[0], expit(r)))
                     self.tData.append((in_vecs[1], expit(-1*r)))
