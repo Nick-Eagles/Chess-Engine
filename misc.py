@@ -55,8 +55,16 @@ def divvy(data, frac, both=True):
 #   A naive implementation of finding the indices of the largest N values in vec.
 #   Recursively computes the argmax (not intended for large vectors/ large N)
 def topN(vec, N):
+    #   Preliminary checks to make sure we don't use an extensive computation
+    #   for trivial cases
     if N == 1:
-        return np.argmax(vec)
+        return [np.argmax(vec)]
+    elif N == vec.shape[0]:
+        return list(range(N))
+    elif N-1 == vec.shape[0]:
+        inds = list(range(N-1))
+        inds.pop(np.argmin(vec))
+        return inds
 
     vecCopy = vec.copy()
     minVal = min(vec)
