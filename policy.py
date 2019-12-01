@@ -3,6 +3,7 @@ import Network
 import network_helper
 import misc
 import board_helper
+import Traversal
 
 import numpy as np
 from scipy.special import expit, logit
@@ -154,3 +155,42 @@ def getBestMoveEG(game, legalMoves, net, eps, mateRew):
             return legalMoves[np.argmax(vals)]
         else:
             return legalMoves[np.argmin(vals)]
+
+def getBestMoveTreeEG(game, net, p):
+    legalMoves = board_helper.getLegalMoves(game)
+    
+    if p['epsGreedy'] == 1 or np.random.uniform() < p['epsGreedy']:
+        #   Shortcut for completely random move choice
+        return legalMoves[np.random.randint(len(legalMoves))]
+    else:
+        #   Get NN evaluations on each possible move
+        evals = np.zeros(len(legalMoves))
+        rTemp = np.zeros(len(legalMoves))
+        for i, m in enumerate(legalMoves):
+            rTuple = game.getReward(m, p['mateReward'])
+            evals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
+            rTemp[i] = rTuple[0]
+        if not game.whiteToMove:
+            evals *= -1
+
+        best_inds = misc.topN(evals, p['breadth'])
+        rTemp = rTemp[np.array(best_inds)]
+
+        #   Get best move from a tree search
+        realBreadth = min(p['breadth'], len(legalMoves))
+        certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
+        for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
+            g = game.copy()
+            g.quiet = True
+            g.doMove(m)
+                
+            trav = Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True)
+            trav.traverse()
+            rTemp[i] += certainty * trav.baseR
+
+        if game.whiteToMove:
+            bestMove = legalMoves[best_inds[np.argmax(rTemp)]]
+        else:
+            bestMove = legalMoves[best_inds[np.argmin(rTemp)]]
+
+        return bestMove
