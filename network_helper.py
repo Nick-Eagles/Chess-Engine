@@ -147,26 +147,26 @@ def per_thread_job(trav_obj):
 
 def bestGame(net):
     p = input_handling.readConfig(1)
+    p.update(input_handling.readConfig(3))
 
     game = Game.Game(quiet=False)
-    #firstMove = True
-    firstMove = False
 
     pool = Pool()
     while (game.gameResult == 17):
-        #   For the first move, use cached legalMoves
-        if firstMove:
-            legalMoves = file_IO.readFirstMoves()
-        else:
-            legalMoves = board_helper.getLegalMoves(game)
+        legalMoves = board_helper.getLegalMoves(game)
 
         #   Get NN evaluations on each possible move
-        evals = np.zeros(len(legalMoves))    
+        evals = np.zeros(len(legalMoves))
+        rewards = np.zeros(len(legalMoves))
         for i, m in enumerate(legalMoves):
             rTuple = game.getReward(m, p['mateReward'])
             evals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
-
+            rewards[i] = rTuple[0] 
+        if not game.whiteToMove:
+            evals *= -1
+            
         best_inds = misc.topN(evals, os.cpu_count())
+        rewards = rewards[np.array(best_inds)]
 
         #   Build the Traversal objects (tree searches from the best [numCPUs]
         #   positions after the first top-rated test moves)
@@ -179,12 +179,17 @@ def bestGame(net):
 
         #   Perform the traversals in parallel to return the index of the first
         #   move from this position of the most rewarding move sequence explored
-        res_objs = pool.map_async(per_thread_job, trav_objs).get()
-        rewards = np.array([ob.baseR for ob in res_objs])
+        realBreadth = min(p['breadth'], len(legalMoves))
+        certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
+        
+        res_objs = pool.map(per_thread_job, trav_objs)
+        rewards += certainty * np.array([ob.baseR for ob in res_objs])
 
         #   Actually perform that move in this game
-        game.doMove(legalMoves[best_inds[np.argmax(rewards)]])
-        #firstMove = False
+        if game.whiteToMove:
+            game.doMove(legalMoves[best_inds[np.argmax(rewards)]])
+        else:
+            game.doMove(legalMoves[best_inds[np.argmin(rewards)]])
 
     pool.close()
 
