@@ -2,6 +2,8 @@ import Game
 import board_helper
 import input_handling
 import policy
+import misc
+import Traversal
 
 import numpy as np
 from scipy.special import expit, logit
@@ -11,7 +13,13 @@ import time
 
 def generateExamples(net, p):
     np.random.seed()
-    
+    p_copy = p.copy()
+    if p['rDepth'] == 0:
+        p_copy['tDepth'] -= 1
+    else:
+        p_copy['rDepth'] -= 1
+    p = p_copy
+        
     game = Game.Game()
     step = 0
     rewards = [[]]  # Each element is a list representing rewards for moves during one game
@@ -21,9 +29,31 @@ def generateExamples(net, p):
     #   Continue taking actions and receiving rewards (start a new game if necessary)
     while step < p['maxSteps']:
         while (game.gameResult == 17 and step < p['maxSteps']):
-            #   Get best move (epsilon-greedy policy)
             legalMoves = board_helper.getLegalMoves(game)
-            bestMove = policy.getBestMoveEG(game, legalMoves, net, p['epsGreedy'], p['mateReward'])
+            
+            #   Get NN evaluations on each possible move
+            evals = np.zeros(len(legalMoves))
+            rTemp = np.zeros(len(legalMoves))
+            for i, m in enumerate(legalMoves):
+                rTuple = game.getReward(m, p['mateReward'])
+                evals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
+                rTemp[i] = rTuple[0]
+
+            best_inds = misc.topN(evals, p['breadth'])
+            rTemp = rTemp[np.array(best_inds)]
+
+            #   Get best move 
+            rTemp = np.full(min(p['breadth'], len(legalMoves)), rTuple[0])
+            for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
+                g = game.copy()
+                g.quiet = True
+                g.doMove(m)
+                
+                trav = Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True)
+                trav.traverse()
+                rTemp[i] += p['gamma'] * trav.baseR
+
+            bestMove = legalMoves[best_inds[np.argmax(rTemp)]]
 
             #   Append the reward received from the best move
             rewards[len(game_results)].append(game.getReward(bestMove, p['mateReward'])[0])
@@ -89,6 +119,7 @@ def generateExamples(net, p):
 
 def async_q_learn(net):
     p = input_handling.readConfig(3)
+    p.update(input_handling.readConfig(1))
     
     if p['mode'] >= 2:
         print(os.cpu_count(), "cores available.")
