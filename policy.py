@@ -196,9 +196,7 @@ def getBestMoveTreeEG(game, net, p, pool=None):
 
             #   Perform the traversals in parallel to return the index of the first
             #   move from this position of the most rewarding move sequence explored
-            #pool = Pool()
             res_objs = pool.map(per_thread_job, trav_objs)
-            #pool.close()
             rTemp += certainty * np.array([ob.baseR for ob in res_objs])
         else:  
             realBreadth = min(p['breadth'], len(legalMoves))
