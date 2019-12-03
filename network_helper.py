@@ -1,14 +1,14 @@
 import numpy as np
 import random
-from multiprocessing import Pool
 from scipy.special import expit, logit
 import os
+from multiprocessing import Pool
 
 import input_handling
 import Game
 import misc
 import board_helper
-import Traversal
+import policy
 
 #################################################################################
 #   Utilities that are used by Network objects, but not quite suited
@@ -141,56 +141,22 @@ def generateAnnLine(evalList, game):
 
     return line
 
-def per_thread_job(trav_obj):
-    trav_obj.traverse()
-    return trav_obj
-
 def bestGame(net):
     p = input_handling.readConfig(1)
     p.update(input_handling.readConfig(3))
+    p_copy = p.copy()
+    if p['rDepth'] == 0:
+        p_copy['tDepth'] -= 1
+    else:
+        p_copy['rDepth'] -= 1
+    p = p_copy
 
     game = Game.Game(quiet=False)
 
     pool = Pool()
     while (game.gameResult == 17):
-        legalMoves = board_helper.getLegalMoves(game)
-
-        #   Get NN evaluations on each possible move
-        evals = np.zeros(len(legalMoves))
-        rewards = np.zeros(len(legalMoves))
-        for i, m in enumerate(legalMoves):
-            rTuple = game.getReward(m, p['mateReward'])
-            evals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
-            rewards[i] = rTuple[0] 
-        if not game.whiteToMove:
-            evals *= -1
-            
-        best_inds = misc.topN(evals, os.cpu_count())
-        rewards = rewards[np.array(best_inds)]
-
-        #   Build the Traversal objects (tree searches from the best [numCPUs]
-        #   positions after the first top-rated test moves)
-        trav_objs = []
-        for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
-            g = game.copy()
-            g.quiet = True
-            g.doMove(m)
-            trav_objs.append(Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True))
-
-        #   Perform the traversals in parallel to return the index of the first
-        #   move from this position of the most rewarding move sequence explored
-        realBreadth = min(p['breadth'], len(legalMoves))
-        certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
-        
-        res_objs = pool.map(per_thread_job, trav_objs)
-        rewards += certainty * np.array([ob.baseR for ob in res_objs])
-
-        #   Actually perform that move in this game
-        if game.whiteToMove:
-            game.doMove(legalMoves[best_inds[np.argmax(rewards)]])
-        else:
-            game.doMove(legalMoves[best_inds[np.argmin(rewards)]])
-
+        bestMove = policy.getBestMoveTreeEG(game, net, p, pool=pool)
+        game.doMove(bestMove)
     pool.close()
 
     print(game.annotation)

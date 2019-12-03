@@ -7,6 +7,8 @@ import Traversal
 
 import numpy as np
 from scipy.special import expit, logit
+import os
+from multiprocessing import Pool
 
 #################################################################################
 #   Functions for sampling several legal moves (subsetting search tree)
@@ -156,7 +158,11 @@ def getBestMoveEG(game, legalMoves, net, eps, mateRew):
         else:
             return legalMoves[np.argmin(vals)]
 
-def getBestMoveTreeEG(game, net, p):
+def per_thread_job(trav_obj):
+    trav_obj.traverse()
+    return trav_obj
+
+def getBestMoveTreeEG(game, net, p, pool=None):
     legalMoves = board_helper.getLegalMoves(game)
     
     if p['epsGreedy'] == 1 or np.random.uniform() < p['epsGreedy']:
@@ -177,16 +183,34 @@ def getBestMoveTreeEG(game, net, p):
         rTemp = rTemp[np.array(best_inds)]
 
         #   Get best move from a tree search
-        realBreadth = min(p['breadth'], len(legalMoves))
-        certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
-        for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
-            g = game.copy()
-            g.quiet = True
-            g.doMove(m)
-                
-            trav = Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True)
-            trav.traverse()
-            rTemp[i] += certainty * trav.baseR
+        if not pool == None:
+            realBreadth = min(os.cpu_count(), len(legalMoves))
+            certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
+
+            trav_objs = []
+            for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
+                g = game.copy()
+                g.quiet = True
+                g.doMove(m)
+                trav_objs.append(Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True))
+
+            #   Perform the traversals in parallel to return the index of the first
+            #   move from this position of the most rewarding move sequence explored
+            #pool = Pool()
+            res_objs = pool.map(per_thread_job, trav_objs)
+            #pool.close()
+            rTemp += certainty * np.array([ob.baseR for ob in res_objs])
+        else:  
+            realBreadth = min(p['breadth'], len(legalMoves))
+            certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
+            for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
+                g = game.copy()
+                g.quiet = True
+                g.doMove(m)
+                    
+                trav = Traversal.Traversal(g, net, p, isBase=False, collectData=False, best=True)
+                trav.traverse()
+                rTemp[i] += certainty * trav.baseR
 
         if game.whiteToMove:
             bestMove = legalMoves[best_inds[np.argmax(rTemp)]]
