@@ -94,12 +94,9 @@ class Traversal:
                         stack[-1][1][-1] = float(np.log(g0.bValue / g0.wValue))
                         self.nodeHops += 2
                     else:
-                        #   A winning move should always be chosen; the engine should consider
-                        #   the expected reward from last pos to be equal to the game result this pos
-                        realBreadth = min(p['breadth'], stack[-1][3])
-                        uncertainty = 1 - (stack[-1][3] - realBreadth) * (1 - p['alpha'])**realBreadth / stack[-1][3] 
-                        stack[-1][1][-1] = g.gameResult * p['mateReward'] / uncertainty
-                        stack[-1][0] = [] # for speed, stop branching here since we found a mate
+                        stack[-1][1][-1] = g.gameResult * p['mateReward']
+                        stack[-1][3] = len(stack[-1][1]) # this tells processNode we might as well have explored all moves
+                        stack[-1][0] = [] # signal to stop branching here since we found a mate
                         self.nodeHops += 2
                 #   At a leaf, we want to add the NN evaluation of the position, scaled by our
                 #   confidence in the NN, to make sure rewards are not simply undone later in the game
