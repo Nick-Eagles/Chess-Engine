@@ -34,7 +34,14 @@ def decompressGames(games):
 
     return cGames
 
-def writeCheckmates(games, filepath, compress=False):
+def writeGames(games, filepath, compress=False):
+    if compress:
+        assert games[0][0].shape == (839, 1), "Is data already compressed?"
+        assert games[0][1] <= 1 and games[0][1] >= 0, "Data label is not in 'expit' form"
+        games = [compressNNinput(g[0]) + [g[1]] for g in games]
+    else:
+        assert type(games[0][0]) is int, "Is data actually compressed?"
+    
     if os.path.exists(filepath):
         gameFile = open(filepath, 'a')
     else:
