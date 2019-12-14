@@ -17,7 +17,7 @@ import board_helper
 repeats = 10
 
 pool = Pool()
-net = Network.load('../nets/8deep3')
+net = Network.load('../nets/8deep4')[0]
 p = input_handling.readConfig(1, '../config.txt')
 p.update(input_handling.readConfig(3, '../config.txt'))
 if p['rDepth'] == 0:
