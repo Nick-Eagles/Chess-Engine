@@ -144,12 +144,11 @@ def generateAnnLine(evalList, game):
 def bestGame(net):
     p = input_handling.readConfig(1)
     p.update(input_handling.readConfig(3))
-    p_copy = p.copy()
     if p['rDepth'] == 0:
-        p_copy['tDepth'] -= 1
+        p['tDepth'] -= 1
     else:
-        p_copy['rDepth'] -= 1
-    p = p_copy
+        p['rDepth'] -= 1
+    p['epsGreedy'] = 0
 
     game = Game.Game(quiet=False)
 
