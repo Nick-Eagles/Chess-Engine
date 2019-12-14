@@ -14,6 +14,7 @@ import network_helper
 import input_handling
 import Traversal
 import Move
+import file_IO
 
 class Network:
     def __init__(self, layers, weights=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0, certaintyRate=0):
@@ -519,7 +520,7 @@ class Network:
         print('Certainty:', round(self.certainty, 4))
         print('Rate of certainty change:', round(self.certaintyRate, 5))
 
-    def save(self, filename):
+    def save(self, tBuffer, vBuffer, filename):
         data = {"layers": self.layers,
                 "weights": [w.tolist() for w in self.weights],
                 "beta": [b.tolist() for b in self.beta],
@@ -533,6 +534,11 @@ class Network:
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
+
+        os.remove('data/tBuffer.csv')
+        os.remove('data/vBuffer.csv')
+        file_IO.writeGames(tBuffer, 'data/tBuffer.csv', True)
+        file_IO.writeGames(vBuffer, 'data/vBuffer.csv', True)
 
 def train_thread(net, batch, p):  
     z, zNorm, a = net.ff_track(batch[0])
@@ -555,8 +561,14 @@ def load(filename):
     net.experience = data["experience"]
     net.certainty = data["certainty"]
     net.certaintyRate = data["certaintyRate"]
+
+    p = input_handling.readConfig()
+    tBuffer = file_IO.decompressGames(file_IO.readGames('data/tBuffer.csv', p))
+    vBuffer = file_IO.decompressGames(file_IO.readGames('data/vBuffer.csv', p))
+    #tBuffer = []
+    #vBuffer = []
     
-    return net
+    return (net, tBuffer, vBuffer)
              
                 
 #   Both functions work elementwise on 2D numpy arrays
