@@ -1,13 +1,14 @@
 TODO:
 
+-implement alpha-beta-like pruning to greatly optimize tree search
 -More visualizations to better understand network progress:
 	-Euclidean distance of current weight vector relative to initial vector
 	-Save some diverse set of examples, and graph activation sparsity on the set by layer
 	-Top N lowest and N highest cost examples from a large data set (graph expected vs. recevied rewards)
+	-take a snapshot of the weight vector at some time, find the top 2 PCs/ eigenvectors (?), and graph a time
+	 series of points where the 2 axes of the graph are the PCs (each point is another snapshot of the weights)
 -Consider recording 'certainty' on some interval so it can be graphed vs. number of training steps or unique examples
 -add computational time as Network attribute (to supplement 'age' and 'experience')
--(probably in chess_engine_plotter.R) create metric similar to 'average drop in validation cost per episode'
-	-note that baseline starting v_cost is only computed for the first episode to avoid 'duplicate' x values
 
 Eventually:
 
