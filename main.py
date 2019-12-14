@@ -140,7 +140,7 @@ if choice == "n":
     net = Network.Network(layers)
 elif choice == "l":
     filename = input("Load from what file? ")
-    net = Network.load('nets/' + filename)
+    net, tBuffer, vBuffer = Network.load('nets/' + filename)
     print("Loaded successfully.")
 
 messDef = 'Which of the following would you like to do:\n'
@@ -155,7 +155,6 @@ messDef += 'Enter 0 to exit: '
 messOnErr = "Not a valid choice"
 
 choice = 1
-tBuffer, vBuffer = [], []
 while choice > 0 and choice <= len(options):
     net.print()
     choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= 8')
@@ -175,8 +174,8 @@ while choice > 0 and choice <= len(options):
         #net.showGame(verbose = p['mode'] >= 2)
         network_helper.bestGame(net)
     elif choice == 3:
-        filename = input("Name a file to save the network to: ")
-        net.save('nets/' + filename)
+        filename = 'nets/' + input("Name a file to save the network to: ")
+        net.save(tBuffer, vBuffer, filename)
         print("Saved. Continuing...")
     elif choice == 4:
         network_helper.net_activity(net, tBuffer+vBuffer)
@@ -204,7 +203,7 @@ while choice > 0 and choice <= len(options):
             compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]] for g in vBuffer if abs(g[1] - 0.5) > temp]
                
         novelGs = file_IO.filterByNovelty(compressedGs, filename, p)
-        file_IO.writeCheckmates(novelGs, filename)
+        file_IO.writeGames(novelGs, filename)
         print("Wrote", len(novelGs), "positions to file.")
         
     elif choice == 7:
@@ -237,7 +236,7 @@ while choice > 0 and choice <= len(options):
             examples.append(file_IO.compressNNinput(temp[0]) + [expit(r)])
             examples.append(file_IO.compressNNinput(temp[1]) + [expit(-1 * r)])
         novelGames = file_IO.filterByNovelty(examples, filename, p)
-        file_IO.writeCheckmates(novelGames, filename)
+        file_IO.writeGames(novelGames, filename)
     elif choice == 8:
         p = input_handling.readConfig()
         
