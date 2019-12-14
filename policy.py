@@ -197,7 +197,14 @@ def getBestMoveTreeEG(game, net, p, pool=None):
             #   Perform the traversals in parallel to return the index of the first
             #   move from this position of the most rewarding move sequence explored
             res_objs = pool.map(per_thread_job, trav_objs)
-            rTemp += certainty * np.array([ob.baseR for ob in res_objs])
+
+            #   Here we check for the presence of a mate in 1, which should override the normal scaling
+            #   by certainty (since we are guaranteed we found the optimal move, mate, from this node)
+            baseRs = np.array([ob.baseR for ob in res_objs])
+            temp_bools = np.absolute(baseRs) == p['mateReward']
+            if any(temp_bools):
+                baseRs[temp_bools] /= certainty    
+            rTemp += certainty * baseRs
         else:  
             realBreadth = min(p['breadth'], len(legalMoves))
             certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
