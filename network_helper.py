@@ -26,22 +26,21 @@ def normalize(xBatch, gamma, beta, eps):
     layLen = xBatch.shape[0]
     batchSize = xBatch.shape[1]
     
-    mean = (np.sum(xBatch, axis = 1) / batchSize).reshape((-1,1))
+    mean = np.mean(xBatch, axis = 1).reshape((-1,1))
     dev = xBatch - np.dot(mean, np.ones((1, batchSize)))
-    var_w_eps = np.sum(dev * dev, axis = 1) / batchSize + np.full(layLen, eps)
+    var_w_eps = np.add(np.mean(dev * dev, axis = 1), eps)
     var_w_eps = np.sqrt(var_w_eps)
-
-    assert len((gamma.flatten() * dev[:,0] / var_w_eps).shape) == 1, (gamma.flatten() * dev[:,0] / var_w_eps).shape
-    xNorm = np.array([gamma.flatten() * dev[:,i] / var_w_eps for i in range(batchSize)]).T + np.full((layLen, batchSize), beta)
+    
+    xNorm = np.add(np.array([gamma.flatten() * dev[:,i] / var_w_eps for i in range(batchSize)]).T, beta)
     assert xNorm.shape == (layLen, batchSize), xNorm.shape
     return xNorm
 
 #   For a batch (2d np array w/ axis 0 being one example's activations), return a
 #   tuple: (variance, sum of deviations, mean) as np arrays of expected dim
 def batchStats(xBatch):
-    mean = np.sum(xBatch, axis = 1) / xBatch.shape[1]
+    mean = np.mean(xBatch, axis = 1)
     dev = xBatch - np.dot(mean.reshape((-1,1)), np.ones((1, xBatch.shape[1])))
-    return (np.sum(dev * dev, axis = 1) / xBatch.shape[1], dev * dev, mean)
+    return (np.mean(dev * dev, axis = 1), dev * dev, mean)
 
 def toBatchChunks(data, bs, numCPUs):
     random.shuffle(data)
