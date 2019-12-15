@@ -11,7 +11,7 @@ from scipy.special import expit, logit
 from multiprocessing import Pool
 
 class Traversal:
-    def __init__(self, game, net, p, isBase=True, reqMoves=[], collectData=True, best=False):
+    def __init__(self, game, net, p, isBase=True, reqMoves=[], collectData=True):
         #   Parameters for traversal
         self.game = game
         self.net = net.copy()
@@ -23,17 +23,10 @@ class Traversal:
         
         if p['policy'] == 'sampleMovesEG':
             self.policy = policy.sampleMovesEG
-            if best:
-                self.policyVar = 0
-            else:
-                self.policyVar = p['epsGreedy']
         else:
             self.policy = policy.sampleMovesSoft
-            self.policyVar = p['curiosity']
 
         self.p = p.copy()
-        if not isBase:
-            self.p['tDepth'] -= 1
         #   A value not too far above the maximal number of node hops that can occur
         #   given the user's parameter specifications
         self.limit = 4 * p['breadth']**(p['tDepth'] + p['rDepth'])
@@ -61,7 +54,7 @@ class Traversal:
             reqMove = self.reqMoves.pop(0)
         else:
             reqMove = None
-        moves, fullMovesLen = self.policy(self.net, self.game, p['breadth'], self.policyVar, p['mateReward'], reqMove)
+        moves, fullMovesLen = self.policy(self.net, self.game, p, reqMove)
         stack = [[moves, [], self.game, fullMovesLen]]
         while len(stack) > 0:
             assert len(stack) <= p['tDepth'] + p['rDepth'] + 1, "Tried to explore too far"
@@ -86,7 +79,7 @@ class Traversal:
                             reqMove = self.reqMoves.pop(0)
                         else:
                             reqMove = None
-                        moves, fullMovesLen = self.policy(self.net, g, p['breadth'], self.policyVar, p['mateReward'], reqMove)
+                        moves, fullMovesLen = self.policy(self.net, g, p, reqMove)
                         stack.append([moves, [], g, fullMovesLen])
                         self.nodeHops += 1
                     elif g.gameResult == 0:
@@ -106,7 +99,7 @@ class Traversal:
             else:   # otherwise hop down one node
                 self.nodeHops += 1
                 node = stack.pop()
-                r = processNode(node, p['breadth'], p['clarity'], p['alpha'])
+                r = processNode(node, p)
                 #   If the node is sufficiently shallow, include it as training data
                 if self.collectData and len(stack) <= p['tDepth']:
                     in_vecs = node[2].toNN_vecs()
@@ -120,16 +113,16 @@ class Traversal:
     
 #   Given a list (element on the stack during traversal), return the expected value of
 #   the reward from the position associated with that element.
-def processNode(node, breadth, clarity, alpha):
+def processNode(node, p):
     #   Take softmax of rewards (interpreted as probabilities of playing them)
     #r = np.array(node[1]) * (2 * node[2].whiteToMove - 1)
-    #softR = np.exp(clarity * r)
+    #softR = np.exp(p['clarity'] * r)
     #softR = softR / np.sum(softR)
     
     #   Sum of "probabilities" * rewards (aka the expected reward from this node),
     #   scaled by uncertainty (see readme for explanation of math)
-    realBreadth = min(breadth, node[3])
-    uncertainty = 1 - (node[3] - realBreadth) * (1 - alpha)**realBreadth / node[3]
+    realBreadth = min(p['breadth'], node[3])
+    uncertainty = 1 - (node[3] - realBreadth) * (1 - p['alpha'])**realBreadth / node[3]
     if node[2].whiteToMove:
         r = max(node[1])
     else:
