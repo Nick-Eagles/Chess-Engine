@@ -141,19 +141,15 @@ def generateAnnLine(evalList, game):
     return line
 
 def bestGame(net):
-    p = input_handling.readConfig(1)
-    p.update(input_handling.readConfig(3))
-    if p['rDepth'] == 0:
-        p['tDepth'] -= 1
-    else:
-        p['rDepth'] -= 1
+    p = input_handling.readConfig(3)
+    p.update(input_handling.readConfig(1))
     p['epsGreedy'] = 0
 
     game = Game.Game(quiet=False)
 
     pool = Pool()
     while (game.gameResult == 17):
-        bestMove = policy.getBestMoveTreeEG(game, net, p, pool=pool)
+        bestMove = policy.getBestMoveTreeEG(net, game, p, pool=pool)
         game.doMove(bestMove)
     pool.close()
 

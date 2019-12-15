@@ -13,12 +13,6 @@ import time
 
 def generateExamples(net, p):
     np.random.seed()
-    p_copy = p.copy()
-    if p['rDepth'] == 0:
-        p_copy['tDepth'] -= 1
-    else:
-        p_copy['rDepth'] -= 1
-    p = p_copy
         
     game = Game.Game()
     step = 0
@@ -29,8 +23,7 @@ def generateExamples(net, p):
     #   Continue taking actions and receiving rewards (start a new game if necessary)
     while step < p['maxSteps']:
         while (game.gameResult == 17 and step < p['maxSteps']):
-            legalMoves = board_helper.getLegalMoves(game)
-            bestMove = policy.getBestMoveTreeEG(game, net, p)
+            bestMove = policy.getBestMoveTreeEG(net, game, p)
 
             #   Append the reward received from the best move
             rewards[len(game_results)].append(game.getReward(bestMove, p['mateReward'])[0])
@@ -43,7 +36,7 @@ def generateExamples(net, p):
         #   Trim end of game (or end of state sequence, more generally)
         halfMoveNum = (not game.whiteToMove) + 2*(game.moveNum - 1)
         if game.gameResult == 17:
-            NN_vecs = NN_vecs[:(-1 * min(halfMoveNum, p['rDepth']))]
+            NN_vecs = NN_vecs[:(-1 * min(halfMoveNum, p['rDepthMin']))]
         else:
             NN_vecs.pop()
 
@@ -62,7 +55,7 @@ def generateExamples(net, p):
         #   Determine how many states to trim at the end of the game (to not use
         #   as training data)
         if game_results[i] == 17:
-            trim_len = p['rDepth']
+            trim_len = p['rDepthMin']
         else:
             trim_len = 1
 
@@ -95,8 +88,8 @@ def generateExamples(net, p):
     return data
 
 def async_q_learn(net):
-    p = input_handling.readConfig(3)
-    p.update(input_handling.readConfig(1))
+    p = input_handling.readConfig(1)
+    p.update(input_handling.readConfig(3))
     
     if p['mode'] >= 2:
         print(os.cpu_count(), "cores available.")
