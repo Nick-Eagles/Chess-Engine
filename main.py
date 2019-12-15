@@ -146,7 +146,7 @@ elif choice == "l":
 messDef = 'Which of the following would you like to do:\n'
 options = ['Train the current network including new data',
             'Show a sample game for the current network', 'Save the current network',
-            'Check for dead neurons using current data', 'Train the network from previous data only',
+            'Check neuron activations using current data', 'Train the network from previous data only',
             'Write existing novel checkmates to file', 'Run new games to generate checkmate positions',
             'Write the N least and greatest-loss positions to file']
 for i, opt in enumerate(options):
