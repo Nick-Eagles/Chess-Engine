@@ -24,29 +24,8 @@ def trainOption(net, tBuffer=[], vBuffer=[]):
     messDef = "Enter the number of sets of tree traversals to perform: "
     cond = 'var > 0'
     messOnErr = "Not a valid input."
-    p['traverseCount'] = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
-
-    #   Determine if/ how many episodes to delay training in order to fill up the
-    #   buffers to above the specified fraction (p['delayFrac']) of the limiting capacity
-    if len(tBuffer) == 0:
-        delayPeriod = max(0, int(np.ceil(p['delayFrac'] / p['memDecay']) - 1))
-    else:
-        delayPeriod = 0
-    if p['mode'] >= 2:
-        if len(tBuffer) == 0:
-            if delayPeriod > 0:
-                outStr = str(delayPeriod) + " episode(s) will be added to what was specified, in" +\
-                         " order to get data buffers up to " + str(p['delayFrac']) + " times" +\
-                         " their limiting size. To suppress this behavior, set delayFrac to 0" +\
-                         " in config.txt."
-            else:
-                outStr = "No episodes needed to be added to what was specified, as the first episode" +\
-                         " brings the buffers up to a sufficiently large size."
-            print(outStr)
-        else:
-            print("No episodes will be added, as the data buffers are non-empty.")
+    numEps = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
         
-    numEps = p['traverseCount'] * p['updatePeriod'] + delayPeriod
     for i in range(numEps):
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print('\tStarting episode ', i+1, ' of ', numEps, '!', sep='')
@@ -56,9 +35,6 @@ def trainOption(net, tBuffer=[], vBuffer=[]):
         print("------------------")
 
         #   Randomly separate examples into training and validation buffers
-        #temp = []
-        #for j in range(p['updatePeriod']):
-            #temp += misc.divvy(Traversal.full_broad(net), p['fracValidation'])
         temp = misc.divvy(q_learn.async_q_learn(net), p['fracValidation'])
         vBuffer += temp[0]
         tBuffer += temp[1]
@@ -66,22 +42,21 @@ def trainOption(net, tBuffer=[], vBuffer=[]):
         net.experience += numGenExamples
 
         #   Add checkmates from file
-        if i % p['updatePeriod'] == 0: 
-            temp = file_IO.readGames('data/checkmates_t.csv', p)
-            tGames = file_IO.decompressGames(temp)
-            fracToUse = p['fracFromFile'] * numGenExamples / (len(tGames) * (1 - p['fracFromFile']))
-            tBuffer += misc.divvy(tGames, fracToUse, False)[0]
-            if p['mode'] >= 2:
-                print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
+        temp = file_IO.readGames('data/checkmates_t.csv', p)
+        tGames = file_IO.decompressGames(temp)
+        fracToUse = p['fracFromFile'] * numGenExamples / (len(tGames) * (1 - p['fracFromFile']))
+        tBuffer += misc.divvy(tGames, fracToUse, False)[0]
+        if p['mode'] >= 2:
+            print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
 
-            temp = file_IO.readGames('data/checkmates_v.csv', p)
-            vGames = file_IO.decompressGames(temp)
-            fracToUse = p['fracValidation'] * fracToUse * len(tGames) / (len(vGames) * (1 - p['fracValidation']))
-            vBuffer += misc.divvy(vGames, fracToUse, False)[0]
-            if p['mode'] >= 2:
-                print("Adding", int(len(vGames)*fracToUse), "games to vBuffer...\n")
-            elif p['mode'] == 1:
-                print()
+        temp = file_IO.readGames('data/checkmates_v.csv', p)
+        vGames = file_IO.decompressGames(temp)
+        fracToUse = p['fracValidation'] * fracToUse * len(tGames) / (len(vGames) * (1 - p['fracValidation']))
+        vBuffer += misc.divvy(vGames, fracToUse, False)[0]
+        if p['mode'] >= 2:
+            print("Adding", int(len(vGames)*fracToUse), "games to vBuffer...\n")
+        elif p['mode'] == 1:
+            print()
 
         #   QC stats for the examples generated
         if p['mode'] >= 1:
@@ -100,18 +75,17 @@ def trainOption(net, tBuffer=[], vBuffer=[]):
             print("Mean reward:", np.round_(np.mean(rewards), 5))
             print("Std. deviation:", np.round_(np.std(rewards), 5))
             print("Mean magnitude:", np.round_(np.mean(mags), 5), "\n")
+      
+        #   Train on data in the buffer  
+        net.train(tBuffer, vBuffer, p)
 
-        if (i + 1) % p['updatePeriod'] == 0 and i  >= delayPeriod:       
-            #   Train on data in the buffer  
-            net.train(tBuffer, vBuffer, p)
-
-            #   Adjust net's expected input mean and variances for each layer.
-            #   Then drop a fraction of the buffers
-            if i < numEps-1:
-                if p['mode'] >= 2:
-                    print("Filtering buffers to", round(1 - p['memDecay'], 4), "times their current size...")
-                tBuffer = misc.divvy(tBuffer, 1 - p['memDecay'], False)[0]
-                vBuffer = misc.divvy(vBuffer, 1 - p['memDecay'], False)[0]
+        #   Adjust net's expected input mean and variances for each layer.
+        #   Then drop a fraction of the buffers
+        if i < numEps-1:
+            if p['mode'] >= 2:
+                print("Filtering buffers to", round(1 - p['memDecay'], 4), "times their current size...")
+            tBuffer = misc.divvy(tBuffer, 1 - p['memDecay'], False)[0]
+            vBuffer = misc.divvy(vBuffer, 1 - p['memDecay'], False)[0]
 
     return (net, tBuffer, vBuffer)
 
