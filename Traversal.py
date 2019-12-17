@@ -14,7 +14,7 @@ class Traversal:
     def __init__(self, game, net, p):
         #   Parameters for traversal
         self.game = game
-        self.net = net.copy()         
+        self.net = net         
         self.nodeHops = 0
         self.baseR = 0
         
@@ -23,7 +23,7 @@ class Traversal:
         else:
             self.policy = policy.sampleMovesSoft
 
-        self.p = p.copy()
+        self.p = p
         #   A value not too far above the maximal number of node hops that can occur
         #   given the user's parameter specifications
         self.limit = 4 * p['breadth']**p['depth']
