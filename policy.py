@@ -20,12 +20,12 @@ from multiprocessing import Pool
 #   NN evaluations, constraining each move to be distinct (w/o replacement).
 #   "curiosity" is the coefficient to the exponential function, thus favoring
 #   highly evaluated moves more when increased.
-def sampleMovesSoft(net, game, p, reqMove=None):
+def sampleMovesSoft(net, game, p):
     #   Get legal moves and NN evaluations on the positions that result from them
     moves = board_helper.getLegalMoves(game)
     fullMovesLen = len(moves)
     rPairs = [game.getReward(m, p['mateReward']) for m in moves]
-    evals = np.array([x + float(logit(net.feedForward(y))) for x,y in rPairs])
+    evals = np.array([x + p['alpha'] * float(logit(net.feedForward(y))) for x,y in rPairs])
     if not game.whiteToMove:
         evals = -1 * evals
 
@@ -33,23 +33,7 @@ def sampleMovesSoft(net, game, p, reqMove=None):
     probs = temp / np.sum(temp) # softmax of evals
     cumProbs = np.cumsum(probs)
 
-    finalMoves = []
-    if reqMove == None:
-        numToChoose = min(breadth, len(moves))
-    else:
-        #   Get the index of the required move and make sure it can't be chosen
-        #   (by setting its probability to 0, essentially)
-        reqMoveInd = [i for i in range(len(moves)) if moves[i].equals(reqMove)][0]
-        if reqMoveInd == 0:
-            cumProbs[reqMove] = 0
-        else:
-            cumProbs[reqMove] = cumProbs[reqMoveInd-1]
-
-        #   Add the required move manually
-        finalMoves.append(moves.pop(reqMoveInd))
-        numToChoose = min(breadth-1, len(moves))
-
-    finalMoves += [moves[i] for i in misc.sampleCDF(cumProbs, numToChoose)]
+    finalMoves = [moves[i] for i in misc.sampleCDF(cumProbs, min(breadth, len(moves)))]
 
     assert len(finalMoves) > 0 and len(finalMoves) <= p['breadth'], len(finalMoves)
     return(finalMoves, fullMovesLen)
@@ -59,7 +43,7 @@ def sampleMovesSoft(net, game, p, reqMove=None):
 #   moves are selected, each with an epsilon-greedy strategy, such that the
 #   probability that the most highly evaluated move is one of the N chosen
 #   moves is 1 - eps. Here N = min(breadth, len(getLegalMoves(game)))
-def sampleMovesEG(net, game, p, reqMove=None):
+def sampleMovesEG(net, game, p):
     moves = board_helper.getLegalMoves(game)
 
     #   Simply choose all moves if the breadth spans this far
@@ -86,7 +70,7 @@ def sampleMovesEG(net, game, p, reqMove=None):
     else:
         #   Compute evaluations on each move
         rPairs = [game.getReward(m, p['mateReward']) for m in moves]
-        evals = np.array([x + float(logit(net.feedForward(y))) for x,y in rPairs])
+        evals = np.array([x + p['alpha'] * float(logit(net.feedForward(y))) for x,y in rPairs])
         if not game.whiteToMove:
             evals = -1 * evals
 
@@ -127,7 +111,7 @@ def getBestMoveHuman(net, game, p):
         vals = np.zeros(len(legalMoves), dtype=np.float32)
         for i, m in enumerate(legalMoves):
             rTuple = game.getReward(m, p['mateReward'])
-            vals[i] = rTuple[0] + float(logit(net.feedForward(rTuple[1])))
+            vals[i] = rTuple[0] + p['alpha'] * float(logit(net.feedForward(rTuple[1])))
 
         #   Return the best move as the legal move maximizing the linear combination of:
         #       1. The expected future reward vector
@@ -171,10 +155,7 @@ def getBestMoveTreeEG(net, game, p, pool=None):
     #   Traversals are started at positions resulting from testing moves from
     #   the current position; this test constitutes a step of depth
     p_copy = p.copy()
-    if p['rDepth'] == 0:
-        p_copy['tDepth'] -= 1
-    else:
-        p_copy['rDepth'] -= 1
+    p_copy['depth'] -= 1
     p = p_copy
     
     if p['epsGreedy'] == 1 or np.random.uniform() < p['epsGreedy']:
@@ -206,7 +187,7 @@ def getBestMoveTreeEG(net, game, p, pool=None):
                 g = game.copy()
                 g.quiet = True
                 g.doMove(m)
-                trav_objs.append(Traversal.Traversal(g, net, p_copy, isBase=False, collectData=False))
+                trav_objs.append(Traversal.Traversal(g, net, p_copy))
 
             #   Perform the traversals in parallel to return the index of the first
             #   move from this position of the most rewarding move sequence explored
@@ -227,7 +208,7 @@ def getBestMoveTreeEG(net, game, p, pool=None):
                 g.quiet = True
                 g.doMove(m)
                     
-                trav = Traversal.Traversal(g, net, p, isBase=False, collectData=False)
+                trav = Traversal.Traversal(g, net, p)
                 trav.traverse()
                 rTemp[i] += certainty * trav.baseR
 
