@@ -193,7 +193,6 @@ class Network:
         nu = p['nu']
         bs = p['batchSize']
         epochs = p['epochs']
-        updatePer = p['updatePeriod']
         numCPUs = os.cpu_count()
         numBatches = int(len(games) / bs)
         
@@ -545,7 +544,7 @@ def train_thread(net, batch, p):
     
     return net.backprop(np.array(z), np.array(zNorm), np.array(a), batch[1], p)
       
-def load(filename):
+def load(filename, lazy=False):
     f = open(filename, "r")
     data = json.load(f)
     f.close()
@@ -562,11 +561,13 @@ def load(filename):
     net.certainty = data["certainty"]
     net.certaintyRate = data["certaintyRate"]
 
-    p = input_handling.readConfig()
-    tBuffer = file_IO.decompressGames(file_IO.readGames('data/tBuffer.csv', p))
-    vBuffer = file_IO.decompressGames(file_IO.readGames('data/vBuffer.csv', p))
-    #tBuffer = []
-    #vBuffer = []
+    if lazy:
+        tBuffer = []
+        vBuffer = []
+    else:
+        p = input_handling.readConfig()
+        tBuffer = file_IO.decompressGames(file_IO.readGames('data/tBuffer.csv', p))
+        vBuffer = file_IO.decompressGames(file_IO.readGames('data/vBuffer.csv', p))
     
     return (net, tBuffer, vBuffer)
              
