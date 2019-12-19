@@ -77,7 +77,7 @@ class Traversal:
                 #   At a leaf, we want to add the NN evaluation of the position, scaled by our
                 #   confidence in the NN, to make sure rewards are not simply undone later in the game
                 else:
-                    stack[-1][1][-1] += p['alpha'] * float(logit(self.net.feedForward(g.toNN_vecs()[0])))
+                    stack[-1][1][-1] += p['alpha'] * float(logit(self.net.feedForward(g.toNN_vecs(both=False)[0])))
 
             else:   # otherwise hop down one node
                 self.nodeHops += 1
