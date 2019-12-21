@@ -67,8 +67,6 @@ class Game:
         self.wValue = vals @ self.wPieces.T + 4     
         self.bValue = vals @ self.bPieces.T + 4
 
-        return float(self.wValue / self.bValue)
-
     #   Return the (absolute reward for doing move "move" (positive means to the
     #   benefit of white), NN input vector for the resulting position) as a tuple
     def getReward(self, move, mateRew):
@@ -77,11 +75,11 @@ class Game:
         g.doMove(move)
 
         if abs(g.gameResult) == 1:
-            return (g.gameResult * mateRew, g.toNN_vecs()[0])
+            return (g.gameResult * mateRew, g.toNN_vecs(both=False)[0])
         elif g.gameResult == 0:
-            return (np.log(self.bValue / self.wValue), g.toNN_vecs()[0])
+            return (np.log(self.bValue / self.wValue), g.toNN_vecs(both=False)[0])
         else:
-            return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), g.toNN_vecs()[0])
+            return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), g.toNN_vecs(both=False)[0])
 
     def printBoard(self):
         print("board:  -----")
@@ -109,29 +107,54 @@ class Game:
     #   it's black and vice versa), and will learn that most dynamics are
     #   independent of what color you're playing, via this trick. This function
     #   returns a tuple (normal inputVec, inverted game's inputVec)
-    def toNN_vecs(self):
+    def toNN_vecs(self, both=True):
         netInput = []
-        netInputInv = []
-        #   Convert board information: note netInputInv is taking the
-        #   original board information and inverting it by rank and file,
-        #   then swapping the piece colors.
-        for file in range(8):
-            for rank in range(8):
-                #   Get the piece values at the squares
-                piece = self.board[file][rank]
-                pieceInv = -1*self.board[file][7-rank]
 
-                #   Encode the piece values as binary sequences
-                for i in range(-6, 7):
-                    if piece == i:
-                        netInput.append(1)
-                    else:
-                        netInput.append(0)
-                    if pieceInv == i:
-                        netInputInv.append(1)
-                    else:
-                        netInputInv.append(0)
+        if both:
+            netInputInv = []
+            #   Convert board information: note netInputInv is taking the
+            #   original board information and inverting it by rank and file,
+            #   then swapping the piece colors.
+            for file in range(8):
+                for rank in range(8):
+                    #   Get the piece values at the squares
+                    piece = self.board[file][rank]
+                    pieceInv = -1*self.board[file][7-rank]
 
+                    #   Encode the piece values as binary sequences
+                    for i in range(-6, 7):
+                        if piece == i:
+                            netInput.append(1)
+                        else:
+                            netInput.append(0)
+                        if pieceInv == i:
+                            netInputInv.append(1)
+                        else:
+                            netInputInv.append(0)
+                            
+            #   Append remaining information about the game            
+            netInputInv.append(not self.whiteToMove)
+            netInputInv.append(self.enPassant)
+            netInputInv.append(self.canB_K_Castle)
+            netInputInv.append(self.canB_Q_Castle)
+            netInputInv.append(self.canW_K_Castle)
+            netInputInv.append(self.canW_Q_Castle)
+            netInputInv.append(self.movesSinceAction)
+
+            finalInputInv = np.array(netInputInv).reshape(-1,1)
+        else:
+            for file in range(8):
+                for rank in range(8):
+                    piece = self.board[file][rank]
+
+                    for i in range(-6, 7):
+                        if piece == i:
+                            netInput.append(1)
+                        else:
+                            netInput.append(0)
+
+            finalInputInv = np.array([])
+                            
         #   Append remaining information about the game
         netInput.append(self.whiteToMove)
         netInput.append(self.enPassant)
@@ -141,18 +164,8 @@ class Game:
         netInput.append(self.canB_Q_Castle)
         netInput.append(self.movesSinceAction)
 
-        #   Same, but castling bools are swapped by color and
-        #   whitetoMove is inverted since colors are swapped
-        netInputInv.append(not self.whiteToMove)
-        netInputInv.append(self.enPassant)
-        netInputInv.append(self.canB_K_Castle)
-        netInputInv.append(self.canB_Q_Castle)
-        netInputInv.append(self.canW_K_Castle)
-        netInputInv.append(self.canW_Q_Castle)
-        netInputInv.append(self.movesSinceAction)
-
         finalInput = np.array(netInput).reshape(-1,1)
-        finalInputInv = np.array(netInputInv).reshape(-1,1)
+        
         return (finalInput, finalInputInv)
 
     #   Returns True/False
@@ -165,6 +178,9 @@ class Game:
     #   Returns a tuple: the first entry is True/False; the second is a string
     #   describing details (such as "Draw by stalemate")
     def isDraw(self):
+        if self.moveNum < 10:
+            return (False, "")
+        
         coeff = 2 * self.whiteToMove - 1
 
         ########################################################
@@ -194,7 +210,7 @@ class Game:
                 
                 #   Equivalent to checking if there are bishops on the board and
                 #   they are all on the same color
-                if colorMatch and self.wPieces[2] + self.wPieces[3] > 0:
+                if colorMatch and (self.wPieces[2] + self.wPieces[3] > 0) or (self.wPieces[3] + self.wPieces[2] > 0):
                     if numKnights == 0:
                         note = "Draw by insufficient material."
                         return (True, note)
@@ -227,11 +243,13 @@ class Game:
         self.enPassant = False
 
         if self.whiteToMove:
-            self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board)
+            if not self.quiet:
+                self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board)
             piecesList = self.wPieces
             oppPiecesList = self.bPieces
         else:
-            self.annotation += move.getMoveName(self.board) + "\n"
+            if not self.quiet:
+                self.annotation += move.getMoveName(self.board) + "\n"
             piecesList = self.bPieces
             oppPiecesList = self.wPieces
 

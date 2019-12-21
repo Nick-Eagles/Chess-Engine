@@ -17,13 +17,9 @@ import board_helper
 repeats = 10
 
 pool = Pool()
-net = Network.load('../nets/8deep4')[0]
+net = Network.load('../nets/8deep5', True)[0]
 p = input_handling.readConfig(1, '../config.txt')
 p.update(input_handling.readConfig(3, '../config.txt'))
-if p['rDepth'] == 0:
-    p['tDepth'] -= 1
-else:
-    p['rDepth'] -= 1
 
 print("Using", repeats, "games for each policy comparison.")
 
@@ -37,9 +33,9 @@ for i in range(repeats):
     while (game.gameResult == 17):
         #   This ensures there isn't a bias for white winning, for example
         if (game.whiteToMove + i) % 2 == 1:
-            bestMove = policy.getBestMoveTreeEG(game, net, p, pool)
+            bestMove = policy.getBestMoveTreeEG(net, game, p, pool)
         else:
-            bestMove = policy.getBestMoveEG(game, board_helper.getLegalMoves(game), net, p['epsGreedy'], p['mateReward'])
+            bestMove = policy.getBestMoveEG(net, game, p)
         game.doMove(bestMove)
         
     #   Flip the game result if the supposedly better policy is being played
@@ -58,7 +54,7 @@ for i in range(repeats):
     while (game.gameResult == 17):
         #   This ensures there isn't a bias for white winning, for example
         if (game.whiteToMove + i) % 2 == 1:
-            bestMove = policy.getBestMoveEG(game, board_helper.getLegalMoves(game), net, p['epsGreedy'], p['mateReward'])
+            bestMove = policy.getBestMoveEG(net, game, p)
         else:
             legalMoves = board_helper.getLegalMoves(game)
             bestMove = legalMoves[np.random.randint(len(legalMoves))]
