@@ -67,8 +67,6 @@ class Game:
         self.wValue = vals @ self.wPieces.T + 4     
         self.bValue = vals @ self.bPieces.T + 4
 
-        return float(self.wValue / self.bValue)
-
     #   Return the (absolute reward for doing move "move" (positive means to the
     #   benefit of white), NN input vector for the resulting position) as a tuple
     def getReward(self, move, mateRew):
@@ -212,7 +210,7 @@ class Game:
                 
                 #   Equivalent to checking if there are bishops on the board and
                 #   they are all on the same color
-                if colorMatch and self.wPieces[2] + self.wPieces[3] > 0:
+                if colorMatch and (self.wPieces[2] + self.wPieces[3] > 0) or (self.wPieces[3] + self.wPieces[2] > 0):
                     if numKnights == 0:
                         note = "Draw by insufficient material."
                         return (True, note)
@@ -245,11 +243,13 @@ class Game:
         self.enPassant = False
 
         if self.whiteToMove:
-            self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board)
+            if not self.quiet:
+                self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board)
             piecesList = self.wPieces
             oppPiecesList = self.bPieces
         else:
-            self.annotation += move.getMoveName(self.board) + "\n"
+            if not self.quiet:
+                self.annotation += move.getMoveName(self.board) + "\n"
             piecesList = self.bPieces
             oppPiecesList = self.wPieces
 
