@@ -128,6 +128,10 @@ def getCertainty(net, data, p):
 
     #   Normalized dot product of expected and actual reward vectors
     certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
+    if p['epsGreedy'] < 0.5:
+        #   0.5 is an arbitrarily established cutoff to prevent catastrophic
+        #   amplification of 'noise' in estimating true certainty
+        certainty /= 1 - p['epsGreedy']
 
     #   Adjust certainty (an exponentially weighted moving average)
     net.certaintyRate = net.certaintyRate * p['persist'] + (certainty - net.certainty) * (1 - p['persist'])
