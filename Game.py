@@ -180,6 +180,9 @@ class Game:
     #   Returns a tuple: the first entry is True/False; the second is a string
     #   describing details (such as "Draw by stalemate")
     def isDraw(self):
+        if self.moveNum < 10:
+            return (False, "")
+        
         coeff = 2 * self.whiteToMove - 1
 
         ########################################################
