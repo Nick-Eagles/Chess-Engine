@@ -168,29 +168,32 @@ class Game:
         
         return (finalInput, finalInputInv)
 
-    #   Returns True/False
-    def isCheckmate(self):
+    #   Returns a tuple: the first entry is the game result; the second is a string
+    #   describing details (such as "Draw by stalemate")
+    def updateResult(self):
+        coeff = 1 - 2 * self.whiteToMove
+
+        ########################################################
+        #   See if the position is checkmate
+        ########################################################
+        
         check = (self.whiteToMove and board_helper.inCheck(self.board)) or \
                 (not self.whiteToMove and board_helper.inCheck(board_helper.invert(self.board)))
-        return check and len(board_helper.getLegalMoves(self)) == 0
+        moves = board_helper.getLegalMoves(self)
 
+        if check and len(moves) == 0:
+            return (coeff, "Checkmate")
 
-    #   Returns a tuple: the first entry is True/False; the second is a string
-    #   describing details (such as "Draw by stalemate")
-    def isDraw(self):
+        #   Rule out any draws
         if self.moveNum < 10:
-            return (False, "")
-        
-        coeff = 2 * self.whiteToMove - 1
+            return (17, "Not a terminal position")
 
         ########################################################
         #   Stalemate
         ########################################################
-        check = (self.whiteToMove and board_helper.inCheck(self.board)) or \
-                (not self.whiteToMove and board_helper.inCheck(board_helper.invert(self.board)))
-        if not check and len(board_helper.getLegalMoves(self)) == 0:
-            note = "Draw by stalemate."
-            return (True, note)
+
+        if not check and len(moves) == 0:
+            return (0, "Draw by stalemate.")
 
         ########################################################  
         #   Insufficient material
@@ -213,13 +216,12 @@ class Game:
                 if colorMatch and (self.wPieces[2] + self.wPieces[3] > 0) or (self.wPieces[3] + self.wPieces[2] > 0):
                     if numKnights == 0:
                         note = "Draw by insufficient material."
-                        return (True, note)
+                        return (0, note)
                 elif colorMatch:    # in this case meaning no bishops are on the board
                     if numKnights < 2:
                         note = "Draw by insufficient material."
-                        return (True, note)
+                        return (0, note)
                     
-        #   REPETITION
         
         ########################################################
         #   50 MOVE RULE
@@ -227,9 +229,9 @@ class Game:
         
         if self.movesSinceAction >= 50:
             note = "Draw: no capture or pawn advance in 50 moves."
-            return (True, note)
+            return (0, note)
 
-        return (False, "")
+        return (17, "Not a terminal position")
 
     #   Changes the board and relevant class attributes for any move; does not entirely
     #   verify legitimacy of move.
@@ -355,16 +357,8 @@ class Game:
         self.updateValues()
 
         #   See if resulting position (after moving) is a checkmate or draw
-        if self.isCheckmate():
-            if self.whiteToMove:
-                self.gameResult = -1
-            else:
-                self.gameResult = 1
-        else:
-            draw = self.isDraw()
-            if draw[0]:
-                self.gameResult = 0
-                self.gameResultStr = draw[1]
+        self.gameResult, self.gameResultStr = self.updateResult()
+        
 
     #   For debugging; prints info about the current game and returns the empty string,
     #   so that assert statements can easily include a call to this function
