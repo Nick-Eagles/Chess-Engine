@@ -80,3 +80,13 @@ def topN(vec, N):
 
     assert len(inds) == realN, inds
     return inds
+
+def match(needle, stack):
+    found = False
+    i = -1
+    while not found and i < len(stack):
+        i += 1
+        found = needle == stack[i]
+
+    return i
+    
