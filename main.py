@@ -224,7 +224,7 @@ while choice > 0 and choice <= len(options):
         print("Computing costs and writing positions...")
 
         allData = tBuffer + vBuffer
-        costs = net.individualCosts(allData)
+        costs = np.array([net.individualLoss([x]) for x in allData])
 
         #   Get rid of any old positions (to cover the case where the last choice
         #   of N is larger than the current choice)
