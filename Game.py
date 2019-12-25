@@ -13,8 +13,8 @@ class Game:
         self.invBoard = [[0 for i in range(8)] for j in range(8)]
         
         #   Amount of the pieces on the board: P, N, light B, dark B, R, Q
-        self.wPieces = np.array([8, 2, 1, 1, 2, 1])
-        self.bPieces = np.array([8, 2, 1, 1, 2, 1])
+        self.wPieces = [8, 2, 1, 1, 2, 1]
+        self.bPieces = [8, 2, 1, 1, 2, 1]
 
         #   These only become false when castling has occurred or a rook
         #   or king has moved, making castling illegal *for the game*.
@@ -32,7 +32,7 @@ class Game:
 
         self.movesSinceAction = 0
         self.gameResult = 17    #   Literally a random number, but will become +/-1 or 0
-        self.gameResultStr = ""
+        self.gameResultStr = "Not a terminal position"
         self.moveNum = 1
         self.annotation = ""
         self.lastMove = Move.Move((0, 6), (0, 7), -1) # No particular meaning, simply initialized
@@ -62,10 +62,10 @@ class Game:
         return g
 
     def updateValues(self):
-        vals = np.array([1, 3, 3, 3, 5, 9])
+        vals = [1, 3, 3, 3, 5, 9]
 
-        self.wValue = vals @ self.wPieces.T + 4     
-        self.bValue = vals @ self.bPieces.T + 4
+        self.wValue = sum([vals[i] * self.wPieces[i] for i in range(6)]) + 4
+        self.bValue = sum([vals[i] * self.bPieces[i] for i in range(6)]) + 4
 
     #   Return the (absolute reward for doing move "move" (positive means to the
     #   benefit of white), NN input vector for the resulting position) as a tuple
@@ -246,7 +246,7 @@ class Game:
 
         if self.whiteToMove:
             if not self.quiet:
-                self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board)
+                self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board) + " "
             piecesList = self.wPieces
             oppPiecesList = self.bPieces
         else:
