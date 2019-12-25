@@ -6,6 +6,7 @@ import Traversal
 import Game
 import misc
 import q_learn
+import demonstration
 
 import sys
 import os
@@ -122,7 +123,8 @@ options = ['Train the current network including new data',
             'Show a sample game for the current network', 'Save the current network',
             'Check neuron activations using current data', 'Train the network from previous data only',
             'Write existing novel checkmates to file', 'Run new games to generate checkmate positions',
-            'Write the N least and greatest-loss positions to file']
+            'Write the N least and greatest-loss positions to file',
+           'Play a game against the network']
 for i, opt in enumerate(options):
     messDef += '(' + str(i+1) + ') ' + opt + '\n'
 messDef += 'Enter 0 to exit: '
@@ -131,7 +133,7 @@ messOnErr = "Not a valid choice"
 choice = 1
 while choice > 0 and choice <= len(options):
     net.print()
-    choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= 8')
+    choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= ' + str(len(options)))
     print()
 
     if choice == 1:
@@ -242,3 +244,5 @@ while choice > 0 and choice <= len(options):
             file_IO.toFEN(position, filename, p['mode'] >= 2)
 
         print("Done. See 'visualization/edge_positions/'.")
+    elif choice == 9:
+        demonstration.interact(net)
