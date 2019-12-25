@@ -99,8 +99,6 @@ class Move:
                 else:
                     move += '=Q'
 
-            
-        move += ' '
         return move
 
     #   Check if more than one piece would be able to do the move name if the starting file or
