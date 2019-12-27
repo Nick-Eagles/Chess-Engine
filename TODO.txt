@@ -1,6 +1,7 @@
 TODO:
 
 -implement alpha-beta-like pruning to greatly optimize tree search
+-add estimated time remaining when training/generating data
 -More visualizations to better understand network progress:
 	-Euclidean distance of current weight vector relative to initial vector
 	-Save some diverse set of examples, and graph activation sparsity on the set by layer
