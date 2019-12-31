@@ -7,8 +7,13 @@ from scipy.special import expit, logit
 #   writing to a csv: the sparse board representation is condensed into the
 #   64 integer rep, and the booleans are appended "as is".
 def compressNNinput(NN_vec):
-    inds = [i for i in range(832) if NN_vec[i]]
-    return [i % 13 for i in inds] + NN_vec[832:].flatten().tolist()
+    assert NN_vec.shape == (839, 1), NN_vec.shape
+    
+    inds = [i for i in range(832) if NN_vec[i][0]]
+    assert len(inds) == 64, "NN_input to compress encodes a faulty board; num squares encoded: " + str(len(inds))
+    outList = [i % 13 for i in inds] + NN_vec[832:].flatten().tolist()
+    assert len(outList) == 71, len(outList)
+    return outList
 
 #   Given games in the format they are read from readGames(), produce a list
 #   of tuples in the format required for training examples for the network
@@ -36,8 +41,11 @@ def decompressGames(games):
 
 def writeGames(games, filepath, compress=False):
     if compress:
-        assert games[0][0].shape == (839, 1), "Is data already compressed?"
-        assert games[0][1] <= 1 and games[0][1] >= 0, "Data label is not in 'expit' form"
+        if len(games) > 0:
+            assert games[0][0].shape == (839, 1), "Is data already compressed?"
+            assert games[0][1] <= 1 and games[0][1] >= 0, "Data label is not in 'expit' form"
+        else:
+            print("Warning: writing an empty file (no games to write for current call to file_IO.writeGames).")
         games = [compressNNinput(g[0]) + [g[1]] for g in games]
     else:
         assert type(games[0][0]) is int, "Is data actually compressed?"

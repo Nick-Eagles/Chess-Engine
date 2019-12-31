@@ -41,6 +41,8 @@ def sampleCDF(cdf, n=1, exclusive=True, tol=1e-12):
 #   fraction [frac] of the original number of elements. If [both], return the remaining
 #   portion as part 2 (otherwise part 2 = []). Return the tuple (part1, part2).
 def divvy(data, frac, both=True):
+    if len(data) == 0:
+        return ([], [])
     permute = list(range(len(data)))
     random.shuffle(permute)
     cutoff = int(len(data) * frac)
