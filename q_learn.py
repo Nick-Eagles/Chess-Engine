@@ -80,11 +80,23 @@ def generateExamples(net, p):
                 + "\nLast game moveNum: " + str(game.moveNum)
     assert len(NN_vecs) == len(rSeqFlat), debug_str
 
-    data = []
+    data = [[],[],[]]
     for i, r in enumerate(rSeqFlat):
-        data.append((NN_vecs[i][0], expit(r)))
-        data.append((NN_vecs[i][1], expit(-1 * r)))
+        data[0].append((NN_vecs[i][0], expit(r)))
+        data[0].append((NN_vecs[i][1], expit(-1 * r)))
+        if len(NN_vecs[i]) > 2:
+            data[1].append((NN_vecs[i][2], expit(r)))
+            data[1].append((NN_vecs[i][3], expit(-1 * r)))
+            if len(NN_vecs[i]) == 16:
+                for j in range(4, 10):
+                    data[2].append((NN_vecs[i][j], expit(r)))
+                for j in range(10, 16):
+                    data[2].append((NN_vecs[i][j], expit(-1 * r)))
 
+    assert len(data) == 3, len(data)    # there are 3 separate buffers
+    assert len(data[0][0]) == 2, len(data[0][0])   # the first example consists of an input and output
+    assert data[0][0][0].shape == (839, 1), data[0][0][0].shape # the input is of proper shape
+    
     return data
 
 def async_q_learn(net):
@@ -105,26 +117,33 @@ def async_q_learn(net):
     pool.close()
 
     #   Collect each process's results (data) into a single list
-    tData = []
+    tData = [[],[],[]]
     for data in thread_data:
-        tData += data
+        for i in range(3):
+            tData[i] += data[i]
+
+    board_helper.verify_data(tData, withMates=False)
 
     if p['mode'] >= 2:
         elapsed = round(time.time() - start_time, 2)
-        print("Done in", elapsed, "seconds. Generated " + str(len(tData)) + " training examples.\n")
+        print("Done in", elapsed, "seconds. Generated " + str(sum([len(x) for x in tData])) + " training examples.\n")
     else:
-        print("Done. Generated " + str(len(tData)) + " training examples.\n")
+        
+        print("Done. Generated " + str(sum([len(x) for x in tData])) + " training examples.\n")
 
-    if p['mode'] >= 1:
-        print("Determining certainty of network on the generated examples...")
-        getCertainty(net, tData, p)
+    print("Determining certainty of network on the generated examples...")
+    getCertainty(net, tData, p)
 
     return tData
 
 def getCertainty(net, data, p):
+    #   Get only the originally generated examples (do not include augmented data)
+    origData = [data[0][i] for i in range(len(data[0])) if i % 2 == 0] + \
+               [data[1][i] for i in range(len(data[1])) if i % 4 == 0] + \
+               [data[2][i] for i in range(len(data[2])) if i % 16 == 0]
     #   Form vectors of expected and actual rewards received
-    expRew = logit(np.array([net.feedForward(data[i][0]) for i in range(len(data)) if i % 2 == 0]).flatten())
-    actRew = logit(np.array([data[i][1] for i in range(len(data)) if i % 2 == 0]).flatten())
+    expRew = logit(np.array([net.feedForward(x[0]) for x in origData]).flatten())
+    actRew = logit(np.array([x[1] for x in origData]).flatten())
 
     #   Normalized dot product of expected and actual reward vectors
     certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
@@ -138,6 +157,6 @@ def getCertainty(net, data, p):
     net.certainty = net.certainty * p['persist'] + certainty * (1 - p['persist'])
     
     if p['mode'] >= 1:
-        print("Certainty of network on", int(len(data)/2), "examples:", round(certainty, 5))
+        print("Certainty of network on", len(origData), "examples:", round(certainty, 5))
         print("Moving certainty:", round(net.certainty, 5))
         print("Moving rate of certainty change:", round(net.certaintyRate, 5), "\n")
