@@ -520,6 +520,9 @@ class Network:
         print('Rate of certainty change:', round(self.certaintyRate, 5))
 
     def save(self, tBuffer, vBuffer, filename):
+        board_helper.verify_data(tBuffer)
+        board_helper.verify_data(vBuffer)
+        
         data = {"layers": self.layers,
                 "weights": [w.tolist() for w in self.weights],
                 "beta": [b.tolist() for b in self.beta],
@@ -534,10 +537,14 @@ class Network:
         json.dump(data, f)
         f.close()
 
-        os.remove('data/tBuffer.csv')
-        os.remove('data/vBuffer.csv')
-        file_IO.writeGames(tBuffer, 'data/tBuffer.csv', True)
-        file_IO.writeGames(vBuffer, 'data/vBuffer.csv', True)
+        #   Write each sub-buffer to separate file
+        for i in range(4):
+            if os.path.exists('data/tBuffer' + str(i) + '.csv'):
+                os.remove('data/tBuffer' + str(i) + '.csv')
+            if os.path.exists('data/vBuffer' + str(i) + '.csv'):
+                os.remove('data/vBuffer' + str(i) + '.csv')
+            file_IO.writeGames(tBuffer[i], 'data/tBuffer' + str(i) + '.csv', True)
+            file_IO.writeGames(vBuffer[i], 'data/vBuffer' + str(i) + '.csv', True)
 
 def train_thread(net, batch, p):  
     z, zNorm, a = net.ff_track(batch[0])
@@ -561,13 +568,13 @@ def load(filename, lazy=False):
     net.certainty = data["certainty"]
     net.certaintyRate = data["certaintyRate"]
 
-    if lazy:
-        tBuffer = []
-        vBuffer = []
-    else:
+    tBuffer = [[],[],[],[]]
+    vBuffer = [[],[],[],[]]
+    if not lazy:
         p = input_handling.readConfig()
-        tBuffer = file_IO.decompressGames(file_IO.readGames('data/tBuffer.csv', p))
-        vBuffer = file_IO.decompressGames(file_IO.readGames('data/vBuffer.csv', p))
+        for i in range(4):
+            tBuffer[i] = file_IO.decompressGames(file_IO.readGames('data/tBuffer' + str(i) + '.csv', p))
+            vBuffer[i] = file_IO.decompressGames(file_IO.readGames('data/vBuffer' + str(i) + '.csv', p))
     
     return (net, tBuffer, vBuffer)
              
