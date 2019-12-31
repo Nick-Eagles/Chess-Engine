@@ -46,7 +46,7 @@ def interact(net):
             game.doMove(bestMove)
 
             if p['mode'] >= 1:
-                expRew = logit(net.feedForward(game.toNN_vecs(both=False)[0]))
+                expRew = logit(net.feedForward(game.toNN_vecs(every=False)[0]))
                 print("Expected reward from the current position is", round(float(expRew), 4))
 
     pool.close()
