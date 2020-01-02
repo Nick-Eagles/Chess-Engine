@@ -93,9 +93,7 @@ def generateExamples(net, p):
                 for j in range(10, 16):
                     data[2].append((NN_vecs[i][j], expit(-1 * r)))
 
-    assert len(data) == 3, len(data)    # there are 3 separate buffers
-    assert len(data[0][0]) == 2, len(data[0][0])   # the first example consists of an input and output
-    assert data[0][0][0].shape == (839, 1), data[0][0][0].shape # the input is of proper shape
+    board_helper.verify_data(data, False)
     
     return data
 
