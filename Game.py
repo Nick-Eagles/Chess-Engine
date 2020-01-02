@@ -99,14 +99,11 @@ class Game:
     #   since a pawn move or capture. All entries are again 0/1 except
     #   game.movesSinceAction: {0,1,...,50}
     #
-    #   This process is performed twice; the second time essentially "flips"
-    #   the game so that the board is inverted by rank, castling
-    #   info and piece values are swapped by color, and the whiteToMove bool
-    #   is negated. The idea is that the network can learn from a conceptually
-    #   equivalent inverted game (the board is flipped and white pretends
-    #   it's black and vice versa), and will learn that most dynamics are
-    #   independent of what color you're playing, via this trick. This function
-    #   returns a tuple (normal inputVec, inverted game's inputVec)
+    #   This function by default returns additional permutations of the game
+    #   board when possible while retaining expected game outcome (possibly
+    #   inverted). This behavior is suppressed (and only a single NN input
+    #   returned) by setting every=False. In both cases, a list of at least
+    #   one numpy array is returned.
     def toNN_vecs(self, every=True):
         #   The original position as-is
         all_vecs = [board_helper.generate_NN_vec(self, False, False, False, False)]
@@ -139,7 +136,6 @@ class Game:
                     all_vecs.append(board_helper.generate_NN_vec(self, True, True, True, True))
 
         return all_vecs
-                
                 
 
     #   Returns a tuple: the first entry is the game result; the second is a string
