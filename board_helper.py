@@ -399,7 +399,7 @@ def generate_NN_vec(game, invert, flip0, flip1, swap):
 
     return netInput
 
-def verify_data(data, withMates=True):
+def verify_data(data, p, withMates=True):
     if withMates:
         numBuffs = 4
     else:
@@ -414,5 +414,5 @@ def verify_data(data, withMates=True):
 
             # the input is of proper shape
             assert data[i][0][0].shape == (839, 1), data[i][0][0].shape
-        else:
+        elif p['mode'] >= 2:
             print("Warning: buffer", i, "was empty.")
