@@ -200,16 +200,21 @@ class Network:
         if p['mode'] >= 2:
             start_time = time.time()
         pool = Pool()
+
+        #   Make sure the examples are in random order for computation of cost
+        #   and population statistics in batches
+        random.shuffle(games)
+        random.shuffle(vGames)
         
         for epoch in range(epochs):
+            #   Divide data into batches, which each are divided into chunks-
+            #   computation of the gradients will be parallelized by chunk
+            chunkedGames = network_helper.toBatchChunks(games, bs, numCPUs)
+
             #   Baseline calculation of cost on training, validation data
             if epoch == 0:
                 self.tCosts.append(self.totalCost(games, p))
                 self.vCosts.append(self.totalCost(vGames, p))
-
-            #   Divide data into batches, which each are divided into chunks-
-            #   computation of the gradients will be parallelized by chunk
-            chunkedGames = network_helper.toBatchChunks(games, bs, numCPUs)
             
             for i in range(numBatches):
                 ###############################################################
@@ -324,24 +329,21 @@ class Network:
 
         return [dC_dw, dC_db, dC_dg]
 
-    #   Given the entire set of training examples, returns the average cost per example
-    def totalCost(self, games, p, method="batch"):
+    #   Given the entire set of training examples, returns the average cost per example.
+    def totalCost(self, games, p):
         numCPUs = os.cpu_count()
-        chunkSize = int(len(games) / numCPUs)
-        remainder = len(games) % numCPUs
+        chunkSize = int(p['batchSize'] / numCPUs)
+        remainder = len(games) % chunkSize
 
         c = 0
         chunks = []
-        for i in range(numCPUs):
+        for i in range(int(len(games) / chunkSize)):
             thisSize = chunkSize + (i < remainder)
             chunks.append(games[c:c+thisSize])
             c += thisSize
 
         pool = Pool()
-        if method == "individual":
-            costList = pool.map_async(self.individualLoss, chunks).get()
-        else:
-            costList = pool.map_async(self.batchLoss, chunks).get()
+        costList = pool.map_async(self.batchLoss, chunks).get()
         pool.close()
 
         return sum(costList) / len(costList)
@@ -519,10 +521,7 @@ class Network:
         print('Certainty:', round(self.certainty, 4))
         print('Rate of certainty change:', round(self.certaintyRate, 5))
 
-    def save(self, tBuffer, vBuffer, filename):
-        board_helper.verify_data(tBuffer)
-        board_helper.verify_data(vBuffer)
-        
+    def save(self, tBuffer, vBuffer, filename):       
         data = {"layers": self.layers,
                 "weights": [w.tolist() for w in self.weights],
                 "beta": [b.tolist() for b in self.beta],
