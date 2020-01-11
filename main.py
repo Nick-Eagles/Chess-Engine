@@ -44,21 +44,22 @@ def filterBuffers(tBuffer, vBuffer, p):
         else:
             tBuffer[j] = misc.divvy(tBuffer[j], md, False)[0]
 
-    board_helper.verify_data(tBuffer)
-    board_helper.verify_data(vBuffer)
+    board_helper.verify_data(tBuffer, p)
+    board_helper.verify_data(vBuffer, p)
 
     return (tBuffer, vBuffer)
 
 #   Given a network, asks the user for training hyper-parameters,
 #   trains the network, and asks what to do next.
-def trainOption(net, tBuffer=[[],[],[],[]], vBuffer=[[],[],[],[]]): 
+def trainOption(net, tBuffer=[[],[],[],[]], vBuffer=[[],[],[],[]], numEps=0): 
     p = input_handling.readConfig(2)
  
     #   traverseCount
-    messDef = "Enter the number of sets of tree traversals to perform: "
-    cond = 'var > 0'
-    messOnErr = "Not a valid input."
-    numEps = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+    if numEps == 0:
+        messDef = "Enter the number of sets of tree traversals to perform: "
+        cond = 'var > 0'
+        messOnErr = "Not a valid input."
+        numEps = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
         
     for i in range(numEps):
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
