@@ -183,8 +183,7 @@ def getBestMoveTreeEG(net, game, p, pool=None):
         rTemp = rTemp[np.array(best_inds)]
 
         #   Get best move from a tree search
-        p_copy = p.copy()
-        p_copy['epsGreedy'] = 0
+        #p_copy['epsGreedy'] = 0
 
         realBreadth = min(p['breadth'], len(legalMoves))
         certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
