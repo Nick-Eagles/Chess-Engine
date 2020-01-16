@@ -203,12 +203,13 @@ class Network:
 
         #   Make sure the examples are in random order for computation of cost
         #   and population statistics in batches
-        random.shuffle(games)
+        #random.shuffle(games)
         random.shuffle(vGames)
         
         for epoch in range(epochs):
             #   Divide data into batches, which each are divided into chunks-
             #   computation of the gradients will be parallelized by chunk
+            random.shuffle(games)
             chunkedGames = network_helper.toBatchChunks(games, bs, numCPUs)
 
             #   Baseline calculation of cost on training, validation data
@@ -333,11 +334,12 @@ class Network:
     def totalCost(self, games, p):
         numCPUs = os.cpu_count()
         chunkSize = int(p['batchSize'] / numCPUs)
-        remainder = len(games) % chunkSize
+        numGames = min(p['costLimit'], len(games))
+        remainder = numGames % chunkSize
 
         c = 0
         chunks = []
-        for i in range(int(len(games) / chunkSize)):
+        for i in range(int(numGames / chunkSize)):
             thisSize = chunkSize + (i < remainder)
             chunks.append(games[c:c+thisSize])
             c += thisSize

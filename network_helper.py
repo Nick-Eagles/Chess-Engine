@@ -43,9 +43,9 @@ def batchStats(xBatch):
     return (np.mean(dev * dev, axis = 1), dev * dev, mean)
 
 def toBatchChunks(data, bs, numCPUs):
-    permute = list(range(len(data)))
-    random.shuffle(permute)
-    data = [data[i] for i in permute]
+    #permute = list(range(len(data)))
+    #random.shuffle(permute)
+    #data = [data[i] for i in permute]
     
     numBatches = int(len(data) / bs)
     chunkSize = int(bs / numCPUs)
