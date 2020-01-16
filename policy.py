@@ -53,7 +53,7 @@ def sampleMovesEG(net, game, p):
         return (moves, fullMovesLen)
 
     #   More efficiently handle a trivial case
-    if p['epsGreedy'] == 0:
+    if p['epsSearch'] == 0:
         #   Compute evaluations on each move
         rPairs = [game.getReward(m, p['mateReward']) for m in moves]
         evals = np.array([x + net.certainty * float(logit(net.feedForward(y))) for x,y in rPairs])
@@ -67,7 +67,7 @@ def sampleMovesEG(net, game, p):
     #   This is the choice of epsilon such that if [subMovesLen] moves are chosen under
     #   an epsilon-greedy strategy, with each move constrained to be distinct, then the probability
     #   that none of those moves have the highest NN evaluation is eps.
-    epsEffective = 1 - (fullMovesLen * p['epsGreedy'] / (fullMovesLen - subMovesLen))**(1/subMovesLen)
+    epsEffective = 1 - (fullMovesLen * p['epsSearch'] / (fullMovesLen - subMovesLen))**(1/subMovesLen)
     inds = []
     remainInds = list(range(fullMovesLen))
     chooseBest = [x > epsEffective for x in np.random.uniform(size=subMovesLen)]
@@ -157,43 +157,29 @@ def per_thread_job(trav_obj):
     return trav_obj
 
 def getBestMoveTreeEG(net, game, p, pool=None):
-    legalMoves = board_helper.getLegalMoves(game)
-
-    #   Traversals are started at positions resulting from testing moves from
-    #   the current position; this test constitutes a step of depth
-    p_copy = p.copy()
-    p_copy['depth'] -= 1
-    p = p_copy
-    
-    if p['epsGreedy'] == 1 or np.random.uniform() < p['epsGreedy']:
-        #   Shortcut for completely random move choice
+    if np.random.uniform() < p['epsGreedy']:
+        legalMoves = board_helper.getLegalMoves(game)
         return legalMoves[np.random.randint(len(legalMoves))]
     else:
-        #   Get NN evaluations on each possible move
-        evals = np.zeros(len(legalMoves))
-        rTemp = np.zeros(len(legalMoves))
-        for i, m in enumerate(legalMoves):
-            rTuple = game.getReward(m, p['mateReward'])
-            evals[i] = rTuple[0] + net.certainty * float(logit(net.feedForward(rTuple[1])))
-            rTemp[i] = rTuple[0]
-        if not game.whiteToMove:
-            evals *= -1
-
-        best_inds = misc.topN(evals, p['breadth'])
-        rTemp = rTemp[np.array(best_inds)]
-
-        #   Get best move from a tree search
-        #p_copy['epsGreedy'] = 0
-
-        realBreadth = min(p['breadth'], len(legalMoves))
-        certainty = 1 - (len(legalMoves) - realBreadth) * (1 - p['alpha'])**realBreadth / len(legalMoves)
+        #   Traversals are started at positions resulting from testing moves from
+        #   the current position; this test constitutes a step of depth
+        p_copy = p.copy()
+        p_copy['depth'] -= 1
+        p = p_copy
+        
+        moves, fullMovesLen = sampleMovesEG(net, game, p)
+        certainty = 1 - (fullMovesLen - len(moves)) * (1 - p['alpha'])**len(moves) / fullMovesLen
+        
+        rTemp = np.zeros(len(moves))
         if pool != None:
             trav_objs = []
-            for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
+            for i, m in enumerate(moves):
+                rTemp[i] = game.getReward(m, p['mateReward'])[0]
+
                 g = game.copy()
                 g.quiet = True
                 g.doMove(m)
-                trav_objs.append(Traversal.Traversal(g, net, p_copy))
+                trav_objs.append(Traversal.Traversal(g, net, p))
 
             #   Perform the traversals in parallel to return the index of the first
             #   move from this position of the most rewarding move sequence explored
@@ -207,18 +193,18 @@ def getBestMoveTreeEG(net, game, p, pool=None):
                 baseRs[temp_bools] = baseRs[temp_bools] / certainty    
             rTemp += certainty * baseRs
         else:  
-            for i, m in enumerate([legalMoves[ind] for ind in best_inds]):
+            for i, m in enumerate(moves):
                 g = game.copy()
                 g.quiet = True
                 g.doMove(m)
-                    
-                trav = Traversal.Traversal(g, net, p_copy)
+                        
+                trav = Traversal.Traversal(g, net, p)
                 trav.traverse()
-                rTemp[i] += certainty * trav.baseR
+                rTemp[i] = game.getReward(m, p['mateReward'])[0] + certainty * trav.baseR
 
         if game.whiteToMove:
-            bestMove = legalMoves[best_inds[np.argmax(rTemp)]]
+            bestMove = moves[np.argmax(rTemp)]
         else:
-            bestMove = legalMoves[best_inds[np.argmin(rTemp)]]
+            bestMove = moves[np.argmin(rTemp)]
 
         return bestMove
