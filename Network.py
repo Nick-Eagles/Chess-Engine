@@ -244,7 +244,7 @@ class Network:
                     self.last_dC_dg[lay] = gradient[2][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dg[lay]
                     self.gamma[lay] -= nu * self.last_dC_dg[lay]
                 
-            #   Approximate loss using batch statistics (biased)
+            #   Approximate loss using batch statistics
             if p['mode'] >= 1 and epoch < epochs - 1:
                 self.tCosts.append(self.totalCost(games, p))
                 self.vCosts.append(self.totalCost(vGames, p))
@@ -416,65 +416,35 @@ class Network:
 
     #   Takes a list of tuples representing training data, and sets population mean, variance
     #   and standard deviation for the network (used for feedForward())
-    def setPopStats(self, pop, p, method=1, sameData=False):
-        #   naive computation of population statistics: compute the mean and variance
-        #   of the entire dataset
-        if method == 0:
-            pop = np.array([g[0].flatten() for g in pop]).T
-            z = self.ff_track(pop)[0]
-            popMean, popVar = [], []
-            for lay in z:
-                bStats = network_helper.batchStats(lay)
-                popMean.append(bStats[2].reshape((-1,1)))
-                popVar.append(bStats[0].reshape((-1,1)))
-
+    def setPopStats(self, pop, p):
         #   "unbiased" estimate of population statistics: compute mean and variance
         #   in batches and average over these, as suggested in https://arxiv.org/pdf/1502.03167.pdf
-        else:
-            bs = p['batchSize']
-            numCPUs = os.cpu_count()
-            numBatches = int(len(pop) / bs)
+        bs = p['batchSize']
+        numCPUs = os.cpu_count()
+        numBatches = int(len(pop) / bs)
 
-            #   Compute stats in chunks (so pop stats are computed in a consistent way as stats
-            #   are used during training)- this is equivalent to using a batch size of bs/numCPUs
-            chunkedData = network_helper.toBatchChunks(pop, bs, numCPUs)
+        #   Compute stats in chunks (so pop stats are computed in a consistent way as stats
+        #   are used during training)- this is equivalent to using a batch size of bs/numCPUs
+        chunkedData = network_helper.toBatchChunks(pop, bs, numCPUs)
 
-            pool = Pool()
+        pool = Pool()
 
-            popMean = [np.zeros((lay, 1)) for lay in self.layers]
-            popVar = [np.zeros((lay, 1)) for lay in self.layers]
-            for i in range(numBatches):
-                #   This is a list of tuples of lists: popStatList[chunkNum[statType[layerNum]]] is
-                #   a numpy array representing the mean or variance of the activations for one layer
-                #   from feeding forward one chunk
-                inList = [(self, x[0]) for x in chunkedData[i]]
-                popStatList = pool.starmap_async(network_helper.get_pop_stats, inList).get()
+        popMean = [np.zeros((lay, 1)) for lay in self.layers]
+        popVar = [np.zeros((lay, 1)) for lay in self.layers]
+        for i in range(numBatches):
+            #   This is a list of tuples of lists: popStatList[chunkNum[statType[layerNum]]] is
+            #   a numpy array representing the mean or variance of the activations for one layer
+            #   from feeding forward one chunk
+            inList = [(self, x[0]) for x in chunkedData[i]]
+            popStatList = pool.starmap_async(network_helper.get_pop_stats, inList).get()
 
-                for chunk in popStatList:
-                    for lay in range(len(self.layers)):
-                        popMean[lay] += chunk[0][lay] / (numBatches * numCPUs)
-                        popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
+            for chunk in popStatList:
+                for lay in range(len(self.layers)):
+                    popMean[lay] += chunk[0][lay] / (numBatches * numCPUs)
+                    popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
 
-            pool.close()                       
+        pool.close()
 
-        #   This section establishes how much to weight the existing population statistics
-        #   relative to the new ones. The idea is that pop stats should be a somewhat smooth
-        #   moving average, but there are 2 scenarios. If [sameData]==True, the network
-        #   parameters have changed, but the data for computing the stats is the same. If
-        #   false, the reverse has occured. The moving average should have varying 'persistence'
-        #   depending on which scenario we're in.
-        #if sameData:
-            #magicFrac = p['popPersistStatic']
-        #else:
-            #   magicFrac is the final weight to give the existing population statistics. It is
-            #   computed by design to have the property that the rate of change
-            #   of self.popMean and self.popVar depends only on 'popPersist', and not 'memDecay'.
-            #pp = p['popPersist']
-            #m = p['memDecay']
-            #magicFrac = pp * m / (1 - pp - m + 2 * m * pp)
-            #assert magicFrac >= 0 and magicFrac <= 1, magicFrac
-
-        magicFrac = p['popPersist']
         if p['mode'] >= 2:
             concDirMean = 0
             diffMagMean = 0
@@ -492,8 +462,8 @@ class Network:
                 concDirVar += abs(float(np.dot(self.popVar[i].T, popVar[i]))) / (oldNorm * newNorm)
                 diffMagVar += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
                 
-            self.popMean[i] = magicFrac * self.popMean[i] + (1 - magicFrac) * popMean[i]
-            self.popVar[i] = magicFrac * self.popVar[i] + (1 - magicFrac) * popVar[i]
+            self.popMean[i] = p['popPersist'] * self.popMean[i] + (1 - p['popPersist']) * popMean[i]
+            self.popVar[i] = p['popPersist'] * self.popVar[i] + (1 - p['popPersist']) * popVar[i]
             self.popDev[i] = np.sqrt(np.add(self.popVar[i], self.eps))
         if p['mode'] >= 2:
             print('Average normalized dot product of new and old pop stats:')
