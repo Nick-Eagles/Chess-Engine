@@ -39,7 +39,7 @@ def decompressGames(games):
 
     return cGames
 
-def writeGames(games, filepath, compress=False):
+def writeGames(games, filepath, compress=False, append=True):
     if compress:
         if len(games) > 0:
             assert games[0][0].shape == (839, 1), "Is data already compressed?"
@@ -50,7 +50,7 @@ def writeGames(games, filepath, compress=False):
     else:
         assert type(games[0][0]) is int, "Is data actually compressed?"
     
-    if os.path.exists(filepath):
+    if os.path.exists(filepath) and append:
         gameFile = open(filepath, 'a')
     else:
         gameFile = open(filepath, 'w')

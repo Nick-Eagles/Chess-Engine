@@ -540,12 +540,8 @@ class Network:
 
         #   Write each sub-buffer to separate file
         for i in range(4):
-            if os.path.exists('data/tBuffer' + str(i) + '.csv'):
-                os.remove('data/tBuffer' + str(i) + '.csv')
-            if os.path.exists('data/vBuffer' + str(i) + '.csv'):
-                os.remove('data/vBuffer' + str(i) + '.csv')
-            file_IO.writeGames(tBuffer[i], 'data/tBuffer' + str(i) + '.csv', True)
-            file_IO.writeGames(vBuffer[i], 'data/vBuffer' + str(i) + '.csv', True)
+            file_IO.writeGames(tBuffer[i], 'data/tBuffer' + str(i) + '.csv', True, False)
+            file_IO.writeGames(vBuffer[i], 'data/vBuffer' + str(i) + '.csv', True, False)
 
 def train_thread(net, batch, p):  
     z, zNorm, a = net.ff_track(batch[0])
