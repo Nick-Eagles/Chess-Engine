@@ -21,6 +21,7 @@ def parseInput(game, moveNames):
 def interact(net):
     p = input_handling.readConfig(1)
     p['epsGreedy'] = 0
+    p['epsSearch'] = 0
 
     game = Game.Game(quiet=False)
     pool = Pool()

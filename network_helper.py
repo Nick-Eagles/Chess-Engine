@@ -146,6 +146,7 @@ def bestGame(net):
     p = input_handling.readConfig(3)
     p.update(input_handling.readConfig(1))
     p['epsGreedy'] = 0
+    p['epsSearch'] = 0
 
     game = Game.Game(quiet=False)
 
