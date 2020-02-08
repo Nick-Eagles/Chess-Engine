@@ -2,7 +2,12 @@ visualization/latest_game.pgn
 visualization/.R*
 visualization/costs.csv
 visualization/random_position.fen
+visualization/rewards.csv
+visualization/edge_positions/*
+visualization/alpha_tests.txt
+data/*Buffer*.csv
 __pycache__
 config.txt
 nets/*
+logs/*
 *.pyc

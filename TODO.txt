@@ -1,15 +1,21 @@
 TODO:
 
--fix insufficient material rules: 1 lightsquared bishop now isn't a draw
--finish toFEN() function probably for viewing checkmate positions in excel sheet
--allow switching between current policy rule and epsilon-greedy policy, probably through config
--store first validation cost for each episode as a NN attribute, to better visualize progress
+-maybe implement "autosaving" on some interval to avoid multiprocessing getting stuck
+-make p['alpha'] independent from network certainty
+-consider programming in a resignation threshold to speed up training
+-implement alpha-beta-like pruning to greatly optimize tree search
+-add estimated time remaining when training/generating data
+-More visualizations to better understand network progress:
+	-Euclidean distance of current weight vector relative to initial vector
+	-Save some diverse set of examples, and graph activation sparsity on the set by layer
+	-Top N lowest and N highest cost examples from a large data set (graph expected vs. recevied rewards)
+	-take a snapshot of the weight vector at some time, find the top 2 PCs/ eigenvectors (?), and graph a time
+	 series of points where the 2 axes of the graph are the PCs (each point is another snapshot of the weights)
+-Consider recording 'certainty' on some interval so it can be graphed vs. number of training steps or unique examples
+-add computational time as Network attribute (to supplement 'age' and 'experience')
 
 Eventually:
 
 -allow the network freedom to parameterize its own training: namely at least having it
  compute some metric rating its competency, and weight the relative values of material to
  wins/losses accordingly.
--automate hyperparameter optimization: consider having a different network do monte carlo
- sampling over a discrete "grid" of hyperparameter values, then observe the cost data after
- running many episodes of training

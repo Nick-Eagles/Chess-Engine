@@ -1,23 +1,28 @@
-#train
-memDecay 0.75
-weightDec 0.0004
-nu 0.01
-mom 0.9
-batchSize 50
-epochs 15
-updatePeriod 4
-fracValidation 0.15
-fracFromFile 0.056
-#traverse
-alpha 0.05
-epsilon 0.5
-baseBreadth 8
-breadth 3
-tDepth 1
-rDepth 2
-gBuffer 0
+#	General settings (apply everywhere or in multiple categories)
+mode 1
+baseBreadth 12
+epsGreedy 0.15
 mateReward 3
-clarity 12
+#	Tree traversal
+alpha 0.35
+breadth 12
+depth 2
 curiosity 5
-epsGreedy 0.35
+epsSearch 0.05
 policy "sampleMovesEG"
+#	Network/ training-related
+memDecay 0.15
+weightDec 0.000000001
+nu 0.6
+mom 0.9
+batchSize 3000
+epochs 30
+fracValidation 0.1
+fracFromFile 0.03
+popPersist 0.2
+costLimit 10500
+#	Q-learning
+maxSteps 250
+gamma 0.45
+rDepthMin 4
+persist 0.95

@@ -41,6 +41,8 @@ def sampleCDF(cdf, n=1, exclusive=True, tol=1e-12):
 #   fraction [frac] of the original number of elements. If [both], return the remaining
 #   portion as part 2 (otherwise part 2 = []). Return the tuple (part1, part2).
 def divvy(data, frac, both=True):
+    if len(data) == 0:
+        return ([], [])
     permute = list(range(len(data)))
     random.shuffle(permute)
     cutoff = int(len(data) * frac)
@@ -51,3 +53,42 @@ def divvy(data, frac, both=True):
         part2 = []
 
     return (part1, part2)
+
+#   A naive implementation of finding the indices of the largest N values in vec.
+#   Recursively computes the argmax (not intended for large vectors/ large N)
+def topN(vec, N):
+    assert N > 0, N
+    realN = min(N, vec.shape[0])
+    
+    #   Preliminary checks to make sure we don't use an extensive computation
+    #   for trivial cases
+    if realN == 1:
+        return [int(np.argmax(vec))]
+    elif realN == vec.shape[0]:
+        return list(range(realN))
+    elif realN == vec.shape[0]-1:
+        inds = list(range(vec.shape[0]))
+        inds.pop(np.argmin(vec))
+        return inds
+
+    vecCopy = vec.copy()
+    minVal = min(vec)
+
+    inds = []
+    for i in range(realN):
+        temp = np.argmax(vecCopy)
+        inds.append(temp)
+        vecCopy[temp] = minVal
+
+    assert len(inds) == realN, inds
+    return inds
+
+def match(needle, stack):
+    found = False
+    i = -1
+    while not found and i < len(stack):
+        i += 1
+        found = needle == stack[i]
+
+    return i
+    

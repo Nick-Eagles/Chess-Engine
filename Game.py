@@ -6,15 +6,15 @@ import board_helper
 
 class Game:
     def __init__(self, quiet=True):
-        self.board = np.array([[4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2], \
-                          [3, 1, 0, 0, 0, 0, -1, -3], [5, 1, 0, 0, 0, 0, -1, -5], \
-                          [6, 1, 0, 0, 0, 0, -1, -6], [3, 1, 0, 0, 0, 0, -1, -3], \
-                          [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]])
-        self.invBoard = np.zeros((8,8), dtype=np.int8)
+        self.board = [[4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2], \
+                     [3, 1, 0, 0, 0, 0, -1, -3], [5, 1, 0, 0, 0, 0, -1, -5], \
+                     [6, 1, 0, 0, 0, 0, -1, -6], [3, 1, 0, 0, 0, 0, -1, -3], \
+                     [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]]
+        self.invBoard = [[0 for i in range(8)] for j in range(8)]
         
         #   Amount of the pieces on the board: P, N, light B, dark B, R, Q
-        self.wPieces = np.array([8, 2, 1, 1, 2, 1])
-        self.bPieces = np.array([8, 2, 1, 1, 2, 1])
+        self.wPieces = [8, 2, 1, 1, 2, 1]
+        self.bPieces = [8, 2, 1, 1, 2, 1]
 
         #   These only become false when castling has occurred or a rook
         #   or king has moved, making castling illegal *for the game*.
@@ -32,7 +32,7 @@ class Game:
 
         self.movesSinceAction = 0
         self.gameResult = 17    #   Literally a random number, but will become +/-1 or 0
-        self.gameResultStr = ""
+        self.gameResultStr = "Not a terminal position"
         self.moveNum = 1
         self.annotation = ""
         self.lastMove = Move.Move((0, 6), (0, 7), -1) # No particular meaning, simply initialized
@@ -40,7 +40,7 @@ class Game:
     def copy(self):
         g = Game()
 
-        g.board = self.board.copy()
+        g.board = [x.copy() for x in self.board]
         g.wPieces = self.wPieces.copy()
         g.bPieces = self.bPieces.copy()
         g.canW_K_Castle = self.canW_K_Castle
@@ -62,12 +62,10 @@ class Game:
         return g
 
     def updateValues(self):
-        vals = np.array([1, 3, 3, 3, 5, 9])
+        vals = [1, 3, 3, 3, 5, 9]
 
-        self.wValue = vals @ self.wPieces.T + 4     
-        self.bValue = vals @ self.bPieces.T + 4
-
-        return float(self.wValue / self.bValue)
+        self.wValue = sum([vals[i] * self.wPieces[i] for i in range(6)]) + 4
+        self.bValue = sum([vals[i] * self.bPieces[i] for i in range(6)]) + 4
 
     #   Return the (absolute reward for doing move "move" (positive means to the
     #   benefit of white), NN input vector for the resulting position) as a tuple
@@ -77,13 +75,12 @@ class Game:
         g.doMove(move)
 
         if abs(g.gameResult) == 1:
-            return (g.gameResult * mateRew, g.toNN_vecs()[0])
+            return (g.gameResult * mateRew, g.toNN_vecs(every=False)[0])
         elif g.gameResult == 0:
-            return (np.log(self.bValue / self.wValue), g.toNN_vecs()[0])
+            return (np.log(self.bValue / self.wValue), g.toNN_vecs(every=False)[0])
         else:
-            return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), g.toNN_vecs()[0])
+            return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), g.toNN_vecs(every=False)[0])
 
-    #   Probably can eliminate; np arrays print the correct way I think
     def printBoard(self):
         print("board:  -----")
         for rank in range(8):
@@ -102,80 +99,71 @@ class Game:
     #   since a pawn move or capture. All entries are again 0/1 except
     #   game.movesSinceAction: {0,1,...,50}
     #
-    #   This process is performed twice; the second time essentially "flips"
-    #   the game so that the board is inverted by rank, castling
-    #   info and piece values are swapped by color, and the whiteToMove bool
-    #   is negated. The idea is that the network can learn from a conceptually
-    #   equivalent inverted game (the board is flipped and white pretends
-    #   it's black and vice versa), and will learn that most dynamics are
-    #   independent of what color you're playing, via this trick. This function
-    #   returns a tuple (normal inputVec, inverted game's inputVec)
-    def toNN_vecs(self):
-        netInput = []
-        netInputInv = []
-        #   Convert board information: note netInputInv is taking the
-        #   original board information and inverting it by rank and file,
-        #   then swapping the piece colors.
-        for file in range(8):
-            for rank in range(8):
-                #   Get the piece values at the squares
-                piece = self.board[file][rank]
-                pieceInv = -1*self.board[file][7-rank]
+    #   This function by default returns additional permutations of the game
+    #   board when possible while retaining expected game outcome (possibly
+    #   inverted). This behavior is suppressed (and only a single NN input
+    #   returned) by setting every=False. In both cases, a list of at least
+    #   one numpy array is returned.
+    def toNN_vecs(self, every=True):
+        #   The original position as-is
+        all_vecs = [board_helper.generate_NN_vec(self, False, False, False, False)]
 
-                #   Encode the piece values as binary sequences
-                for i in range(-6, 7):
-                    if piece == i:
-                        netInput.append(1)
-                    else:
-                        netInput.append(0)
-                    if pieceInv == i:
-                        netInputInv.append(1)
-                    else:
-                        netInputInv.append(0)
+        if every:
+            #   The position inverted by rank and color
+            all_vecs.append(board_helper.generate_NN_vec(self, True, False, True, False))
 
-        #   Append remaining information about the game
-        netInput.append(self.whiteToMove)
-        netInput.append(self.enPassant)
-        netInput.append(self.canW_K_Castle)
-        netInput.append(self.canW_Q_Castle)
-        netInput.append(self.canB_K_Castle)
-        netInput.append(self.canB_Q_Castle)
-        netInput.append(self.movesSinceAction)
+            #   If castling is impossible, the board can be reflected by file
+            if not any([self.canW_K_Castle, self.canW_Q_Castle, self.canB_K_Castle, self.canB_Q_Castle]):
+                #   The positions we've appended so far but inverted by file
+                all_vecs.append(board_helper.generate_NN_vec(self, False, True, False, False))
+                all_vecs.append(board_helper.generate_NN_vec(self, True, True, True, False))
 
-        #   Same, but castling bools are swapped by color and
-        #   whitetoMove is inverted since colors are swapped
-        netInputInv.append(not self.whiteToMove)
-        netInputInv.append(self.enPassant)
-        netInputInv.append(self.canB_K_Castle)
-        netInputInv.append(self.canB_Q_Castle)
-        netInputInv.append(self.canW_K_Castle)
-        netInputInv.append(self.canW_Q_Castle)
-        netInputInv.append(self.movesSinceAction)
+                #   If there are no pawns on the board, it can also be rotated arbitrarily
+                if self.wPieces[0] + self.bPieces[0] == 0:
+                    #   All other unique permutations involving reflections and rotations
+                    #   of the board- to make 16 total
+                    all_vecs.append(board_helper.generate_NN_vec(self, False, False, False, True))
+                    all_vecs.append(board_helper.generate_NN_vec(self, False, False, True, False))
+                    all_vecs.append(board_helper.generate_NN_vec(self, False, False, True, True))
+                    all_vecs.append(board_helper.generate_NN_vec(self, False, True, False, True))
+                    all_vecs.append(board_helper.generate_NN_vec(self, False, True, True, False))
+                    all_vecs.append(board_helper.generate_NN_vec(self, False, True, True, True))
+                    all_vecs.append(board_helper.generate_NN_vec(self, True, False, False, False))
+                    all_vecs.append(board_helper.generate_NN_vec(self, True, False, False, True))
+                    all_vecs.append(board_helper.generate_NN_vec(self, True, False, True, True))
+                    all_vecs.append(board_helper.generate_NN_vec(self, True, True, False, False))
+                    all_vecs.append(board_helper.generate_NN_vec(self, True, True, False, True))
+                    all_vecs.append(board_helper.generate_NN_vec(self, True, True, True, True))
 
-        finalInput = np.array(netInput).reshape(-1,1)
-        finalInputInv = np.array(netInputInv).reshape(-1,1)
-        return (finalInput, finalInputInv)
+        return all_vecs
+                
 
-    #   Returns True/False
-    def isCheckmate(self):
+    #   Returns a tuple: the first entry is the game result; the second is a string
+    #   describing details (such as "Draw by stalemate")
+    def updateResult(self):
+        coeff = 1 - 2 * self.whiteToMove
+
+        ########################################################
+        #   See if the position is checkmate
+        ########################################################
+        
         check = (self.whiteToMove and board_helper.inCheck(self.board)) or \
                 (not self.whiteToMove and board_helper.inCheck(board_helper.invert(self.board)))
-        return check and len(board_helper.getLegalMoves(self)) == 0
+        moves = board_helper.getLegalMoves(self)
 
+        if check and len(moves) == 0:
+            return (coeff, "Checkmate")
 
-    #   Returns a tuple: the first entry is True/False; the second is a string
-    #   describing details (such as "Draw by stalemate")
-    def isDraw(self):
-        coeff = 2 * self.whiteToMove - 1
+        #   Rule out any draws
+        if self.moveNum < 10:
+            return (17, "Not a terminal position")
 
         ########################################################
         #   Stalemate
         ########################################################
-        check = (self.whiteToMove and board_helper.inCheck(self.board)) or \
-                (not self.whiteToMove and board_helper.inCheck(board_helper.invert(self.board)))
-        if not check and len(board_helper.getLegalMoves(self)) == 0:
-            note = "Draw by stalemate."
-            return (True, note)
+
+        if not check and len(moves) == 0:
+            return (0, "Draw by stalemate.")
 
         ########################################################  
         #   Insufficient material
@@ -195,16 +183,15 @@ class Game:
                 
                 #   Equivalent to checking if there are bishops on the board and
                 #   they are all on the same color
-                if colorMatch and self.wPieces[2] + self.wPieces[3] > 0:
+                if colorMatch and (self.wPieces[2] + self.wPieces[3] > 0) or (self.wPieces[3] + self.wPieces[2] > 0):
                     if numKnights == 0:
                         note = "Draw by insufficient material."
-                        return (True, note)
+                        return (0, note)
                 elif colorMatch:    # in this case meaning no bishops are on the board
                     if numKnights < 2:
                         note = "Draw by insufficient material."
-                        return (True, note)
+                        return (0, note)
                     
-        #   REPETITION
         
         ########################################################
         #   50 MOVE RULE
@@ -212,9 +199,9 @@ class Game:
         
         if self.movesSinceAction >= 50:
             note = "Draw: no capture or pawn advance in 50 moves."
-            return (True, note)
+            return (0, note)
 
-        return (False, "")
+        return (17, "Not a terminal position")
 
     #   Changes the board and relevant class attributes for any move; does not entirely
     #   verify legitimacy of move.
@@ -228,11 +215,13 @@ class Game:
         self.enPassant = False
 
         if self.whiteToMove:
-            self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board)
+            if not self.quiet:
+                self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board) + " "
             piecesList = self.wPieces
             oppPiecesList = self.bPieces
         else:
-            self.annotation += move.getMoveName(self.board) + "\n"
+            if not self.quiet:
+                self.annotation += move.getMoveName(self.board) + "\n"
             piecesList = self.bPieces
             oppPiecesList = self.wPieces
 
@@ -338,16 +327,8 @@ class Game:
         self.updateValues()
 
         #   See if resulting position (after moving) is a checkmate or draw
-        if self.isCheckmate():
-            if self.whiteToMove:
-                self.gameResult = -1
-            else:
-                self.gameResult = 1
-        else:
-            draw = self.isDraw()
-            if draw[0]:
-                self.gameResult = 0
-                self.gameResultStr = draw[1]
+        self.gameResult, self.gameResultStr = self.updateResult()
+        
 
     #   For debugging; prints info about the current game and returns the empty string,
     #   so that assert statements can easily include a call to this function

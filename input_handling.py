@@ -58,7 +58,7 @@ def getUserInput(messDef, messOnErr, inType, cond, explan='', auxVars=()):
 #   Read a config file where sections are delimited with "#", and each line
 #   of content is a string of the form "[variableName] [value]". Fed to eval(), so
 #   assumes the config file is legitimate and properly specified.
-def readConfig(mode, fName="config.txt"):
+def readConfig(mode=0, fName="config.txt"):
     #   Read in entire file as list of strings, and record lines that
     #   begin with "#"; these are section markers
     lineList = []
@@ -74,13 +74,17 @@ def readConfig(mode, fName="config.txt"):
     f.close()
 
     #   Each line contains the variable name and its value; store the lines
-    #   from the correct section in a dictionary and return
+    #   from the correct section (and general section) in a dictionary and return
     p = {}
-    for i in lineList[sectDivs[mode]+1:sectDivs[mode+1]]:
+    if mode == 0:
+        linesToRead = lineList[1:sectDivs[1]]
+    else:
+        linesToRead = lineList[1:sectDivs[1]] + lineList[sectDivs[mode]+1:sectDivs[mode+1]]
+    for i in linesToRead:
         var = i[:i.index(" ")]
         val = i[i.index(" ")+1:]
         if '"' in val:
-            p[var] = val[1:-1]
+            p[var] = val[1:-2]
         elif "." in val:
             p[var] = float(val)
         else:

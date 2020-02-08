@@ -4,6 +4,9 @@ import copy
 import json
 import random
 import csv
+import os
+from multiprocessing import Pool
+import time
 
 import Game
 import board_helper
@@ -11,10 +14,11 @@ import network_helper
 import input_handling
 import Traversal
 import Move
+import file_IO
 
 class Network:
-    def __init__(self, layers, blockWidth, blocksPerGroup, weights=[], biases=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0):
-        #   Weights and biases
+    def __init__(self, layers, blockWidth, blocksPerGroup, weights=[], biases=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0, certaintyRate=0):
+        #   Weights and biases "beta"
         if len(weights) == 0:
             temp = [839] + layers
             self.weights = [np.random.randn(y, x)/np.sqrt(x)
@@ -68,6 +72,8 @@ class Network:
 
         self.age = age  # number of training steps
         self.experience = experience # number of unique training examples seen
+        self.certainty = certainty # see README- a measure of how much observed recent events match expected ones
+        self.certaintyRate = certaintyRate
 
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
@@ -77,7 +83,7 @@ class Network:
         popMean = [lay.copy() for lay in self.popMean]
         popVar = [lay.copy() for lay in self.popVar]
         
-        return Network(self.layers, self.blockWidth, self.blocksPerGroup, weights, biases, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience)
+        return Network(self.layers, self.blockWidth, self.blocksPerGroup, weights, biases, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience, self.certainty, self.certaintyRate)
         
     #   Prints an annotated game of the neural network playing itself
     def showGame(self, verbose=True):
@@ -223,46 +229,85 @@ class Network:
         print("----------------------")
 
         nu = p['nu']
-        batchSize = p['batchSize']
+        bs = p['batchSize']
         epochs = p['epochs']
-        updatePer = p['updatePeriod']
+        numCPUs = os.cpu_count()
+        numBatches = int(len(games) / bs)
         
         #   Training via SGD
-        numVGames = len(vGames)
-        numBatches = int(len(games) / batchSize)
+        if p['mode'] >= 2:
+            start_time = time.time()
+        pool = Pool()
+
+        #   Make sure the examples are in random order for computation of cost
+        #   and population statistics in batches
+        #random.shuffle(games)
+        random.shuffle(vGames)
+        
         for epoch in range(epochs):
+            #   Divide data into batches, which each are divided into chunks-
+            #   computation of the gradients will be parallelized by chunk
             random.shuffle(games)
-            bs = batchSize
-            batches = []
-            for i in range(numBatches):
-                temp = games[bs*i: bs*(i+1)]
-                bGames = np.array([g[0].flatten() for g in temp]).T
-                bOuts = np.array([g[1] for g in temp]).reshape(1,-1)
-                batches.append((bGames, bOuts))
-                          
+            chunkedGames = network_helper.toBatchChunks(games, bs, numCPUs)
+
             #   Baseline calculation of cost on training, validation data
-            if epoch == 0 and len(self.tCosts) == 0:
-                self.tCosts = [self.totalCost(games)]
-                self.vCosts = [self.totalCost(vGames)]
+            if epoch == 0:
+                self.tCosts.append(self.totalCost(games, p))
+                self.vCosts.append(self.totalCost(vGames, p))
+            
+            for i in range(numBatches):
+                ###############################################################
+                #   Submit the multicore 'job' and average returned gradients
+                ###############################################################
+                inList = [(self, chunk, p) for chunk in chunkedGames[i]]
+                gradients_list = pool.starmap_async(train_thread, inList).get()
 
-            for batch in batches:
-                assert batch[0].shape[1] == bs
-                z, a, aNorm = self.ff_track(batch[0])
-                self.backprop(z, a, aNorm, batch[1], p)            
+                #   Add up gradients by batch and parameter
+                gradient = gradients_list[0]
+                for j in range(1,len(gradients_list)):
+                    #   Loop through each parameter (eg. weights, beta, etc)
+                    for k in range(len(gradients_list[0])):
+                        gradient[k] += gradients_list[j][k]
 
-            #   Compute cost on all training and validation examples (now
-            #   that epoch is complete)
-            self.tCosts.append(self.totalCost(games))
-            self.vCosts.append(self.totalCost(vGames))
-            print("Finished epoch", epoch+1, ".")
+                ###############################################################
+                #   Update parameters via SGD with momentum
+                ###############################################################
+                for lay in range(len(self.weights)):
+                    self.last_dC_dw[lay] = gradient[0][lay] + p['mom'] * self.last_dC_dw[lay]
+                    self.weights[lay] -= nu * self.last_dC_dw[lay]
 
-        print('Updating pop stats...')
-        self.setPopStats(games + vGames)
-        self.age += numBatches
-        print("Done training.")
+                    self.last_dC_db[lay] = gradient[1][lay].reshape((-1,1)) + p['mom'] * self.last_dC_db[lay]
+                    self.beta[lay] -= nu * self.last_dC_db[lay]
+
+                    self.last_dC_dg[lay] = gradient[2][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dg[lay]
+                    self.gamma[lay] -= nu * self.last_dC_dg[lay]
+                
+            #   Approximate loss using batch statistics
+            if p['mode'] >= 1 and epoch < epochs - 1:
+                self.tCosts.append(self.totalCost(games, p))
+                self.vCosts.append(self.totalCost(vGames, p))
+            elif epoch == epochs - 1:
+                self.setPopStats(games + vGames, p)
+                self.tCosts.append(self.totalCost(games, p))
+                self.vCosts.append(self.totalCost(vGames, p))
+                
+            print("Finished epoch ", epoch+1, ".", sep="")
+
+        pool.close()
+        if p['mode'] >= 2:
+            elapsed = time.time() - start_time
+            speed = elapsed / (epochs * numBatches * bs)
+            print("Done training in ", round(elapsed, 2), " seconds (", round(speed, 6), " seconds per training example per epoch).", sep="")
+        else:
+            print("Done training.")
+            
+        self.age += numBatches * epochs
         
         #   Write cost analytics to file
-        self.costToCSV(epochs)
+        if p['mode'] >= 1:
+            self.costToCSV(epochs)
+        else:
+            self.costToCSV(1)
 
     #   Backprop is performed at once on the entire batch, where:
     #       -z, a, and aNorm are lists of 2d np arrays, with index of axis 1 in each array
@@ -281,6 +326,7 @@ class Network:
         dC_dz = [np.zeros(z[i].shape) for i in range(len(z))]
 
         batchSize = y.shape[1]
+        assert batchSize > 0, "Attempted to do backprop on a batch of size 0"
         for i in range(len(z)):
             ###########################################################################
             #   First compute up to dC_daNorm, the partial w/ respect to the batch
@@ -297,9 +343,11 @@ class Network:
 
             #print("dC_daNorm.shape:", dC_daNorm.shape)
             #   Sum up partials w/ respect to gamma and beta over the batch, and divide by batchSize
-            dC_dg[-1-i] = np.sum(dC_daNorm * (aNorm[-1-i] - self.beta[-1-i]) \
-                                 / self.gamma[-1-i], axis = 1) / batchSize
-            dC_dbeta[-1-i] = np.sum(dC_daNorm, axis=1) / batchSize
+            dC_dg[-1-i] = np.sum(dC_dzNorm * (zNorm[-1-i] - self.beta[-1-i]) \
+                                 / self.gamma[-1-i], axis = 1) / p['batchSize']
+            #print("dC_dg[-1-1].shape:", dC_dg[-1-i].shape)
+            dC_db[-1-i] = np.sum(dC_dzNorm, axis=1) / p['batchSize']
+            #print("dC_db[-1-1].shape:", dC_db[-1-i].shape)
                 
             ###########################################################################
             #   Compute daNorm/da (account for batch normalization in gradient flow)
@@ -323,41 +371,51 @@ class Network:
             
             #   Sum up the partials w/ respect to the weights one training example at a time
             for j in range(batchSize):
-                dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[-1-i][:,j].reshape((-1,1)), aNorm[-2-i][:,j].reshape((1,-1)))
-            dC_dw[-1-i] = dC_dw[-1-i] / batchSize + p['weightDec'] * self.weights[-1-i]
+                dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[:,j].reshape((-1,1)), a[-2-i][:,j].reshape((1,-1)))
+            dC_dw[-1-i] = dC_dw[-1-i] / p['batchSize'] + p['weightDec'] * self.weights[-1-i]
 
-            #   If not the output layer, average the bias partials over the training examples
-            if i != 0:
-                dC_dbias[-1*i] = np.sum(dC_dz[-1-i], axis=1) / batchSize
+        return [dC_dw, dC_db, dC_dg]
 
-        ###########################################################################
-        #   Gradient descent with momentum
-        ###########################################################################
+    #   Given the entire set of training examples, returns the average cost per example.
+    def totalCost(self, games, p):
+        numCPUs = os.cpu_count()
+        chunkSize = int(p['batchSize'] / numCPUs)
+        numGames = min(p['costLimit'], len(games))
+        remainder = numGames % chunkSize
 
-        for i in range(len(self.layers)):
-            self.last_dC_dw[i] = dC_dw[i] + mom * self.last_dC_dw[i]
-            self.weights[i] -= nu * self.last_dC_dw[i]
+        c = 0
+        chunks = []
+        for i in range(int(numGames / chunkSize)):
+            thisSize = chunkSize + (i < remainder)
+            chunks.append(games[c:c+thisSize])
+            c += thisSize
 
-            self.last_dC_dbeta[i] = dC_dbeta[i].reshape((-1,1)) + mom * self.last_dC_dbeta[i]
-            self.beta[i] -= nu * self.last_dC_dbeta[i]
+        pool = Pool()
+        costList = pool.map_async(self.batchLoss, chunks).get()
+        pool.close()
 
-            self.last_dC_dg[i] = dC_dg[i].reshape((-1,1)) + mom * self.last_dC_dg[i]
-            self.gamma[i] -= nu * self.last_dC_dg[i]
+        return sum(costList) / len(costList)
 
-            #   The output layer doesn't have biases since sigmoid follows batchNorm
-            if i < len(self.layers) - 1:
-                self.last_dC_dbias[i] = dC_dbias[i].reshape((-1,1)) + mom * self.last_dC_dbias[i]
-                self.biases[i] -= nu * self.last_dC_dbias[i]
+    #   Return the average loss for examples in the typical 'list of tuples' format:
+    #   compute in chunks, as training is done (thus not relying on pop stats)
+    def batchLoss(self, data):
+        inBatch = np.array([x[0].flatten() for x in data]).T
+        labels = np.array([x[1] for x in data]).reshape(1,-1)
 
-    #   Given the entire set of training examples, returns the average cost per example
-    def totalCost(self, games):
-        bGames = np.array([g[0].flatten() for g in games]).T
-        bOuts = np.array([g[1] for g in games]).reshape(1,-1)
+        outBatch = self.ff_track(inBatch)[2][-1]
+        costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
+
+        return float(np.sum(costs)) / len(data)
+
+    #   Return the average loss for examples in the typical 'list of tuples' format:
+    #   rely on population statistics, thus giving the highest quality estimate of
+    #   loss (data was generated using pop stats, not grouped in batches)
+    def individualLoss(self, data):
+        a = np.array([self.feedForward(x[0]) for x in data])
+        labels = np.array([x[1] for x in data])
+
+        return -1 * float(np.mean(labels * np.log(a) + (1 - labels) * np.log(1 - a)))
         
-        a = self.ff_track(bGames)[2][-1]
-        cost = -1 * np.sum(bOuts * np.log(a) + (1 - bOuts) * np.log(1 - a)) / len(games)
-
-        return cost
 
     #   Writes the info about costs vs. epoch, that was saved during training,
     #   to a .csv file. This is designed to produce a temporary file that an
@@ -370,17 +428,17 @@ class Network:
         if append:
             costData = []
         else:
-            costData = [["epochNum", "cost", "costType"]]
+            costData = [["epochNum", "cost", "costType", "isStart"]]
 
         costTypes = [self.tCosts, self.vCosts]
         costLabels = ["t_cost", "v_cost"]
 
-        latestEpochs = epochs + int(len(self.tCosts) == epochs + 1)
-        for epoch in range(latestEpochs):
+        numEpisodes = int(len(self.tCosts) / (epochs + 1))
+        for epoch in range(epochs + 1):
             costIndex = 0
             for costType in costTypes:
-                e = len(self.tCosts) - latestEpochs + epoch
-                costData.append([e, costType[e], costLabels[costIndex]])
+                e = len(self.tCosts) - 1 - epochs + epoch
+                costData.append([e - numEpisodes + 1, costType[e], costLabels[costIndex], int(epoch == 0)])
                 costIndex += 1
 
         #   Open "costs.csv" and write the cost data
@@ -404,39 +462,84 @@ class Network:
 
     #   Takes a list of tuples representing training data, and sets population mean, variance
     #   and standard deviation for the network (used for feedForward())
-    def setPopStats(self, pop):
-        pop = np.array([g[0].flatten() for g in pop]).T
-        z = self.ff_track(pop)[0]
-        popMean, popVar = [], []
-        for lay in z:
-            bStats = network_helper.batchStats(lay)
-            popMean.append(bStats[2].reshape((-1,1)))
-            popVar.append(bStats[0].reshape((-1,1)))
-        self.popMean = popMean
-        self.popVar = popVar
-        self.popDev = [np.sqrt(np.add(lay, self.eps)) for lay in popVar]
+    def setPopStats(self, pop, p):
+        #   "unbiased" estimate of population statistics: compute mean and variance
+        #   in batches and average over these, as suggested in https://arxiv.org/pdf/1502.03167.pdf
+        bs = p['batchSize']
+        numCPUs = os.cpu_count()
+        numBatches = int(len(pop) / bs)
+
+        #   Compute stats in chunks (so pop stats are computed in a consistent way as stats
+        #   are used during training)- this is equivalent to using a batch size of bs/numCPUs
+        chunkedData = network_helper.toBatchChunks(pop, bs, numCPUs)
+
+        pool = Pool()
+
+        popMean = [np.zeros((lay, 1)) for lay in self.layers]
+        popVar = [np.zeros((lay, 1)) for lay in self.layers]
+        for i in range(numBatches):
+            #   This is a list of tuples of lists: popStatList[chunkNum[statType[layerNum]]] is
+            #   a numpy array representing the mean or variance of the activations for one layer
+            #   from feeding forward one chunk
+            inList = [(self, x[0]) for x in chunkedData[i]]
+            popStatList = pool.starmap_async(network_helper.get_pop_stats, inList).get()
+
+            for chunk in popStatList:
+                for lay in range(len(self.layers)):
+                    popMean[lay] += chunk[0][lay] / (numBatches * numCPUs)
+                    popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
+
+        pool.close()
+
+        if p['mode'] >= 2:
+            concDirMean = 0
+            diffMagMean = 0
+            concDirVar = 0
+            diffMagVar = 0
+        for i in range(len(self.popMean)):
+            if p['mode'] >= 2:
+                oldNorm = float(np.linalg.norm(self.popMean[i]))
+                newNorm = float(np.linalg.norm(popMean[i]))
+                concDirMean += abs(float(np.dot(self.popMean[i].T, popMean[i]))) / (oldNorm * newNorm)
+                diffMagMean += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
+
+                oldNorm = float(np.linalg.norm(self.popVar[i]))
+                newNorm = float(np.linalg.norm(popVar[i]))
+                concDirVar += abs(float(np.dot(self.popVar[i].T, popVar[i]))) / (oldNorm * newNorm)
+                diffMagVar += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
+                
+            self.popMean[i] = p['popPersist'] * self.popMean[i] + (1 - p['popPersist']) * popMean[i]
+            self.popVar[i] = p['popPersist'] * self.popVar[i] + (1 - p['popPersist']) * popVar[i]
+            self.popDev[i] = np.sqrt(np.add(self.popVar[i], self.eps))
+        if p['mode'] >= 2:
+            print('Average normalized dot product of new and old pop stats:')
+            print('  Means:', round(concDirMean / len(self.popMean), 5))
+            print('  Vars:', round(concDirVar / len(self.popMean), 5))
+
+            print('Average percent difference of new and old pop stats:')
+            print('  Means:', round(100 * diffMagMean / len(self.popMean), 3))
+            print('  Vars:', round(100 * diffMagVar / len(self.popMean), 3))
 
     def print(self):
         print('Layers:', self.layers)
         print('First 5 weights for each layer:')
         for lay in self.weights:
-            print(lay[0][:5])
+            print(np.round_(lay[0][:5], 4))
         print('First 5 biases:')
         for lay in self.beta:
-            print(lay[:5])
+            print(np.round_(lay[:5], 4).T)
         print('First 5 input means:')
         for lay in self.popMean:
-            print(lay[:5])
+            print(np.round_(lay[:5], 4).T)
         print('First 5 input vars:')
         for lay in self.popVar:
-            print(lay[:5])
+            print(np.round_(lay[:5], 4).T)
         print('Number of training steps total:', self.age)
-        print('Unique examples seen: ~', self.experience, sep="")       
+        print('Unique examples seen: ~', self.experience, sep="")
+        print('Certainty:', round(self.certainty, 4))
+        print('Rate of certainty change:', round(self.certaintyRate, 5))
 
-    def save(self, filename):
-        print("About to save:")
-        self.print()
-        """Save the neural network to the file ``filename``."""
+    def save(self, tBuffer, vBuffer, filename):       
         data = {"layers": self.layers,
                 "weights": [w.tolist() for w in self.weights],
                 "beta": [b.tolist() for b in self.beta],
@@ -444,18 +547,28 @@ class Network:
                 "popMean": [m.tolist() for m in self.popMean],
                 "popVar": [v.tolist() for v in self.popVar],
                 "age": self.age,
-                "experience": self.experience}
+                "experience": self.experience,
+                "certainty": self.certainty,
+                "certaintyRate": self.certaintyRate}
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
-        
-def load(filename):
-    """Load a neural network from the file ``filename``.  Returns an
-    instance of Network.
-    """
+
+        #   Write each sub-buffer to separate file
+        for i in range(4):
+            file_IO.writeGames(tBuffer[i], 'data/tBuffer' + str(i) + '.csv', True, False)
+            file_IO.writeGames(vBuffer[i], 'data/vBuffer' + str(i) + '.csv', True, False)
+
+def train_thread(net, batch, p):  
+    z, zNorm, a = net.ff_track(batch[0])
+    
+    return net.backprop(np.array(z), np.array(zNorm), np.array(a), batch[1], p)
+      
+def load(filename, lazy=False):
     f = open(filename, "r")
     data = json.load(f)
     f.close()
+    
     net = Network(data["layers"])
     net.weights = [np.array(w) for w in data["weights"]]
     net.beta = [np.array(b) for b in data["beta"]]
@@ -465,7 +578,18 @@ def load(filename):
     net.popDev = [np.sqrt(np.add(m, net.eps)) for m in net.popVar]
     net.age = data["age"]
     net.experience = data["experience"]
-    return net
+    net.certainty = data["certainty"]
+    net.certaintyRate = data["certaintyRate"]
+
+    tBuffer = [[],[],[],[]]
+    vBuffer = [[],[],[],[]]
+    if not lazy:
+        p = input_handling.readConfig()
+        for i in range(4):
+            tBuffer[i] = file_IO.decompressGames(file_IO.readGames('data/tBuffer' + str(i) + '.csv', p))
+            vBuffer[i] = file_IO.decompressGames(file_IO.readGames('data/vBuffer' + str(i) + '.csv', p))
+    
+    return (net, tBuffer, vBuffer)
              
                 
 #   Both functions work elementwise on 2D numpy arrays
@@ -477,7 +601,7 @@ def leakyReLU(x):
             if x[i][j] >= 0:
                 y[i][j] = x[i][j]
             else:
-                y[i][j] = 0.1 * x[i][j]
+                y[i][j] = 0.01 * x[i][j]
     return y
             
 
@@ -486,5 +610,5 @@ def d_dx_leakyReLU(x):
     for j in range(x.shape[1]):
         for i in range(x.shape[0]):    
             if x[i][j] < 0:
-                y[i][j] = 0.1
+                y[i][j] = 0.01
     return y
