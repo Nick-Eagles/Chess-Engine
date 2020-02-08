@@ -158,3 +158,8 @@ def getCertainty(net, data, p):
         print("Certainty of network on", len(origData), "examples:", round(certainty, 5))
         print("Moving certainty:", round(net.certainty, 5))
         print("Moving rate of certainty change:", round(net.certaintyRate, 5), "\n")
+
+        if p['mode'] >= 2:
+            #   Print first 2 moments of expected and actual rewards
+            print("Mean and var of expected reward: ", round(np.mean(expRew), 4), "; ", round(np.var(expRew), 4), sep="")
+            print("Mean and var of actual reward: ", round(np.mean(actRew), 4), "; ", round(np.var(actRew), 4), sep="")
