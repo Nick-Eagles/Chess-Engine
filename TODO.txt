@@ -1,5 +1,8 @@
 TODO:
 
+-maybe implement "autosaving" on some interval to avoid multiprocessing getting stuck
+-make p['alpha'] independent from network certainty
+-consider programming in a resignation threshold to speed up training
 -implement alpha-beta-like pruning to greatly optimize tree search
 -add estimated time remaining when training/generating data
 -More visualizations to better understand network progress:
