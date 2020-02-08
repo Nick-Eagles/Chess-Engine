@@ -60,6 +60,10 @@ class Network:
         self.blockWidth = blockWidth
         self.blocksPerGroup = blocksPerGroup
 
+        #   Layer numbers for those layers receiving activations from earlier layers, and those used in later layers, respectively
+        self.resInputs = [i for i in range(len(layers)) if i != 0 and (i + int((i - 2) / (blockWidth * blocksPerGroup + 1)) % blockWidth) == 1]
+        self.resOutputs = [i - (blockWidth + 1) for i in self.resInputs]
+
         #   For momentum term in SGD
         self.last_dC_dw = [np.zeros(lay.shape) for lay in self.weights]
         self.last_dC_dbias = [np.zeros(lay.shape) for lay in self.biases]
@@ -168,7 +172,7 @@ class Network:
         assert len(aNorm.shape) == 2 and aNorm.shape[1] == 1, aNorm.shape
         for lay in range(len(self.layers) - 1):
             #   Add identity for layers starting a residual block
-            if lay != 0 and lay % self.blockWidth == 0:
+            if lay in self.resInputs:
                 aNorm += aLastBlock
                 
             #   Nonlinearity (leaky ReLU)
@@ -180,7 +184,7 @@ class Network:
             #print(self.weights[lay].shape, a.shape, self.popMean[lay].shape, self.popDev[lay].shape)
             
             #   The start of a residual block has activations used [self.blockWidth] layers later
-            if lay % self.blockWidth == 0:
+            if lay in self.resOutputs:
                 aLastBlock = aNorm.copy()
 
         #   Batch normalization THEN nonlinearity (sigmoid) for the last layer
@@ -197,7 +201,7 @@ class Network:
         for lay in range(len(self.layers) - 1):
             #   Add identity for layers starting a residual block. "a" is the raw activation
             #   (before normalization)
-            if lay != 0 and lay % self.blockWidth == 0:
+            if lay in self.resInputs:
                 print("Added activation's shape: ", (aNorm[lay] + aNorm[lay - self.blockWidth]).shape)
                 print("Biases shape: ", self.biases[lay].shape)
                 z.append(self.weights[lay] @ (aNorm[lay] + aNorm[lay - self.blockWidth]) + self.biases[lay])
@@ -325,7 +329,6 @@ class Network:
         dC_dbias = [np.zeros(self.biases[i].shape) for i in range(len(self.biases))]
         dC_dz = [np.zeros(z[i].shape) for i in range(len(z))]
 
-        batchSize = y.shape[1]
         assert batchSize > 0, "Attempted to do backprop on a batch of size 0"
         for i in range(len(z)):
             ###########################################################################
