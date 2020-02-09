@@ -329,7 +329,6 @@ class Network:
         dC_dbias = [np.zeros(self.biases[i].shape) for i in range(len(self.biases))]
         dC_dz = [np.zeros(z[i].shape) for i in range(len(z))]
 
-        assert batchSize > 0, "Attempted to do backprop on a batch of size 0"
         for i in range(len(z)):
             ###########################################################################
             #   First compute up to dC_daNorm, the partial w/ respect to the batch
@@ -338,9 +337,9 @@ class Network:
             if i == 0:  # output layer
                 #   This is actually dC_dzNorm, but renamed for consistent batchNorm calculation
                 dC_daNorm = aNorm[-1] - y   # assumes cross-entropy loss and sigmoid activation; 2D
-            elif i % self.blockWidth == 0:
+            elif i in self.resOutputs:
                 #   input layers to residual blocks
-                dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + dC_dz[self.blockWidth - i]
+                dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + np.dot(self.weights[self.blockWidth + 1 - i].T, dC_dz[self.blockWidth + 1 - i])
             else:
                 dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
 
