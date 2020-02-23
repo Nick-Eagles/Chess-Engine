@@ -210,20 +210,21 @@ class Network:
         #   Batch normalization THEN nonlinearity (sigmoid) for the last layer
         #print((self.weights[-1] @ (aNorm + aLastBlock)).shape)
         aNorm = expit((self.weights[-1] @ (aNorm + aLastBlock) - self.popMean[-1]) * self.gamma[-1] / self.popDev[-1] + self.beta[-1])
-        assert aNorm.shape == (1,1)
+        assert aNorm.shape == (47,1)
         return aNorm
 
     #   Inference for training on all members of a batch simultaneously
     def ff_track(self, aInput):
-        assert len(aInput.shape) == 2 and aInput.shape[0] == 839, aInput.shape
+        assert len(aInput.shape) == 2 and aInput.shape[0] == 784, aInput.shape
         z, a = [], []
         aNorm = [aInput]
         for lay in range(len(self.layers) - 1):
             #   Add identity for layers starting a residual block. "a" is the raw activation
             #   (before normalization)
             if lay in self.resInputs:
-                print("Added activation's shape: ", (aNorm[lay] + aNorm[lay - self.blockWidth]).shape)
-                print("Biases shape: ", self.biases[lay].shape)
+                #print("Added activation's shape: ", (aNorm[lay] + aNorm[lay - self.blockWidth]).shape)
+                #print("Biases shape: ", self.biases[lay].shape)
+                assert aNorm[lay].shape == aNorm[lay - self.blockWidth].shape, str(aNorm[lay].shape) + str(aNorm[lay - self.blockWidth].shape)
                 z.append(self.weights[lay] @ (aNorm[lay] + aNorm[lay - self.blockWidth]) + self.biases[lay])
             else:
                 z.append(self.weights[lay] @ aNorm[lay] + self.biases[lay])
@@ -238,6 +239,7 @@ class Network:
         z.append(self.weights[-1] @ (aNorm[-1] + aNorm[-1 - self.blockWidth]))
         #   Also note that a shortcut is used for the backprop step at the output layer, and a is not needed
         aNorm.append(expit(network_helper.normalize(z[-1], self.gamma[-1], self.beta[-1], self.eps)))
+        assert aNorm[-1].shape == (47, aInput.shape[1]), aNorm[-1].shape
         
         return (z, a, aNorm)
 
