@@ -636,13 +636,16 @@ class Network:
         data = {"layers": self.layers,
                 "weights": [w.tolist() for w in self.weights],
                 "beta": [b.tolist() for b in self.beta],
+                "biases": [b.tolist() for b in self.biases],
                 "gamma": [g.tolist() for g in self.gamma],
                 "popMean": [m.tolist() for m in self.popMean],
                 "popVar": [v.tolist() for v in self.popVar],
                 "age": self.age,
                 "experience": self.experience,
                 "certainty": self.certainty,
-                "certaintyRate": self.certaintyRate}
+                "certaintyRate": self.certaintyRate,
+                "blockWidth": self.blockWidth,
+                "blocksPerGroup": self.blocksPerGroup}
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
@@ -662,8 +665,9 @@ def load(filename, lazy=False):
     data = json.load(f)
     f.close()
     
-    net = Network(data["layers"])
+    net = Network(data["layers"], data["blockWidth"], data["blocksPerGroup"])
     net.weights = [np.array(w) for w in data["weights"]]
+    net.biases = [np.array(b) for b in data["biases"]]
     net.beta = [np.array(b) for b in data["beta"]]
     net.gamma = [np.array(g) for g in data["gamma"]]
     net.popMean = [np.array(m) for m in data["popMean"]]
