@@ -613,7 +613,13 @@ class Network:
         for lay in self.weights:
             print(np.round_(lay[0][:5], 4))
         print('First 5 biases:')
+        for lay in self.biases:
+            print(np.round_(lay[:5],4).T)
+        print('First 5 beta:')
         for lay in self.beta:
+            print(np.round_(lay[:5], 4).T)
+        print('First 5 gamma:')
+        for lay in self.gamma:
             print(np.round_(lay[:5], 4).T)
         print('First 5 input means:')
         for lay in self.popMean:
@@ -623,8 +629,8 @@ class Network:
             print(np.round_(lay[:5], 4).T)
         print('Number of training steps total:', self.age)
         print('Unique examples seen: ~', self.experience, sep="")
-        print('Certainty:', round(self.certainty, 4))
-        print('Rate of certainty change:', round(self.certaintyRate, 5))
+        print('Residual "input" layers:', self.resInputs)
+        print('Residual "output" layers:', self.resOutputs)
 
     def save(self, tBuffer, vBuffer, filename):       
         data = {"layers": self.layers,
