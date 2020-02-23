@@ -298,15 +298,39 @@ class Network:
                 ###############################################################
                 #   Update parameters via SGD with momentum
                 ###############################################################
+
+                if i == 0 and p['mode'] >= 2:
+                    for lay in range(len(self.weights)):
+                        print("----------------------------------")
+                        print("  Layer ", lay, ":", sep="")
+                        print("----------------------------------")
+                        temp0 = round(nu * np.linalg.norm(gradient[0][lay]), 3)
+                        temp1 = round(np.linalg.norm(self.weights[lay]), 2)
+                        print("Magnitude of weight partial (weight value): ", temp0, " (", temp1, ")", sep="")
+                        temp0 = round(nu * np.linalg.norm(gradient[1][lay]), 3)
+                        temp1 = round(np.linalg.norm(self.beta[lay]), 2)
+                        print("Magnitude of beta partial (beta value): ", temp0, " (", temp1, ")", sep="")
+                        temp0 = round(nu * np.linalg.norm(gradient[2][lay]), 3)
+                        temp1 = round(np.linalg.norm(self.gamma[lay]), 2)
+                        print("Magnitude of gamma partial (gamma value): ", temp0, " (", temp1, ")", sep="")
+                        if lay < len(self.weights) - 1:
+                            temp0 = round(nu * np.linalg.norm(gradient[3][lay]), 3)
+                            temp1 = round(np.linalg.norm(self.biases[lay]), 2)
+                            print("Magnitude of bias partial (bias value): ", temp0, " (", temp1, ")", sep="")
+                            
                 for lay in range(len(self.weights)):
                     self.last_dC_dw[lay] = gradient[0][lay] + p['mom'] * self.last_dC_dw[lay]
                     self.weights[lay] -= nu * self.last_dC_dw[lay]
 
-                    self.last_dC_db[lay] = gradient[1][lay].reshape((-1,1)) + p['mom'] * self.last_dC_db[lay]
-                    self.beta[lay] -= nu * self.last_dC_db[lay]
+                    self.last_dC_dbeta[lay] = gradient[1][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dbeta[lay]
+                    self.beta[lay] -= p['batchNormScale'] * nu * self.last_dC_dbeta[lay]
 
                     self.last_dC_dg[lay] = gradient[2][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dg[lay]
-                    self.gamma[lay] -= nu * self.last_dC_dg[lay]
+                    self.gamma[lay] -= p['batchNormScale'] * nu * self.last_dC_dg[lay]
+
+                    if lay < len(self.weights) - 1:
+                        self.last_dC_dbias[lay] = gradient[3][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dbias[lay]
+                        self.biases[lay] -= nu * self.last_dC_dbias[lay]
                 
             #   Approximate loss using batch statistics
             if p['mode'] >= 1 and epoch < epochs - 1:
