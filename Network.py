@@ -18,15 +18,34 @@ import file_IO
 
 class Network:
     def __init__(self, layers, blockWidth, blocksPerGroup, weights=[], biases=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0, certaintyRate=0):
+        #   Standard deviation for normalized activations of the last layer in residual blocks
+        self.alpha = 0.1
+
+        initial_bias = 0.0
+        var_scale = 1.0
+        
+        #   Layer numbers for those layers receiving activations from earlier layers, and those used in later layers, respectively
+        self.resInputs = [i for i in range(len(layers)) if i > blockWidth and (i + int((i - 2) / (blockWidth * blocksPerGroup + 1))) % blockWidth == 1]
+        self.resOutputs = [i - (blockWidth + 1) for i in self.resInputs]
+        
         #   Weights and biases "beta"
         if len(weights) == 0:
-            temp = [839] + layers
-            self.weights = [np.random.randn(y, x)/np.sqrt(x)
-                for x, y in zip(temp[:-1], temp[1:])]
+            temp = [784] + layers
+            
+            self.weights = []
+            for i in range(len(layers)):
+                #   Scale weights so that stddev of every layer's input is 1
+                if i - 1 in self.resInputs:
+                    scalar = np.sqrt(temp[i] * (self.alpha**2 + 1)) / var_scale
+                else:
+                    scalar = np.sqrt(temp[i]) / var_scale
+                    
+                self.weights.append(np.random.randn(temp[i+1], temp[i]) / scalar)
+            
         else:
             self.weights = weights
         if len(biases) == 0:
-            self.biases = [np.full((x, 1), 0.1) for x in layers[:-1]]
+            self.biases = [np.full((x, 1), initial_bias) for x in layers[:-1]]
         else:
             self.biases = biases
 
@@ -36,15 +55,20 @@ class Network:
         else:
             self.beta = beta
             
-        #   Ideal activation variances "gamma" for batch norm
+        #   Ideal activation stddevs "gamma" for batch norm
         if len(gamma) == 0:
-            self.gamma = [np.ones((x, 1)) for x in layers]
+            self.gamma = []
+            for i in range(len(layers)):
+                if i + 1 in self.resInputs:
+                    self.gamma.append(np.full((layers[i], 1), self.alpha * var_scale))
+                else:
+                    self.gamma.append(np.full((layers[i], 1), var_scale))
         else:
             self.gamma = gamma
 
         #   Population mean, variance, and stddev for inputs to each layer
         if len(popMean) == 0:
-            self.popMean = [np.full((x, 1), -0.1) for x in layers]
+            self.popMean = [np.zeros((x, 1)) for x in layers]
         else:
             self.popMean = popMean
         if len(popVar) == 0:
@@ -59,10 +83,6 @@ class Network:
         self.layers = layers
         self.blockWidth = blockWidth
         self.blocksPerGroup = blocksPerGroup
-
-        #   Layer numbers for those layers receiving activations from earlier layers, and those used in later layers, respectively
-        self.resInputs = [i for i in range(len(layers)) if i != 0 and (i + int((i - 2) / (blockWidth * blocksPerGroup + 1)) % blockWidth) == 1]
-        self.resOutputs = [i - (blockWidth + 1) for i in self.resInputs]
 
         #   For momentum term in SGD
         self.last_dC_dw = [np.zeros(lay.shape) for lay in self.weights]
