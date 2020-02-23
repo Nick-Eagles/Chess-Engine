@@ -365,6 +365,24 @@ class Network:
     #        to a NN layer
     #       -y is a 2d np array following this formatting style
     def backprop(self, z, a, aNorm, y, p):
+        #   Sanity checks on number of layers
+        assert len(z) == len(self.layers)
+        assert len(a) == len(self.layers) - 1
+        assert len(aNorm) == len(self.layers) + 1
+
+        assert aNorm[0].shape == (784, y.shape[1]), aNorm[0].shape
+        assert aNorm[-1].shape == y.shape, aNorm[-1].shape
+
+        if p['mode'] >= 2:
+            bs = y.shape[1]
+            assert aNorm[0].shape == (784, bs), aNorm[0].shape
+            assert aNorm[-1].shape == y.shape, aNorm[-1].shape
+            for i in range(len(self.layers)):
+                assert z[i].shape == (self.layers[i], bs), z[i].shape
+                assert aNorm[i+1].shape == (self.layers[i], bs), aNorm[i+1].shape
+                if i < len(self.layers) - 1:
+                    assert a[i].shape == (self.layers[i], bs), a[i].shape
+        
         nu = p['nu']
         mom = p['mom']
         
@@ -375,6 +393,8 @@ class Network:
         dC_dbias = [np.zeros(self.biases[i].shape) for i in range(len(self.biases))]
         dC_dz = [np.zeros(z[i].shape) for i in range(len(z))]
 
+        batchSize = y.shape[1]
+        assert batchSize > 0, "Attempted to do backprop on a batch of size 0"
         for i in range(len(z)):
             ###########################################################################
             #   First compute up to dC_daNorm, the partial w/ respect to the batch
@@ -383,25 +403,28 @@ class Network:
             if i == 0:  # output layer
                 #   This is actually dC_dzNorm, but renamed for consistent batchNorm calculation
                 dC_daNorm = aNorm[-1] - y   # assumes cross-entropy loss and sigmoid activation; 2D
-            elif i in self.resOutputs:
+            elif len(z) - 1 - i in self.resOutputs:
                 #   input layers to residual blocks
-                dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + np.dot(self.weights[self.blockWidth + 1 - i].T, dC_dz[self.blockWidth + 1 - i])
+                dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + np.dot(self.weights[self.blockWidth - i].T, dC_dz[self.blockWidth - i])
             else:
                 dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
 
             #print("dC_daNorm.shape:", dC_daNorm.shape)
             #   Sum up partials w/ respect to gamma and beta over the batch, and divide by batchSize
-            dC_dg[-1-i] = np.sum(dC_dzNorm * (zNorm[-1-i] - self.beta[-1-i]) \
+            dC_dg[-1-i] = np.sum(dC_daNorm * (aNorm[-1-i] - self.beta[-1-i]) \
                                  / self.gamma[-1-i], axis = 1) / p['batchSize']
             #print("dC_dg[-1-1].shape:", dC_dg[-1-i].shape)
-            dC_db[-1-i] = np.sum(dC_dzNorm, axis=1) / p['batchSize']
-            #print("dC_db[-1-1].shape:", dC_db[-1-i].shape)
+            dC_dbeta[-1-i] = np.sum(dC_daNorm, axis=1) / p['batchSize']
+            #print("dC_dbeta[-1-1].shape:", dC_db[-1-i].shape)
                 
             ###########################################################################
             #   Compute daNorm/da (account for batch normalization in gradient flow)
             ###########################################################################
-            bStats = network_helper.batchStats(a[-1-i])
-            
+            if i == 0:
+                bStats = network_helper.batchStats(z[-1])
+            else:
+                bStats = network_helper.batchStats(a[-1*i])
+
             firstTerm = self.gamma[-1-i].flatten() /(batchSize * np.sqrt(bStats[0] + self.eps)) # 1D
             firstTerm = np.dot(firstTerm.reshape(-1,1), np.ones((1, batchSize)))    # 2D
             secTerm = batchSize - 1 - bStats[1] / np.dot(bStats[0].reshape(-1,1), np.ones((1, batchSize))) # 2D
@@ -409,8 +432,10 @@ class Network:
             #   The term in parenthesis is daNorm/da (2D)
             dC_da = dC_daNorm * (firstTerm * secTerm)
             if i == 0:
-                dC_dz[-1-i] = dC_da # recall we named zNorm 'aNorm' and z 'a', for the output layer
+                #assert dC_da.shape == dC_dz[-1-i].shape, dC_da.shape
+                dC_dz[-1-i] = dC_da.copy() # recall we named zNorm 'aNorm' and z 'a', for the output layer
             else:
+                #assert (dC_da * d_dx_leakyReLU(z[-1-i])).shape == dC_dz[-1-i].shape, (dC_da * d_dx_leakyReLU(z[-1-i])).shape
                 dC_dz[-1-i] = dC_da * d_dx_leakyReLU(z[-1-i])
 
             ###########################################################################
@@ -419,10 +444,22 @@ class Network:
             
             #   Sum up the partials w/ respect to the weights one training example at a time
             for j in range(batchSize):
-                dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[:,j].reshape((-1,1)), a[-2-i][:,j].reshape((1,-1)))
-            dC_dw[-1-i] = dC_dw[-1-i] / p['batchSize'] + p['weightDec'] * self.weights[-1-i]
+                #   "residual input" layers take activations from a few layers before, affecting partials
+                if len(z) - 1 - i in self.resInputs:
+                    actual_a = (aNorm[-2-i][:,j] + aNorm[-2-i-self.blockWidth][:,j]).reshape((1,-1))
+                else:
+                    actual_a = aNorm[-2-i][:,j].reshape((1,-1))
 
-        return [dC_dw, dC_db, dC_dg]
+                dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[-1-i][:,j].reshape((-1,1)), actual_a)
+                
+            dC_dw[-1-i] = dC_dw[-1-i] / p['batchSize'] + (p['weightDec'] / os.cpu_count()) * self.weights[-1-i]
+
+            #   Sum up partials w/ respect to biases (except for the last layer, which
+            #   doesn't have biases, because batch norm occurs before the nonlinearity)
+            if i > 0:
+                dC_dbias[-1*i] = (np.sum(dC_dz[-1-i], axis=1) / p['batchSize']).reshape((-1,1))
+
+        return [dC_dw, dC_dbeta, dC_dg, dC_dbias]
 
     #   Given the entire set of training examples, returns the average cost per example.
     def totalCost(self, games, p):
