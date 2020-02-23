@@ -485,12 +485,14 @@ class Network:
     #   compute in chunks, as training is done (thus not relying on pop stats)
     def batchLoss(self, data):
         inBatch = np.array([x[0].flatten() for x in data]).T
-        labels = np.array([x[1] for x in data]).reshape(1,-1)
+        labels = np.array([x[1] for x in data]).reshape(47,-1)
 
         outBatch = self.ff_track(inBatch)[2][-1]
-        costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
+        #costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
+        temp = np.mean((outBatch - labels) * (outBatch - labels), axis=1)
+        return float(np.sqrt((temp.T @ temp) / labels.shape[0]))
 
-        return float(np.sum(costs)) / len(data)
+        #return float(np.sum(costs)) / len(data)
 
     #   Return the average loss for examples in the typical 'list of tuples' format:
     #   rely on population statistics, thus giving the highest quality estimate of
