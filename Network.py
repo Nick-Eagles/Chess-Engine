@@ -656,9 +656,9 @@ class Network:
             file_IO.writeGames(vBuffer[i], 'data/vBuffer' + str(i) + '.csv', True, False)
 
 def train_thread(net, batch, p):  
-    z, zNorm, a = net.ff_track(batch[0])
+    z, a, aNorm = net.ff_track(batch[0])
     
-    return net.backprop(np.array(z), np.array(zNorm), np.array(a), batch[1], p)
+    return net.backprop(z, a, aNorm, batch[1], p)
       
 def load(filename, lazy=False):
     f = open(filename, "r")
