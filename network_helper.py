@@ -40,7 +40,8 @@ def normalize(xBatch, gamma, beta, eps):
 def batchStats(xBatch):
     mean = np.mean(xBatch, axis = 1)
     dev = xBatch - np.dot(mean.reshape((-1,1)), np.ones((1, xBatch.shape[1])))
-    return (np.mean(dev * dev, axis = 1), dev * dev, mean)
+    squareDev = dev * dev
+    return (np.mean(squareDev, axis = 1), squareDev, mean)
 
 def toBatchChunks(data, bs, numCPUs):
     #permute = list(range(len(data)))
@@ -84,10 +85,14 @@ def get_pop_stats(net, chunk):
     bs = chunk.shape[1]
     
     popMean, popVar = [], []
-    for lay in z:
-        bStats = batchStats(lay)
-        popMean.append(bStats[2].reshape((-1,1)))
-        popVar.append((bs * bStats[0] / (bs - 1)).reshape((-1,1)))
+    for lay in range(len(z)):
+        if lay in net.resOutputs:
+            popMean.append('Undefined for projection layers!')
+            popVar.append('Undefined for projection layers!')
+        else:
+            bStats = batchStats(z[lay])
+            popMean.append(bStats[2].reshape((-1,1)))
+            popVar.append((bs * bStats[0] / (bs - 1)).reshape((-1,1)))
 
     return (popMean, popVar)
 
@@ -114,7 +119,7 @@ def net_activity(net, tData):
     z, zNorm, a = net.ff_track(bigBatch)
 
     activities = []
-    for lay in zNorm:
+    for lay in a:
         temp = []
         for neuron in lay:
             temp.append(sum([x >= 0 for x in neuron]) / lay.shape[1]) # across batch for 1 neuron
