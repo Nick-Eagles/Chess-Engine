@@ -18,15 +18,12 @@ import file_IO
 
 class Network:
     def __init__(self, layers, blockWidth, blocksPerGroup, weights=[], biases=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0, certaintyRate=0):
-        #   Standard deviation for normalized activations of the last layer in residual blocks
-        self.alpha = 0.1
-
-        initial_bias = 0.0
         var_scale = 1.0
+        alpha = 1.0
         
         #   Layer numbers for those layers receiving activations from earlier layers, and those used in later layers, respectively
-        self.resInputs = [i for i in range(len(layers)) if i > blockWidth and (i + int((i - 2) / (blockWidth * blocksPerGroup + 1))) % blockWidth == 1]
-        self.resOutputs = [i - (blockWidth + 1) for i in self.resInputs]
+        self.resInputs = [i for i in range(len(layers)) if i > blockWidth - 1 and (i + int((i - 1) / (blockWidth * blocksPerGroup + 1))) % blockWidth == 0]
+        self.resOutputs = [i - blockWidth for i in self.resInputs]
         
         #   Weights and biases "beta"
         if len(weights) == 0:
@@ -35,49 +32,83 @@ class Network:
             self.weights = []
             for i in range(len(layers)):
                 #   Scale weights so that stddev of every layer's input is 1
-                if i - 1 in self.resInputs:
-                    scalar = np.sqrt(temp[i] * (self.alpha**2 + 1)) / var_scale
-                else:
-                    scalar = np.sqrt(temp[i]) / var_scale
+                #if i - 1 in self.resInputs:
+                    #scalar = np.sqrt(temp[i] * (alpha**2 + 1)) / var_scale
+                #else:
+                    #scalar = np.sqrt(temp[i]) / var_scale
+
+                scalar = np.sqrt(2 / temp[i])
                     
-                self.weights.append(np.random.randn(temp[i+1], temp[i]) / scalar)
+                self.weights.append(np.random.randn(temp[i+1], temp[i]) * scalar)
             
         else:
             self.weights = weights
+
         if len(biases) == 0:
-            self.biases = [np.full((x, 1), initial_bias) for x in layers[:-1]]
+            self.biases = [np.zeros((layers[-1], 1))]
         else:
             self.biases = biases
 
         #   Ideal activation means "beta" for batch norm
         if len(beta) == 0:
-            self.beta = [np.zeros((x, 1)) for x in layers]
+            self.beta = []
+            self.last_dC_db = []
+            for i in range(len(layers) - 1):
+                if i in self.resOutputs:
+                    self.beta.append('Projection layers have no BN!')
+                    self.last_dC_db.append('Projection layers have no BN!')
+                else:
+                    self.beta.append(np.zeros((layers[i], 1)))
+                    self.last_dC_db.append(np.zeros((layers[i], 1)))
         else:
             self.beta = beta
             
         #   Ideal activation stddevs "gamma" for batch norm
         if len(gamma) == 0:
             self.gamma = []
-            for i in range(len(layers)):
-                if i + 1 in self.resInputs:
-                    self.gamma.append(np.full((layers[i], 1), self.alpha * var_scale))
+            self.last_dC_dg = []
+            for i in range(len(layers) - 1):
+                if i in self.resInputs:
+                    self.gamma.append(np.full((layers[i], 1), var_scale * alpha))
+                    self.last_dC_dg.append(np.zeros((layers[i], 1)))
+                elif i in self.resOutputs:
+                    self.gamma.append('Projection layers have no BN!')
+                    self.last_dC_dg.append('Projection layers have no BN!')
                 else:
                     self.gamma.append(np.full((layers[i], 1), var_scale))
+                    self.last_dC_dg.append(np.zeros((layers[i], 1)))
+
         else:
             self.gamma = gamma
 
         #   Population mean, variance, and stddev for inputs to each layer
         if len(popMean) == 0:
-            self.popMean = [np.zeros((x, 1)) for x in layers]
+            self.popMean = []
+            for i in range(len(layers)):
+                if i in self.resOutputs:
+                    self.popMean.append('Not computed for projection layers!')
+                else:
+                    self.popMean.append(np.zeros((layers[i], 1)))
         else:
             self.popMean = popMean
         if len(popVar) == 0:
-            self.popVar = [np.ones((x, 1)) for x in layers]
+            self.popVar = []
+            for i in range(len(layers)):
+                if i in self.resOutputs:
+                    self.popVar.append('Not computed for projection layers!')
+                else:
+                    self.popVar.append(np.ones((layers[i], 1)))
         else:
             self.popVar = popVar
             
-        self.eps = 0.000001
-        self.popDev = [np.sqrt(np.add(lay, self.eps)) for lay in self.popVar]
+        self.eps = 0.0001
+        self.popDev = []
+        for i in range(len(layers)):
+            if i in self.resOutputs:
+                self.popDev.append('Not computed for projection layers!')
+            else:
+                self.popDev.append(np.sqrt(np.add(self.popVar[i], self.eps)))
+                
 
         #   List of lengths of hidden layers, in forward order
         self.layers = layers
@@ -86,9 +117,7 @@ class Network:
 
         #   For momentum term in SGD
         self.last_dC_dw = [np.zeros(lay.shape) for lay in self.weights]
-        self.last_dC_dbias = [np.zeros(lay.shape) for lay in self.biases]
-        self.last_dC_dbeta = [np.zeros(lay.shape) for lay in self.beta]
-        self.last_dC_dg = [np.zeros(lay.shape) for lay in self.gamma]
+        self.last_dC_dbias = [np.zeros(self.biases[0].shape)]
 
         #   For analysis of cost vs. epoch after training
         self.tCosts = tCosts
@@ -101,7 +130,7 @@ class Network:
 
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
-        biases = [lay.copy() for lay in self.biases]
+        biases = [self.biases[0].copy()]
         beta = [lay.copy() for lay in self.beta]
         gamma = [lay.copy() for lay in self.gamma]
         popMean = [lay.copy() for lay in self.popMean]
@@ -187,61 +216,67 @@ class Network:
         print("Done.")
 
     #   Inference using fixed parameters; inputs are normalized by the expected population's
-    #   mean and variance. "aNorm" is the input for a single example.
-    def feedForward(self, aNorm):
-        assert len(aNorm.shape) == 2 and aNorm.shape[1] == 1, aNorm.shape
+    #   mean and variance. "a" is the input for a single example.
+    def feedForward(self, a):
+        assert len(a.shape) == 2 and a.shape[1] == 1, a.shape
         for lay in range(len(self.layers) - 1):
-            #   Add identity for layers starting a residual block
-            if lay in self.resInputs:
-                aNorm += aLastBlock
-                
-            #   Nonlinearity (leaky ReLU)
-            a = leakyReLU(self.weights[lay] @ aNorm + self.biases[lay])
-
-            #   Batch normalization
-            aNorm = (a - self.popMean[lay]) * self.gamma[lay] / self.popDev[lay] + self.beta[lay]
-            #print("aNorm shape for layer ", lay+1, ":", aNorm.shape)
-            #print(self.weights[lay].shape, a.shape, self.popMean[lay].shape, self.popDev[lay].shape)
-            
-            #   The start of a residual block has activations used [self.blockWidth] layers later
             if lay in self.resOutputs:
-                aLastBlock = aNorm.copy()
+                #   This is a downsample layer, which simply performs a linear
+                #   projection to match dimensionality
+                a = self.weights[lay] @ a
 
-        #   Batch normalization THEN nonlinearity (sigmoid) for the last layer
-        #print((self.weights[-1] @ (aNorm + aLastBlock)).shape)
-        aNorm = expit((self.weights[-1] @ (aNorm + aLastBlock) - self.popMean[-1]) * self.gamma[-1] / self.popDev[-1] + self.beta[-1])
-        assert aNorm.shape == (47,1)
-        return aNorm
+                #   The start of a residual block has activations used [self.blockWidth] layers later
+                aLastBlock = a.copy()
+            else:
+                #   Batch norm
+                a = (self.weights[lay] @ a - self.popMean[lay]) * self.gamma[lay] / self.popDev[lay] + self.beta[lay]
+
+                #   Add identity for layers starting a residual block
+                if lay in self.resInputs:
+                    a += aLastBlock
+                    
+                #   Nonlinearity (leaky ReLU)
+                a = leakyReLU(a)
+
+        #   Sigmoid without batch norm for the last layer
+        a = expit(self.weights[-1] @ a + self.biases[0])
+        assert a.shape == (self.layers[-1], 1), a.shape
+        return a
 
     #   Inference for training on all members of a batch simultaneously
     def ff_track(self, aInput):
         assert len(aInput.shape) == 2 and aInput.shape[0] == 784, aInput.shape
-        z, a = [], []
-        aNorm = [aInput]
-        for lay in range(len(self.layers) - 1):
-            #   Add identity for layers starting a residual block. "a" is the raw activation
-            #   (before normalization)
-            if lay in self.resInputs:
-                #print("Added activation's shape: ", (aNorm[lay] + aNorm[lay - self.blockWidth]).shape)
-                #print("Biases shape: ", self.biases[lay].shape)
-                assert aNorm[lay].shape == aNorm[lay - self.blockWidth].shape, str(aNorm[lay].shape) + str(aNorm[lay - self.blockWidth].shape)
-                z.append(self.weights[lay] @ (aNorm[lay] + aNorm[lay - self.blockWidth]) + self.biases[lay])
+        z, zNorm = [], []
+        a = [aInput]
+        for lay in range(len(self.layers)):
+            #   Handle the 4 distinct types of layers separately
+            if lay == len(self.layers) - 1:
+                #   The last layer has biases, no batch norm, and sigmoid activation
+                z.append(self.weights[lay] @ a[lay] + self.biases[0])
+                zNorm.append('Last layer does not have BN!')
+                a.append(expit(z[-1]))
+            elif lay in self.resInputs:
+                #   Layers receiving shortcut connections have batch norm, the shortcut
+                #   connection, then reLU of the resulting quantity. Note the last
+                #   layer is not included in the set here
+                z.append(self.weights[lay] @ a[lay])
+                zNorm.append(network_helper.normalize(z[lay], self.gamma[lay], self.beta[lay], self.eps))
+                a.append(leakyReLU(zNorm[-1] + a[lay + 1 - self.blockWidth]))
+            elif lay in self.resOutputs:
+                #   Linear downsample layers
+                temp = self.weights[lay] @ a[lay]
+                z.append(temp)
+                zNorm.append('Linear downsample layers do not have BN!')
+                a.append(temp)
             else:
-                z.append(self.weights[lay] @ aNorm[lay] + self.biases[lay])
-            a.append(leakyReLU(z[-1]))
-
-            #   Batch normalized activation to feed to next layer
-            aNorm.append(network_helper.normalize(a[lay], self.gamma[lay], self.beta[lay], self.eps))
-
-        #   Note that batch norm is applied before sigmoid, and that therefore:
-        #       1. biases are not used (aside for beta)
-        #       2. a and aNorm have slightly different meanings, particularly for backprop
-        z.append(self.weights[-1] @ (aNorm[-1] + aNorm[-1 - self.blockWidth]))
-        #   Also note that a shortcut is used for the backprop step at the output layer, and a is not needed
-        aNorm.append(expit(network_helper.normalize(z[-1], self.gamma[-1], self.beta[-1], self.eps)))
-        assert aNorm[-1].shape == (47, aInput.shape[1]), aNorm[-1].shape
+                #   "Typical" layers have batch norm and ReLU activation
+                z.append(self.weights[lay] @ a[lay])
+                zNorm.append(network_helper.normalize(z[lay], self.gamma[lay], self.beta[lay], self.eps))
+                a.append(leakyReLU(zNorm[lay]))
+                         
+        assert a[-1].shape == (self.layers[-1], aInput.shape[1]), a[-1].shape
         
-        return (z, a, aNorm)
+        return (z, zNorm, a)
 
     #   Trains on n = "numGames" games. Each game provides n = movecap training
     #   examples, so a mini-batch contains (movecap * batchSize) examples. SGD
@@ -300,7 +335,7 @@ class Network:
                 ###############################################################
 
                 if i == 0 and p['mode'] >= 2:
-                    for lay in range(len(self.weights)):
+                    for lay in range(len(self.layers)):
                         print("----------------------------------")
                         print("  Layer ", lay, ":", sep="")
                         print("----------------------------------")
@@ -309,28 +344,26 @@ class Network:
                         print("Magnitude of weight partial (weight value): ", temp0, " (", temp1, ")", sep="")
                         temp0 = round(nu * np.linalg.norm(gradient[1][lay]), 3)
                         temp1 = round(np.linalg.norm(self.beta[lay]), 2)
-                        print("Magnitude of beta partial (beta value): ", temp0, " (", temp1, ")", sep="")
-                        temp0 = round(nu * np.linalg.norm(gradient[2][lay]), 3)
-                        temp1 = round(np.linalg.norm(self.gamma[lay]), 2)
-                        print("Magnitude of gamma partial (gamma value): ", temp0, " (", temp1, ")", sep="")
-                        if lay < len(self.weights) - 1:
-                            temp0 = round(nu * np.linalg.norm(gradient[3][lay]), 3)
-                            temp1 = round(np.linalg.norm(self.biases[lay]), 2)
-                            print("Magnitude of bias partial (bias value): ", temp0, " (", temp1, ")", sep="")
+                        if lay < len(self.layers) - 1 and lay not in self.resOutputs:
+                            print("Magnitude of beta partial (beta value): ", temp0, " (", temp1, ")", sep="")
+                            temp0 = round(nu * np.linalg.norm(gradient[2][lay]), 3)
+                            temp1 = round(np.linalg.norm(self.gamma[lay]), 2)
+                            print("Magnitude of gamma partial (gamma value): ", temp0, " (", temp1, ")", sep="")
+
+                self.last_dC_dbias[0] = gradient[3][0].reshape((-1,1)) + p['mom'] * self.last_dC_dbias[0]
+                self.biases[0] -= nu * self.last_dC_dbias[0]
                             
-                for lay in range(len(self.weights)):
+                for lay in range(len(self.layers)):
                     self.last_dC_dw[lay] = gradient[0][lay] + p['mom'] * self.last_dC_dw[lay]
                     self.weights[lay] -= nu * self.last_dC_dw[lay]
 
-                    self.last_dC_dbeta[lay] = gradient[1][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dbeta[lay]
-                    self.beta[lay] -= p['batchNormScale'] * nu * self.last_dC_dbeta[lay]
+                    #   Batch norm-related parameters
+                    if lay < len(self.layers) - 1 and lay not in self.resOutputs:
+                        self.last_dC_db[lay] = gradient[1][lay].reshape((-1,1)) + p['mom'] * self.last_dC_db[lay]
+                        self.beta[lay] -= p['batchNormScale'] * nu * self.last_dC_db[lay]
 
-                    self.last_dC_dg[lay] = gradient[2][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dg[lay]
-                    self.gamma[lay] -= p['batchNormScale'] * nu * self.last_dC_dg[lay]
-
-                    if lay < len(self.weights) - 1:
-                        self.last_dC_dbias[lay] = gradient[3][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dbias[lay]
-                        self.biases[lay] -= nu * self.last_dC_dbias[lay]
+                        self.last_dC_dg[lay] = gradient[2][lay].reshape((-1,1)) + p['mom'] * self.last_dC_dg[lay]
+                        self.gamma[lay] -= p['batchNormScale'] * nu * self.last_dC_dg[lay]
                 
             #   Approximate loss using batch statistics
             if p['mode'] >= 1 and epoch < epochs - 1:
@@ -360,106 +393,104 @@ class Network:
             self.costToCSV(1)
 
     #   Backprop is performed at once on the entire batch, where:
-    #       -z, a, and aNorm are lists of 2d np arrays, with index of axis 1 in each array
+    #       -z, zNorm, and a are lists of 2d np arrays, with index of axis 1 in each array
     #        corresponding to the training example, and each list element referring
     #        to a NN layer
     #       -y is a 2d np array following this formatting style
-    def backprop(self, z, a, aNorm, y, p):
+    def backprop(self, z, zNorm, a, y, p):
         #   Sanity checks on number of layers
         assert len(z) == len(self.layers)
-        assert len(a) == len(self.layers) - 1
-        assert len(aNorm) == len(self.layers) + 1
+        assert len(zNorm) == len(self.layers)
+        assert len(a) == len(self.layers) + 1
 
-        assert aNorm[0].shape == (784, y.shape[1]), aNorm[0].shape
-        assert aNorm[-1].shape == y.shape, aNorm[-1].shape
+        assert a[0].shape == (784, y.shape[1]), a[0].shape
+        assert a[-1].shape == y.shape, a[-1].shape
 
         if p['mode'] >= 2:
             bs = y.shape[1]
-            assert aNorm[0].shape == (784, bs), aNorm[0].shape
-            assert aNorm[-1].shape == y.shape, aNorm[-1].shape
+            assert a[0].shape == (784, bs), a[0].shape
+            assert a[-1].shape == y.shape, a[-1].shape
             for i in range(len(self.layers)):
-                assert z[i].shape == (self.layers[i], bs), z[i].shape
-                assert aNorm[i+1].shape == (self.layers[i], bs), aNorm[i+1].shape
-                if i < len(self.layers) - 1:
-                    assert a[i].shape == (self.layers[i], bs), a[i].shape
+                if i not in self.resOutputs:
+                    assert z[i].shape == (self.layers[i], bs), z[i].shape
+                    if i < len(self.layers) - 1:
+                        assert zNorm[i].shape == (self.layers[i], bs), zNorm[i].shape
+                assert a[i+1].shape == (self.layers[i], bs), a[i+1].shape
         
         nu = p['nu']
         mom = p['mom']
         
         #   Initialize partials
         dC_dw = [np.zeros(self.weights[i].shape) for i in range(len(self.weights))]
-        dC_dg = [np.zeros(self.gamma[i].shape) for i in range(len(self.gamma))]
-        dC_dbeta = [np.zeros(self.beta[i].shape) for i in range(len(self.beta))]
-        dC_dbias = [np.zeros(self.biases[i].shape) for i in range(len(self.biases))]
+        dC_dg, dC_db = [], []
+        for i in range(len(self.gamma)):
+            if i in self.resOutputs:
+                dC_dg.append('Partials undefined')
+                dC_db.append('Partials undefined')
+            else:
+                dC_dg.append(np.zeros(self.gamma[i].shape))
+                dC_db.append(np.zeros(self.beta[i].shape))
+                
         dC_dz = [np.zeros(z[i].shape) for i in range(len(z))]
+        dC_dbias = [np.zeros(self.biases[0].shape)]
 
         batchSize = y.shape[1]
         assert batchSize > 0, "Attempted to do backprop on a batch of size 0"
         for i in range(len(z)):
             ###########################################################################
-            #   First compute up to dC_daNorm, the partial w/ respect to the batch
-            #   normalized activation, for the current layer
+            #   First compute up to dC_dzNorm, the partial w/ respect to the batch
+            #   normalized input, for the current layer
             ###########################################################################
             if i == 0:  # output layer
-                #   This is actually dC_dzNorm, but renamed for consistent batchNorm calculation
-                dC_daNorm = aNorm[-1] - y   # assumes cross-entropy loss and sigmoid activation; 2D
+                dC_dz[-1] = a[-1] - y   # assumes cross-entropy loss and sigmoid activation; 2D
+                dC_dbias[0] = np.sum(dC_dz[-1], axis=1) / p['batchSize']
+            elif len(z) - 1 - i in self.resInputs:
+                #   Save the partial wrt the activation at layers receiving a shortcut connection
+                dC_da = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
+                dC_daRes = dC_da.copy()
+                dC_dzNorm = dC_da * d_dx_leakyReLU(zNorm[-1-i])
             elif len(z) - 1 - i in self.resOutputs:
-                #   input layers to residual blocks
-                dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + np.dot(self.weights[self.blockWidth - i].T, dC_dz[self.blockWidth - i])
+                #   input layers to residual blocks (and linear projection layers)
+                dC_dz[-1-i] = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + dC_daRes * d_dx_leakyReLU(a[-1-i+self.blockWidth])
+                #dC_dz[-1-i] = np.dot(self.weights[-1*i].T, dC_da)
             else:
-                dC_daNorm = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
+                dC_da = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
+                dC_dzNorm = dC_da * d_dx_leakyReLU(zNorm[-1-i])
 
-            #print("dC_daNorm.shape:", dC_daNorm.shape)
-            #   Sum up partials w/ respect to gamma and beta over the batch, and divide by batchSize
-            dC_dg[-1-i] = np.sum(dC_daNorm * (aNorm[-1-i] - self.beta[-1-i]) \
-                                 / self.gamma[-1-i], axis = 1) / p['batchSize']
-            #print("dC_dg[-1-1].shape:", dC_dg[-1-i].shape)
-            dC_dbeta[-1-i] = np.sum(dC_daNorm, axis=1) / p['batchSize']
-            #print("dC_dbeta[-1-1].shape:", dC_db[-1-i].shape)
-                
-            ###########################################################################
-            #   Compute daNorm/da (account for batch normalization in gradient flow)
-            ###########################################################################
-            if i == 0:
-                bStats = network_helper.batchStats(z[-1])
-            else:
-                bStats = network_helper.batchStats(a[-1*i])
+            #   Batch norm is not done for output layer or linear projection layers
+            if i > 0 and len(z) - 1 - i not in self.resOutputs:
+                #print("dC_dzNorm.shape:", dC_dzNorm.shape)
+                #   Sum up partials w/ respect to gamma and beta over the batch, and divide by batchSize
+                dC_dg[-1*i] = np.sum(dC_dzNorm * (zNorm[-1-i] - self.beta[-1*i]) \
+                                     / self.gamma[-1*i], axis = 1) / p['batchSize']
+                #print("dC_dg[-1*1].shape:", dC_dg[-1*i].shape)
+                dC_db[-1*i] = np.sum(dC_dzNorm, axis=1) / p['batchSize']
+                #print("dC_db[-1*1].shape:", dC_db[-1*i].shape)
+                    
+                ###########################################################################
+                #   Compute dzNorm/dz (account for batch normalization in gradient flow)
+                ###########################################################################
 
-            firstTerm = self.gamma[-1-i].flatten() /(batchSize * np.sqrt(bStats[0] + self.eps)) # 1D
-            firstTerm = np.dot(firstTerm.reshape(-1,1), np.ones((1, batchSize)))    # 2D
-            secTerm = batchSize - 1 - bStats[1] / np.dot(bStats[0].reshape(-1,1), np.ones((1, batchSize))) # 2D
+                bStats = network_helper.batchStats(z[-1-i])
 
-            #   The term in parenthesis is daNorm/da (2D)
-            dC_da = dC_daNorm * (firstTerm * secTerm)
-            if i == 0:
-                #assert dC_da.shape == dC_dz[-1-i].shape, dC_da.shape
-                dC_dz[-1-i] = dC_da.copy() # recall we named zNorm 'aNorm' and z 'a', for the output layer
-            else:
-                #assert (dC_da * d_dx_leakyReLU(z[-1-i])).shape == dC_dz[-1-i].shape, (dC_da * d_dx_leakyReLU(z[-1-i])).shape
-                dC_dz[-1-i] = dC_da * d_dx_leakyReLU(z[-1-i])
+                firstTerm = self.gamma[-1*i].flatten() /(batchSize * np.sqrt(bStats[0] + self.eps)) # 1D
+                firstTerm = np.dot(firstTerm.reshape(-1,1), np.ones((1, batchSize)))    # 2D
+                secTerm = batchSize - 1 - bStats[1] / np.dot(np.add(bStats[0].reshape(-1,1), self.eps), np.ones((1, batchSize))) # 2D
+
+                #   The term in parenthesis is dzNorm/dz (2D)
+                dC_dz[-1-i] = dC_dzNorm * (firstTerm * secTerm)
 
             ###########################################################################
-            #   Compute the final partials dC_dw and dC_dbias, averaging over the batch
+            #   Compute the final partials dC_dw, averaging over the batch
             ###########################################################################
             
             #   Sum up the partials w/ respect to the weights one training example at a time
             for j in range(batchSize):
-                #   "residual input" layers take activations from a few layers before, affecting partials
-                if len(z) - 1 - i in self.resInputs:
-                    actual_a = (aNorm[-2-i][:,j] + aNorm[-2-i-self.blockWidth][:,j]).reshape((1,-1))
-                else:
-                    actual_a = aNorm[-2-i][:,j].reshape((1,-1))
-
-                dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[-1-i][:,j].reshape((-1,1)), actual_a)
+                dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[-1-i][:,j].reshape((-1,1)), a[-2-i][:,j].reshape((1,-1)))
                 
             dC_dw[-1-i] = dC_dw[-1-i] / p['batchSize'] + (p['weightDec'] / os.cpu_count()) * self.weights[-1-i]
 
-            #   Sum up partials w/ respect to biases (except for the last layer, which
-            #   doesn't have biases, because batch norm occurs before the nonlinearity)
-            if i > 0:
-                dC_dbias[-1*i] = (np.sum(dC_dz[-1-i], axis=1) / p['batchSize']).reshape((-1,1))
-
-        return [dC_dw, dC_dbeta, dC_dg, dC_dbias]
+        return [dC_dw, dC_db, dC_dg, dC_dbias]
 
     #   Given the entire set of training examples, returns the average cost per example.
     def totalCost(self, games, p):
@@ -488,11 +519,11 @@ class Network:
         labels = np.array([x[1] for x in data]).reshape(47,-1)
 
         outBatch = self.ff_track(inBatch)[2][-1]
-        #costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
-        temp = np.mean((outBatch - labels) * (outBatch - labels), axis=1)
-        return float(np.sqrt((temp.T @ temp) / labels.shape[0]))
+        costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
+        #temp = np.mean((outBatch - labels) * (outBatch - labels), axis=1)
+        #return float(np.sqrt((temp.T @ temp) / labels.shape[0]))
 
-        #return float(np.sum(costs)) / len(data)
+        return float(np.sum(costs)) / len(data)
 
     #   Return the average loss for examples in the typical 'list of tuples' format:
     #   rely on population statistics, thus giving the highest quality estimate of
@@ -573,8 +604,9 @@ class Network:
 
             for chunk in popStatList:
                 for lay in range(len(self.layers)):
-                    popMean[lay] += chunk[0][lay] / (numBatches * numCPUs)
-                    popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
+                    if lay not in self.resOutputs:
+                        popMean[lay] += chunk[0][lay] / (numBatches * numCPUs)
+                        popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
 
         pool.close()
 
@@ -584,21 +616,24 @@ class Network:
             concDirVar = 0
             diffMagVar = 0
         for i in range(len(self.popMean)):
-            if p['mode'] >= 2:
-                oldNorm = float(np.linalg.norm(self.popMean[i]))
-                newNorm = float(np.linalg.norm(popMean[i]))
-                concDirMean += abs(float(np.dot(self.popMean[i].T, popMean[i]))) / (oldNorm * newNorm)
-                diffMagMean += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
+            if i not in self.resOutputs:
+                if p['mode'] >= 2:
+                    oldNorm = float(np.linalg.norm(self.popMean[i]))
+                    newNorm = float(np.linalg.norm(popMean[i]))
+                    concDirMean += abs(float(np.dot(self.popMean[i].T, popMean[i]))) / (oldNorm * newNorm)
+                    diffMagMean += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
 
-                oldNorm = float(np.linalg.norm(self.popVar[i]))
-                newNorm = float(np.linalg.norm(popVar[i]))
-                concDirVar += abs(float(np.dot(self.popVar[i].T, popVar[i]))) / (oldNorm * newNorm)
-                diffMagVar += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
+                    oldNorm = float(np.linalg.norm(self.popVar[i]))
+                    newNorm = float(np.linalg.norm(popVar[i]))
+                    concDirVar += abs(float(np.dot(self.popVar[i].T, popVar[i]))) / (oldNorm * newNorm)
+                    diffMagVar += abs(float(newNorm - oldNorm)) / (oldNorm + newNorm)
+                    
+                self.popMean[i] = p['popPersist'] * self.popMean[i] + (1 - p['popPersist']) * popMean[i]
+                self.popVar[i] = p['popPersist'] * self.popVar[i] + (1 - p['popPersist']) * popVar[i]
+                self.popDev[i] = np.sqrt(np.add(self.popVar[i], self.eps))
                 
-            self.popMean[i] = p['popPersist'] * self.popMean[i] + (1 - p['popPersist']) * popMean[i]
-            self.popVar[i] = p['popPersist'] * self.popVar[i] + (1 - p['popPersist']) * popVar[i]
-            self.popDev[i] = np.sqrt(np.add(self.popVar[i], self.eps))
         if p['mode'] >= 2:
+            #   Note these are stats for the last layer where batch norm occurs
             print('Average normalized dot product of new and old pop stats:')
             print('  Means:', round(concDirMean / len(self.popMean), 5))
             print('  Vars:', round(concDirVar / len(self.popMean), 5))
@@ -611,35 +646,60 @@ class Network:
         print('Layers:', self.layers)
         print('First 5 weights for each layer:')
         for lay in self.weights:
-            print(np.round_(lay[0][:5], 4))
+            print('  ', np.round_(lay[0][:5], 3))
         print('First 5 biases:')
-        for lay in self.biases:
-            print(np.round_(lay[:5],4).T)
+        print('  ', np.round_(self.biases[0], 3).T)
         print('First 5 beta:')
-        for lay in self.beta:
-            print(np.round_(lay[:5], 4).T)
+        for lay in range(len(self.beta)):
+            if lay in self.resOutputs:
+                print('  (Undefined)')
+            else:
+                print('  ', np.round_(self.beta[lay][:5], 3).T)
         print('First 5 gamma:')
-        for lay in self.gamma:
-            print(np.round_(lay[:5], 4).T)
+        for lay in range(len(self.gamma)):
+            if lay in self.resOutputs:
+                print('  (Undefined)')
+            else:
+                print('  ', np.round_(self.gamma[lay][:5], 3).T)
         print('First 5 input means:')
-        for lay in self.popMean:
-            print(np.round_(lay[:5], 4).T)
+        for lay in range(len(self.popMean)):
+            if lay in self.resOutputs:
+                print('  (Not computed)')
+            else:
+                print('  ', np.round_(self.popMean[lay][:5], 3).T)
         print('First 5 input vars:')
-        for lay in self.popVar:
-            print(np.round_(lay[:5], 4).T)
+        for lay in range(len(self.popVar)):
+            if lay in self.resOutputs:
+                print('  (Not computed)')
+            else:
+                print('  ', np.round_(self.popVar[lay][:5], 3).T)
         print('Number of training steps total:', self.age)
         print('Unique examples seen: ~', self.experience, sep="")
         print('Residual "input" layers:', self.resInputs)
         print('Residual "output" layers:', self.resOutputs)
 
     def save(self, tBuffer, vBuffer, filename):       
+        beta, gamma, popMean, popVar = [], [], [], []
+        for i in range(len(self.layers)):
+            if i in self.resOutputs:
+                beta.append([])
+                gamma.append([])
+                popMean.append([])
+                popVar.append([])
+            else:
+                if i < len(self.layers) - 1:
+                    beta.append(self.beta[i].tolist())
+                    gamma.append(self.gamma[i].tolist())
+                popMean.append(self.popMean[i].tolist())
+                popVar.append(self.popVar[i].tolist())
+                
         data = {"layers": self.layers,
                 "weights": [w.tolist() for w in self.weights],
-                "beta": [b.tolist() for b in self.beta],
-                "biases": [b.tolist() for b in self.biases],
-                "gamma": [g.tolist() for g in self.gamma],
-                "popMean": [m.tolist() for m in self.popMean],
-                "popVar": [v.tolist() for v in self.popVar],
+                "biases": [self.biases[0].tolist()],
+                "beta": beta,
+                "gamma": gamma,
+                "popMean": popMean,
+                "popVar": popVar,
                 "age": self.age,
                 "experience": self.experience,
                 "certainty": self.certainty,
@@ -656,9 +716,9 @@ class Network:
             file_IO.writeGames(vBuffer[i], 'data/vBuffer' + str(i) + '.csv', True, False)
 
 def train_thread(net, batch, p):  
-    z, a, aNorm = net.ff_track(batch[0])
+    z, zNorm, a = net.ff_track(batch[0])
     
-    return net.backprop(z, a, aNorm, batch[1], p)
+    return net.backprop(z, zNorm, a, batch[1], p)
       
 def load(filename, lazy=False):
     f = open(filename, "r")
@@ -667,12 +727,24 @@ def load(filename, lazy=False):
     
     net = Network(data["layers"], data["blockWidth"], data["blocksPerGroup"])
     net.weights = [np.array(w) for w in data["weights"]]
-    net.biases = [np.array(b) for b in data["biases"]]
-    net.beta = [np.array(b) for b in data["beta"]]
-    net.gamma = [np.array(g) for g in data["gamma"]]
-    net.popMean = [np.array(m) for m in data["popMean"]]
-    net.popVar = [np.array(v) for v in data["popVar"]]
-    net.popDev = [np.sqrt(np.add(m, net.eps)) for m in net.popVar]
+    net.biases = [np.array(data["biases"]).reshape((-1,1))]
+
+    net.beta, net.gamma, net.popMean, net.popVar, net.popDev = [], [], [], [], []
+    for i in range(len(net.layers)):
+        if i in net.resOutputs:
+            net.beta.append(data["beta"][i])
+            net.gamma.append(data["gamma"][i])
+            net.popMean.append(data["popMean"][i])
+            net.popVar.append(data["popVar"][i])
+            net.popDev.append('Not computed for projection layers!')
+        else:
+            if i < len(net.layers) - 1:
+                net.beta.append(np.array(data["beta"][i]).reshape((-1,1)))
+                net.gamma.append(np.array(data["gamma"][i]).reshape((-1,1)))
+            net.popMean.append(np.array(data["popMean"][i]).reshape((-1,1)))
+            net.popVar.append(np.array(data["popVar"][i]).reshape((-1,1)))
+            net.popDev.append(np.sqrt(np.add(net.popVar[-1], net.eps)).reshape((-1,1)))
+
     net.age = data["age"]
     net.experience = data["experience"]
     net.certainty = data["certainty"]
