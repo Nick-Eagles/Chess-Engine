@@ -1,11 +1,12 @@
 library(ggplot2)
 
-setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/Chess_Engine/visualization")
+#setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/Chess_Engine/visualization")
+setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/MNIST_chess/visualization")
 costData = read.csv(file="costs.csv")
 costData$isStart = as.factor(costData$isStart)
 
-#costData = tail(costData, 200)
-#costData = costData[16:nrow(costData),]
+#costData = tail(costData, 80)
+costData = costData[3:nrow(costData),]
 ggplot(costData) +
   geom_point(mapping = aes(x=epochNum, y=cost, color=costType, shape=isStart)) +
   labs(title="Cost on data vs. epoch", color="loss type", shape="starting loss?", x="epoch number") +
