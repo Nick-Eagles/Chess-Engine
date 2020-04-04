@@ -43,18 +43,14 @@ def batchStats(xBatch):
     squareDev = dev * dev
     return (np.mean(squareDev, axis = 1), squareDev, mean)
 
-def toBatchChunks(data, bs, numCPUs):
-    #permute = list(range(len(data)))
-    #random.shuffle(permute)
-    #data = [data[i] for i in permute]
-    
+def toBatchChunks(data, bs, numCPUs):  
     numBatches = int(len(data) / bs)
     chunkSize = int(bs / numCPUs)
     remainder = bs % numCPUs
     
     #   Reformat data as tensors of correct dimension
     inTensor = np.array([x[0].flatten() for x in data]).T
-    outTensor = np.array([x[1] for x in data]).reshape(1,-1)
+    outTensor = np.array([x[1].flatten() for x in data]).T
 
     chunkedData = []
     for i in range(numBatches): 
@@ -118,18 +114,17 @@ def net_activity(net, tData):
     bigBatch = np.array([g[0].flatten() for g in tData]).T
     z, zNorm, a = net.ff_track(bigBatch)
 
-    activities = []
-    for lay in a:
-        temp = []
-        for neuron in lay:
-            temp.append(sum([x >= 0 for x in neuron]) / lay.shape[1]) # across batch for 1 neuron
-        activities.append(temp)
+    print("Neuron activity by layer:")
+    for i in range(len(net.layers) - 1):
+        num_dead = 0
+        for j in range(a[i+1].shape[0]):
+            num_dead += all(a[i+1][j,:] < 0)
+            
+        percDead = round(100 * num_dead / a[i+1].shape[0], 1)
+        percActive = round(100 * np.mean(a[i+1] > 0), 1)
 
-    print("Dead neurons by layer:")
-    for i, lay in enumerate(activities):
-        percDead = round(100 * sum([int(x < 0) for x in lay]) / len(lay), 2)
-        percAct = round(100 * sum(lay) / len(lay), 2)
-        print("Layer ", i+1, ": ", percAct, "% active; ", percDead, "% dead.", sep='')
+        print("Layer ", i+1, ": ", percActive, "% active; ", percDead, "% dead.", sep='')
+    print("(Sigmoid output layer skipped)")
 
 #   A helper function for Network.showGame. Returns the string that is output for
 #   a game at its current state (the list of evaluations for whichever player is

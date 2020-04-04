@@ -101,7 +101,7 @@ class Network:
         else:
             self.popVar = popVar
             
-        self.eps = 0.0001
+        self.eps = 0.00000001
         self.popDev = []
         for i in range(len(layers)):
             if i in self.resOutputs:
@@ -485,10 +485,7 @@ class Network:
             ###########################################################################
             
             #   Sum up the partials w/ respect to the weights one training example at a time
-            for j in range(batchSize):
-                dC_dw[-1-i] = dC_dw[-1-i] + np.dot(dC_dz[-1-i][:,j].reshape((-1,1)), a[-2-i][:,j].reshape((1,-1)))
-                
-            dC_dw[-1-i] = dC_dw[-1-i] / p['batchSize'] + (p['weightDec'] / os.cpu_count()) * self.weights[-1-i]
+            dC_dw[-1-i] = np.dot(dC_dz[-1-i], a[-2-i].T) / p['batchSize'] + (p['weightDec'] / os.cpu_count()) * self.weights[-1-i]
 
         return [dC_dw, dC_db, dC_dg, dC_dbias]
 
@@ -516,7 +513,7 @@ class Network:
     #   compute in chunks, as training is done (thus not relying on pop stats)
     def batchLoss(self, data):
         inBatch = np.array([x[0].flatten() for x in data]).T
-        labels = np.array([x[1] for x in data]).reshape(47,-1)
+        labels = np.array([x[1].flatten() for x in data]).T
 
         outBatch = self.ff_track(inBatch)[2][-1]
         costs = -1 * (labels * np.log(outBatch) + (1 - labels) * np.log(1 - outBatch))
