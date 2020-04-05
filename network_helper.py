@@ -82,7 +82,7 @@ def get_pop_stats(net, chunk):
     
     popMean, popVar = [], []
     for lay in range(len(z)):
-        if lay in net.resOutputs:
+        if lay in net.downSampLays:
             popMean.append('Undefined for projection layers!')
             popVar.append('Undefined for projection layers!')
         else:
@@ -116,14 +116,17 @@ def net_activity(net, tData):
 
     print("Neuron activity by layer:")
     for i in range(len(net.layers) - 1):
-        num_dead = 0
-        for j in range(a[i+1].shape[0]):
-            num_dead += all(a[i+1][j,:] < 0)
-            
-        percDead = round(100 * num_dead / a[i+1].shape[0], 1)
-        percActive = round(100 * np.mean(a[i+1] > 0), 1)
+        if i in net.downSampLays:
+            print("(Linear downsample layer", i+1, "skipped)")
+        else:
+            num_dead = 0
+            for j in range(a[i+1].shape[0]):
+                num_dead += all(a[i+1][j,:] < 0)
+                
+            percDead = round(100 * num_dead / a[i+1].shape[0], 1)
+            percActive = round(100 * np.mean(a[i+1] > 0), 1)
 
-        print("Layer ", i+1, ": ", percActive, "% active; ", percDead, "% dead.", sep='')
+            print("Layer ", i+1, ": ", percActive, "% active; ", percDead, "% dead.", sep='')
     print("(Sigmoid output layer skipped)")
 
 #   A helper function for Network.showGame. Returns the string that is output for
