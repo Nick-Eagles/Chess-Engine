@@ -20,10 +20,14 @@ class Network:
     def __init__(self, layers, blockWidth, blocksPerGroup, weights=[], biases=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0, certaintyRate=0):
         var_scale = 1.0
         alpha = 1.0
+
+        self.activFun = reLU
+        self.activFun_deriv = d_dx_reLU
         
         #   Layer numbers for those layers receiving activations from earlier layers, and those used in later layers, respectively
         self.resInputs = [i for i in range(len(layers)) if i > blockWidth - 1 and (i + int((i - 1) / (blockWidth * blocksPerGroup + 1))) % blockWidth == 0]
         self.resOutputs = [i - blockWidth for i in self.resInputs]
+        self.downSampLays = [self.resOutputs[i] for i in range(len(self.resOutputs)) if i % blocksPerGroup == 0 and i > 0]
         
         #   Weights and biases "beta"
         if len(weights) == 0:
@@ -54,7 +58,7 @@ class Network:
             self.beta = []
             self.last_dC_db = []
             for i in range(len(layers) - 1):
-                if i in self.resOutputs:
+                if i in self.downSampLays:
                     self.beta.append('Projection layers have no BN!')
                     self.last_dC_db.append('Projection layers have no BN!')
                 else:
@@ -71,7 +75,7 @@ class Network:
                 if i in self.resInputs:
                     self.gamma.append(np.full((layers[i], 1), var_scale * alpha))
                     self.last_dC_dg.append(np.zeros((layers[i], 1)))
-                elif i in self.resOutputs:
+                elif i in self.downSampLays:
                     self.gamma.append('Projection layers have no BN!')
                     self.last_dC_dg.append('Projection layers have no BN!')
                 else:
@@ -85,7 +89,7 @@ class Network:
         if len(popMean) == 0:
             self.popMean = []
             for i in range(len(layers)):
-                if i in self.resOutputs:
+                if i in self.downSampLays:
                     self.popMean.append('Not computed for projection layers!')
                 else:
                     self.popMean.append(np.zeros((layers[i], 1)))
@@ -94,7 +98,7 @@ class Network:
         if len(popVar) == 0:
             self.popVar = []
             for i in range(len(layers)):
-                if i in self.resOutputs:
+                if i in self.downSampLays:
                     self.popVar.append('Not computed for projection layers!')
                 else:
                     self.popVar.append(np.ones((layers[i], 1)))
@@ -104,7 +108,7 @@ class Network:
         self.eps = 0.00000001
         self.popDev = []
         for i in range(len(layers)):
-            if i in self.resOutputs:
+            if i in self.downSampLays:
                 self.popDev.append('Not computed for projection layers!')
             else:
                 self.popDev.append(np.sqrt(np.add(self.popVar[i], self.eps)))
@@ -220,13 +224,11 @@ class Network:
     def feedForward(self, a):
         assert len(a.shape) == 2 and a.shape[1] == 1, a.shape
         for lay in range(len(self.layers) - 1):
-            if lay in self.resOutputs:
+            if lay in self.downSampLays:
                 #   This is a downsample layer, which simply performs a linear
                 #   projection to match dimensionality
                 a = self.weights[lay] @ a
 
-                #   The start of a residual block has activations used [self.blockWidth] layers later
-                aLastBlock = a.copy()
             else:
                 #   Batch norm
                 a = (self.weights[lay] @ a - self.popMean[lay]) * self.gamma[lay] / self.popDev[lay] + self.beta[lay]
@@ -235,8 +237,12 @@ class Network:
                 if lay in self.resInputs:
                     a += aLastBlock
                     
-                #   Nonlinearity (leaky ReLU)
-                a = leakyReLU(a)
+                #   Nonlinearity
+                a = self.activFun(a)
+
+            #   The start of a residual block has activations used [self.blockWidth] layers later
+            if lay in self.resOutputs:
+                aLastBlock = a.copy()
 
         #   Sigmoid without batch norm for the last layer
         a = expit(self.weights[-1] @ a + self.biases[0])
@@ -249,20 +255,26 @@ class Network:
         z, zNorm = [], []
         a = [aInput]
         for lay in range(len(self.layers)):
-            #   Handle the 4 distinct types of layers separately
+            #   Handle the 5 distinct types of layers separately
             if lay == len(self.layers) - 1:
                 #   The last layer has biases, no batch norm, and sigmoid activation
                 z.append(self.weights[lay] @ a[lay] + self.biases[0])
                 zNorm.append('Last layer does not have BN!')
                 a.append(expit(z[-1]))
+            elif lay == 0:
+                #   The first layer has batch norm (to account for arbitrary
+                #   distributions of input data) but no nonlinearity
+                z.append(self.weights[lay] @ a[lay])
+                zNorm.append(network_helper.normalize(z[lay], self.gamma[lay], self.beta[lay], self.eps))
+                a.append(zNorm[-1])
             elif lay in self.resInputs:
                 #   Layers receiving shortcut connections have batch norm, the shortcut
                 #   connection, then reLU of the resulting quantity. Note the last
                 #   layer is not included in the set here
                 z.append(self.weights[lay] @ a[lay])
                 zNorm.append(network_helper.normalize(z[lay], self.gamma[lay], self.beta[lay], self.eps))
-                a.append(leakyReLU(zNorm[-1] + a[lay + 1 - self.blockWidth]))
-            elif lay in self.resOutputs:
+                a.append(self.activFun(zNorm[-1] + a[lay + 1 - self.blockWidth]))
+            elif lay in self.downSampLays:
                 #   Linear downsample layers
                 temp = self.weights[lay] @ a[lay]
                 z.append(temp)
@@ -272,7 +284,7 @@ class Network:
                 #   "Typical" layers have batch norm and ReLU activation
                 z.append(self.weights[lay] @ a[lay])
                 zNorm.append(network_helper.normalize(z[lay], self.gamma[lay], self.beta[lay], self.eps))
-                a.append(leakyReLU(zNorm[lay]))
+                a.append(self.activFun(zNorm[lay]))
                          
         assert a[-1].shape == (self.layers[-1], aInput.shape[1]), a[-1].shape
         
@@ -344,7 +356,7 @@ class Network:
                         print("Magnitude of weight partial (weight value): ", temp0, " (", temp1, ")", sep="")
                         temp0 = round(nu * np.linalg.norm(gradient[1][lay]), 3)
                         temp1 = round(np.linalg.norm(self.beta[lay]), 2)
-                        if lay < len(self.layers) - 1 and lay not in self.resOutputs:
+                        if lay < len(self.layers) - 1 and lay not in self.downSampLays:
                             print("Magnitude of beta partial (beta value): ", temp0, " (", temp1, ")", sep="")
                             temp0 = round(nu * np.linalg.norm(gradient[2][lay]), 3)
                             temp1 = round(np.linalg.norm(self.gamma[lay]), 2)
@@ -358,7 +370,7 @@ class Network:
                     self.weights[lay] -= nu * self.last_dC_dw[lay]
 
                     #   Batch norm-related parameters
-                    if lay < len(self.layers) - 1 and lay not in self.resOutputs:
+                    if lay < len(self.layers) - 1 and lay not in self.downSampLays:
                         self.last_dC_db[lay] = gradient[1][lay].reshape((-1,1)) + p['mom'] * self.last_dC_db[lay]
                         self.beta[lay] -= p['batchNormScale'] * nu * self.last_dC_db[lay]
 
@@ -370,7 +382,7 @@ class Network:
                 self.tCosts.append(self.totalCost(games, p))
                 self.vCosts.append(self.totalCost(vGames, p))
             elif epoch == epochs - 1:
-                self.setPopStats(games + vGames, p)
+                self.setPopStats(games, p)
                 self.tCosts.append(self.totalCost(games, p))
                 self.vCosts.append(self.totalCost(vGames, p))
                 
@@ -424,7 +436,7 @@ class Network:
         dC_dw = [np.zeros(self.weights[i].shape) for i in range(len(self.weights))]
         dC_dg, dC_db = [], []
         for i in range(len(self.gamma)):
-            if i in self.resOutputs:
+            if i in self.downSampLays:
                 dC_dg.append('Partials undefined')
                 dC_db.append('Partials undefined')
             else:
@@ -444,41 +456,65 @@ class Network:
             if i == 0:  # output layer
                 dC_dz[-1] = a[-1] - y   # assumes cross-entropy loss and sigmoid activation; 2D
                 dC_dbias[0] = np.sum(dC_dz[-1], axis=1) / p['batchSize']
-            elif len(z) - 1 - i in self.resInputs:
-                #   Save the partial wrt the activation at layers receiving a shortcut connection
-                dC_da = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
-                dC_daRes = dC_da.copy()
-                dC_dzNorm = dC_da * d_dx_leakyReLU(zNorm[-1-i])
-            elif len(z) - 1 - i in self.resOutputs:
-                #   input layers to residual blocks (and linear projection layers)
-                dC_dz[-1-i] = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + dC_daRes * d_dx_leakyReLU(a[-1-i+self.blockWidth])
-                #dC_dz[-1-i] = np.dot(self.weights[-1*i].T, dC_da)
             else:
-                dC_da = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
-                dC_dzNorm = dC_da * d_dx_leakyReLU(zNorm[-1-i])
+                #################################################################
+                #   Compute up to dC_da
+                #################################################################
+                if len(z) - 1 - i in self.resOutputs:
+                    dC_da = np.dot(self.weights[-1*i].T, dC_dz[-1*i]) + dC_daRes * self.activFun_deriv(zNorm[-1-i+self.blockWidth] + a[-1-i])
+                else:
+                    dC_da = np.dot(self.weights[-1*i].T, dC_dz[-1*i])
+
+                #################################################################
+                #   Compute up to dC_dzNorm for layers with batch norm, and up
+                #   to dC_dz for those without
+                #################################################################
+                if len(z) - 1 - i in self.resInputs:
+                    #   Save the partial wrt the activation at layers receiving a shortcut connection
+                    dC_daRes = dC_da.copy()
+
+                    dC_dzNorm = dC_da * self.activFun_deriv(zNorm[-1-i] + a[-1-i-self.blockWidth])
+                elif len(z) - 1 - i in self.downSampLays:
+                    dC_dz[-1-i] = dC_da
+                elif len(z) - 1 - i == 0:
+                    dC_dzNorm = dC_da
+                else:
+                    dC_dzNorm = dC_da * self.activFun_deriv(zNorm[-1-i])
+
+            ###########################################################################
+            #   Account for batch norm, for applicable layers
+            ###########################################################################
 
             #   Batch norm is not done for output layer or linear projection layers
-            if i > 0 and len(z) - 1 - i not in self.resOutputs:
-                #print("dC_dzNorm.shape:", dC_dzNorm.shape)
+            if i > 0 and len(z) - 1 - i not in self.downSampLays:
                 #   Sum up partials w/ respect to gamma and beta over the batch, and divide by batchSize
                 dC_dg[-1*i] = np.sum(dC_dzNorm * (zNorm[-1-i] - self.beta[-1*i]) \
                                      / self.gamma[-1*i], axis = 1) / p['batchSize']
-                #print("dC_dg[-1*1].shape:", dC_dg[-1*i].shape)
                 dC_db[-1*i] = np.sum(dC_dzNorm, axis=1) / p['batchSize']
-                #print("dC_db[-1*1].shape:", dC_db[-1*i].shape)
                     
                 ###########################################################################
                 #   Compute dzNorm/dz (account for batch normalization in gradient flow)
                 ###########################################################################
 
-                bStats = network_helper.batchStats(z[-1-i])
+                ################
+                # Orig method
+                ################
+                #bStats = network_helper.batchStats(z[-1-i])
 
-                firstTerm = self.gamma[-1*i].flatten() /(batchSize * np.sqrt(bStats[0] + self.eps)) # 1D
-                firstTerm = np.dot(firstTerm.reshape(-1,1), np.ones((1, batchSize)))    # 2D
-                secTerm = batchSize - 1 - bStats[1] / np.dot(np.add(bStats[0].reshape(-1,1), self.eps), np.ones((1, batchSize))) # 2D
+                #firstTerm = self.gamma[-1*i].flatten() /(batchSize * np.sqrt(bStats[0] + self.eps)) # 1D
+                #firstTerm = np.dot(firstTerm.reshape(-1,1), np.ones((1, batchSize)))    # 2D
+                #secTerm = batchSize - 1 - bStats[1] / np.dot(np.add(bStats[0].reshape(-1,1), self.eps), np.ones((1, batchSize))) # 2D
 
                 #   The term in parenthesis is dzNorm/dz (2D)
-                dC_dz[-1-i] = dC_dzNorm * (firstTerm * secTerm)
+                #dC_dz[-1-i] = dC_dzNorm * (firstTerm * secTerm)
+
+                ################
+                # New method
+                ################
+                bStats = network_helper.batchStats(z[-1-i], self.gamma[-1*i], self.eps)
+
+                partialSum = np.sum(dC_dzNorm * (-1 - bStats[0]), axis=1).reshape((-1,1))
+                dC_dz[-1-i] = bStats[1] * (np.dot(partialSum, np.ones((1, batchSize))) + dC_dzNorm * batchSize)
 
             ###########################################################################
             #   Compute the final partials dC_dw, averaging over the batch
@@ -601,7 +637,7 @@ class Network:
 
             for chunk in popStatList:
                 for lay in range(len(self.layers)):
-                    if lay not in self.resOutputs:
+                    if lay not in self.downSampLays:
                         popMean[lay] += chunk[0][lay] / (numBatches * numCPUs)
                         popVar[lay] += chunk[1][lay] / (numBatches * numCPUs)
 
@@ -613,7 +649,7 @@ class Network:
             concDirVar = 0
             diffMagVar = 0
         for i in range(len(self.popMean)):
-            if i not in self.resOutputs:
+            if i not in self.downSampLays:
                 if p['mode'] >= 2:
                     oldNorm = float(np.linalg.norm(self.popMean[i]))
                     newNorm = float(np.linalg.norm(popMean[i]))
@@ -645,28 +681,28 @@ class Network:
         for lay in self.weights:
             print('  ', np.round_(lay[0][:5], 3))
         print('First 5 biases:')
-        print('  ', np.round_(self.biases[0], 3).T)
+        print('  ', np.round_(self.biases[0][:5], 3).T)
         print('First 5 beta:')
         for lay in range(len(self.beta)):
-            if lay in self.resOutputs:
+            if lay in self.downSampLays:
                 print('  (Undefined)')
             else:
                 print('  ', np.round_(self.beta[lay][:5], 3).T)
         print('First 5 gamma:')
         for lay in range(len(self.gamma)):
-            if lay in self.resOutputs:
+            if lay in self.downSampLays:
                 print('  (Undefined)')
             else:
                 print('  ', np.round_(self.gamma[lay][:5], 3).T)
         print('First 5 input means:')
         for lay in range(len(self.popMean)):
-            if lay in self.resOutputs:
+            if lay in self.downSampLays:
                 print('  (Not computed)')
             else:
                 print('  ', np.round_(self.popMean[lay][:5], 3).T)
         print('First 5 input vars:')
         for lay in range(len(self.popVar)):
-            if lay in self.resOutputs:
+            if lay in self.downSampLays:
                 print('  (Not computed)')
             else:
                 print('  ', np.round_(self.popVar[lay][:5], 3).T)
@@ -674,11 +710,12 @@ class Network:
         print('Unique examples seen: ~', self.experience, sep="")
         print('Residual "input" layers:', self.resInputs)
         print('Residual "output" layers:', self.resOutputs)
+        print('Linear downsample layers:', self.downSampLays)
 
     def save(self, tBuffer, vBuffer, filename):       
         beta, gamma, popMean, popVar = [], [], [], []
         for i in range(len(self.layers)):
-            if i in self.resOutputs:
+            if i in self.downSampLays:
                 beta.append([])
                 gamma.append([])
                 popMean.append([])
@@ -728,7 +765,7 @@ def load(filename, lazy=False):
 
     net.beta, net.gamma, net.popMean, net.popVar, net.popDev = [], [], [], [], []
     for i in range(len(net.layers)):
-        if i in net.resOutputs:
+        if i in net.downSampLays:
             net.beta.append(data["beta"][i])
             net.gamma.append(data["gamma"][i])
             net.popMean.append(data["popMean"][i])
@@ -777,4 +814,13 @@ def d_dx_leakyReLU(x):
         for i in range(x.shape[0]):    
             if x[i][j] < 0:
                 y[i][j] = 0.01
+    return y
+
+def reLU(x):
+    return np.maximum(0, x)
+
+def d_dx_reLU(x):
+    y = np.zeros(x.shape)
+    y[x > 0] = 1
+
     return y
