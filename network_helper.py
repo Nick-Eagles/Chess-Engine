@@ -37,11 +37,28 @@ def normalize(xBatch, gamma, beta, eps):
 
 #   For a batch (2d np array w/ axis 0 being one example's activations), return a
 #   tuple: (variance, sum of deviations, mean) as np arrays of expected dim
-def batchStats(xBatch):
-    mean = np.mean(xBatch, axis = 1)
-    dev = xBatch - np.dot(mean.reshape((-1,1)), np.ones((1, xBatch.shape[1])))
+#def batchStats(xBatch):
+#    mean = np.mean(xBatch, axis = 1)
+#    dev = xBatch - np.dot(mean.reshape((-1,1)), np.ones((1, xBatch.shape[1])))
+#    squareDev = dev * dev
+#    return (np.mean(squareDev, axis = 1), squareDev, mean)
+
+#   New method
+def batchStats(xBatch, gamma, eps):
+    mean = np.mean(xBatch, axis = 1).reshape((-1,1))
+    dev = xBatch - np.dot(mean, np.ones((1, xBatch.shape[1])))
     squareDev = dev * dev
-    return (np.mean(squareDev, axis = 1), squareDev, mean)
+    var = np.add(np.mean(squareDev, axis = 1).reshape((-1,1)), eps)
+    assert var.shape == (xBatch.shape[0], 1), var.shape
+
+    #   These two terms are important for computing dC_dzNorm / dC_dz
+    termA = squareDev / np.dot(var, np.ones((1, xBatch.shape[1])))
+    termB = gamma / (xBatch.shape[1] * np.sqrt(var))
+    termB = termB * np.ones((1, xBatch.shape[1]))
+    assert termA.shape == xBatch.shape, termA.shape
+    assert termB.shape == xBatch.shape, termB.shape
+    
+    return (termA, termB)
 
 def toBatchChunks(data, bs, numCPUs):  
     numBatches = int(len(data) / bs)
