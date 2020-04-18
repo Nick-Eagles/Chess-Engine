@@ -136,6 +136,9 @@ if __name__ == '__main__':
     cond = "var == 'n' or var == 'l'"
     choice = input_handling.getUserInput(messDef, messOnErr, 'str', cond)
     if choice == "n":
+        tBuffer = [[],[],[],[]]
+        vBuffer = [[],[],[],[]]
+        
         ##################################################################
         #   Define network architecture and initialize Network object
         ##################################################################
@@ -157,7 +160,7 @@ if __name__ == '__main__':
         blockWidth = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
         
         #   Number of neurons in one layer of each block
-        for i in range(numBlocks):
+        for i in range(blocksPerGroup):
             messDef = "Length of neurons in group " + str(i+1) + "? "
             cond = 'var > 0 and var < 10000'
             layLen = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
@@ -169,7 +172,7 @@ if __name__ == '__main__':
         net = Network.Network(layers, blockWidth, blocksPerGroup)
     elif choice == "l":
         filename = input("Load from what file? ")
-        net = Network.load('nets/' + filename)
+        net, tBuffer, vBuffer = Network.load('nets/' + filename)
         print("Loaded successfully.")
         net.print()
 

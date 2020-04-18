@@ -31,7 +31,7 @@ class Network:
         
         #   Weights and biases "beta"
         if len(weights) == 0:
-            temp = [784] + layers
+            temp = [839] + layers
             
             self.weights = []
             for i in range(len(layers)):
@@ -251,7 +251,7 @@ class Network:
 
     #   Inference for training on all members of a batch simultaneously
     def ff_track(self, aInput):
-        assert len(aInput.shape) == 2 and aInput.shape[0] == 784, aInput.shape
+        assert len(aInput.shape) == 2 and aInput.shape[0] == 839, aInput.shape
         z, zNorm = [], []
         a = [aInput]
         for lay in range(len(self.layers)):
@@ -415,12 +415,12 @@ class Network:
         assert len(zNorm) == len(self.layers)
         assert len(a) == len(self.layers) + 1
 
-        assert a[0].shape == (784, y.shape[1]), a[0].shape
+        assert a[0].shape == (839, y.shape[1]), a[0].shape
         assert a[-1].shape == y.shape, a[-1].shape
 
         if p['mode'] >= 2:
             bs = y.shape[1]
-            assert a[0].shape == (784, bs), a[0].shape
+            assert a[0].shape == (839, bs), a[0].shape
             assert a[-1].shape == y.shape, a[-1].shape
             for i in range(len(self.layers)):
                 if i not in self.resOutputs:

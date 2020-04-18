@@ -43,10 +43,10 @@ def writeGames(games, filepath, compress=False, append=True):
     if compress:
         if len(games) > 0:
             assert games[0][0].shape == (839, 1), "Is data already compressed?"
-            assert games[0][1] <= 1 and games[0][1] >= 0, "Data label is not in 'expit' form"
+            assert float(games[0][1]) <= 1 and float(games[0][1]) >= 0, "Data label is not in 'expit' form"
         else:
             print("Warning: writing an empty file (no games to write for current call to file_IO.writeGames).")
-        games = [compressNNinput(g[0]) + [g[1]] for g in games]
+        games = [compressNNinput(g[0]) + [float(g[1])] for g in games]
     else:
         assert type(games[0][0]) is int, "Is data actually compressed?"
     
@@ -77,7 +77,7 @@ def readGames(filepath, p):
     #   Convert data to list of tuples as required
     games = []
     for row in range(len(flatData)):
-        games.append([float(i) for i in flatData[row]])  # csv reader returns a line as list of strings
+        games.append([np.array([[float(i)]]) for i in flatData[row]])  # csv reader returns a line as list of strings
 
     return games
 
