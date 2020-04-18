@@ -24,10 +24,7 @@ def sampleMovesSoft(net, game, p):
     #   Get legal moves and NN evaluations on the positions that result from them
     moves = board_helper.getLegalMoves(game)
     fullMovesLen = len(moves)
-    rPairs = [game.getReward(m, p['mateReward']) for m in moves]
-    evals = np.array([x + net.certainty * float(logit(net.feedForward(y))) for x,y in rPairs])
-    if not game.whiteToMove:
-        evals = -1 * evals
+    evals = getEvals(moves, net, game, p)
 
     temp = np.exp(p['curiosity'] * evals)
     probs = temp / np.sum(temp) # softmax of evals
@@ -54,12 +51,7 @@ def sampleMovesEG(net, game, p):
 
     #   More efficiently handle a trivial case
     if p['epsSearch'] == 0:
-        #   Compute evaluations on each move
-        rPairs = [game.getReward(m, p['mateReward']) for m in moves]
-        evals = np.array([x + net.certainty * float(logit(net.feedForward(y))) for x,y in rPairs])
-        if not game.whiteToMove:
-            evals = -1 * evals
-
+        evals = getEvals(moves, net, game, p)
         return ([moves[i] for i in misc.topN(evals, p['breadth'])], fullMovesLen)
     
     #   Determine which moves should be chosen randomly
@@ -78,11 +70,7 @@ def sampleMovesEG(net, game, p):
             temp = remainInds.pop(np.random.randint(len(remainInds)))
             inds.append(temp)
     else:
-        #   Compute evaluations on each move
-        rPairs = [game.getReward(m, p['mateReward']) for m in moves]
-        evals = np.array([x + net.certainty * float(logit(net.feedForward(y))) for x,y in rPairs])
-        if not game.whiteToMove:
-            evals = -1 * evals
+        evals = getEvals(moves, net, game, p)
 
         #   Select distinct moves via an epsilon-greedy policy
         for i in range(subMovesLen):
@@ -114,16 +102,12 @@ def getBestMoveHuman(net, game, p):
         #   Shortcut for completely random move choice
         return legalMoves[np.random.randint(len(legalMoves))]
     else:
-        #   Get the expected future reward
-        vals = np.zeros(len(legalMoves), dtype=np.float32)
-        for i, m in enumerate(legalMoves):
-            rTuple = game.getReward(m, p['mateReward'])
-            vals[i] = rTuple[0] + net.certainty * float(logit(net.feedForward(rTuple[1])))
-
         #   Return the best move as the legal move maximizing the linear combination of:
         #       1. The expected future reward vector
         #       2. A noise vector matching the first 2 moments of the reward vector
+        vals = getEvals(moves, net, game, p)
         noise = np.random.normal(np.mean(vals), np.std(vals), vals.shape[0])
+        
         if game.whiteToMove:
             bestMove = legalMoves[np.argmax((1 - eps) * vals + eps * noise)]
         else:
@@ -141,11 +125,7 @@ def getBestMoveEG(net, game, p):
         #   Shortcut for completely random move choice
         return legalMoves[np.random.randint(len(legalMoves))]
     else:
-        #   Get the expected future reward
-        vals = np.zeros(len(legalMoves))
-        for i, m in enumerate(legalMoves):
-            rTuple = game.getReward(m, p['mateReward'])
-            vals[i] = rTuple[0] + net.certainty * float(logit(net.feedForward(rTuple[1])))
+        vals = getEvals(moves, net, game, p)
 
         if game.whiteToMove:
             return legalMoves[np.argmax(vals)]
@@ -168,13 +148,13 @@ def getBestMoveTreeEG(net, game, p, pool=None):
         p = p_copy
         
         moves, fullMovesLen = sampleMovesEG(net, game, p)
-        certainty = 1 - (fullMovesLen - len(moves)) * (1 - p['alpha'])**len(moves) / fullMovesLen
+        #certainty = 1 - (fullMovesLen - len(moves)) * (1 - p['alpha'])**len(moves) / fullMovesLen
         
         rTemp = np.zeros(len(moves))
         if pool != None:
             trav_objs = []
             for i, m in enumerate(moves):
-                rTemp[i] = game.getReward(m, p['mateReward'])[0]
+                rTemp[i] = game.getReward(m, p['mateReward'], True)[0]
 
                 g = game.copy()
                 g.quiet = True
@@ -190,8 +170,10 @@ def getBestMoveTreeEG(net, game, p, pool=None):
             baseRs = np.array([ob.baseR for ob in res_objs])
             temp_bools = np.absolute(baseRs) == p['mateReward']
             if any(temp_bools):
-                baseRs[temp_bools] = baseRs[temp_bools] / certainty    
-            rTemp += certainty * baseRs
+                baseRs[temp_bools] = baseRs[temp_bools] / p['gamma']
+                #baseRs[temp_bools] = baseRs[temp_bools] / certainty
+            rTemp += p['gamma'] * baseRs
+            #rTemp += certainty * baseRs
         else:  
             for i, m in enumerate(moves):
                 g = game.copy()
@@ -200,7 +182,8 @@ def getBestMoveTreeEG(net, game, p, pool=None):
                         
                 trav = Traversal.Traversal(g, net, p)
                 trav.traverse()
-                rTemp[i] = game.getReward(m, p['mateReward'])[0] + certainty * trav.baseR
+                rTemp[i] = game.getReward(m, p['mateReward'], True)[0] + p['gamma'] * trav.baseR
+                #rTemp[i] = game.getReward(m, p['mateReward'], True)[0] + certainty * trav.baseR
 
         if game.whiteToMove:
             bestMove = moves[np.argmax(rTemp)]
@@ -208,3 +191,27 @@ def getBestMoveTreeEG(net, game, p, pool=None):
             bestMove = moves[np.argmin(rTemp)]
 
         return bestMove
+
+#   A helper function to compute depth-1 evaluations of a list of moves. Returns
+#   a list the same length as 'moves', with each component being the sum of the
+#   immediate reward for performing the respective move and a scaled
+#   NN-evaluation of the resulting position. The NN evaluation is computed only
+#   if net.certainty is positive, in which case net.certainty is the scalar to
+#   the NN-evaluation.
+def getEvals(moves, net, game, p):
+    #   Compute NN evaluations on each move if certainty is positive
+    evals = np.zeros(len(moves))
+    if net.certainty > 0:
+        scalar = p['gamma_exec'] * net.certainty / p['gamma']
+        for i, m in enumerate(moves):
+            temp = game.getReward(m, p['mateReward'])
+            evals[i] = temp[0] + scalar * float(logit(net.feedForward(temp[1])))
+    else:
+        evals = np.array([game.getReward(m, p['mateReward'], True)[0] for m in moves])
+    
+            
+    if not game.whiteToMove:
+        evals = -1 * evals
+
+    assert evals.shape == (len(moves),), evals.shape
+    return evals

@@ -76,7 +76,7 @@ class Traversal:
                         self.nodeHops += 2
                 #   At a leaf, we want to add the NN evaluation of the position, scaled by our
                 #   confidence in the NN, to make sure rewards are not simply undone later in the game
-                else:
+                elif self.net.certainty > 0:
                     stack[-1][1][-1] += self.net.certainty * float(logit(self.net.feedForward(g.toNN_vecs(every=False)[0])))
 
             else:   # otherwise hop down one node
@@ -92,16 +92,12 @@ class Traversal:
 #   Given a list (element on the stack during traversal), return the expected value of
 #   the reward from the position associated with that element.
 def processNode(node, p):
-    #   Sum of "probabilities" * rewards (aka the expected reward from this node),
-    #   scaled by uncertainty (see readme for explanation of math)
-    realBreadth = min(p['breadth'], node[3])
-    uncertainty = 1 - (node[3] - realBreadth) * (1 - p['alpha'])**realBreadth / node[3]
     if node[2].whiteToMove:
         r = max(node[1])
     else:
         r = min(node[1])
 
-    return float(r * uncertainty)
+    return float(r * p['gamma'])
 
 
 def per_thread_job(trav_obj):
