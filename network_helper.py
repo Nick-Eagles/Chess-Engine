@@ -103,9 +103,8 @@ def get_pop_stats(net, chunk):
             popMean.append('Undefined for projection layers!')
             popVar.append('Undefined for projection layers!')
         else:
-            bStats = batchStats(z[lay])
-            popMean.append(bStats[2].reshape((-1,1)))
-            popVar.append((bs * bStats[0] / (bs - 1)).reshape((-1,1)))
+            popMean.append(np.mean(z[lay], axis=1).reshape((-1,1)))
+            popVar.append((bs * np.var(z[lay], axis=1) / (bs - 1)).reshape((-1,1)))
 
     return (popMean, popVar)
 
