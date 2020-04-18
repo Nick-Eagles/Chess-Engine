@@ -69,17 +69,22 @@ class Game:
 
     #   Return the (absolute reward for doing move "move" (positive means to the
     #   benefit of white), NN input vector for the resulting position) as a tuple
-    def getReward(self, move, mateRew):
+    def getReward(self, move, mateRew, simple=False):
         g = self.copy()
         g.quiet = True
         g.doMove(move)
 
-        if abs(g.gameResult) == 1:
-            return (g.gameResult * mateRew, g.toNN_vecs(every=False)[0])
-        elif g.gameResult == 0:
-            return (np.log(self.bValue / self.wValue), g.toNN_vecs(every=False)[0])
+        if simple:
+            NN_vecs = np.array([])
         else:
-            return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), g.toNN_vecs(every=False)[0])
+            NN_vecs = g.toNN_vecs(every=False)[0]
+            
+        if abs(g.gameResult) == 1:
+            return (g.gameResult * mateRew, NN_vecs)
+        elif g.gameResult == 0:
+            return (np.log(self.bValue / self.wValue), NN_vecs)
+        else:
+            return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), NN_vecs)
 
     def printBoard(self):
         print("board:  -----")
