@@ -414,5 +414,6 @@ def verify_data(data, p, withMates=True):
 
             # the input is of proper shape
             assert data[i][0][0].shape == (839, 1), data[i][0][0].shape
+            assert data[i][0][1].shape == (1, 1), data[i][0][1].shape
         elif p['mode'] >= 2:
             print("Warning: buffer", i, "was empty.")
