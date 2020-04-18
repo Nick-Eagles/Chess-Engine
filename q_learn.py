@@ -82,16 +82,16 @@ def generateExamples(net, p):
 
     data = [[],[],[]]
     for i, r in enumerate(rSeqFlat):
-        data[0].append((NN_vecs[i][0], expit(r)))
-        data[0].append((NN_vecs[i][1], expit(-1 * r)))
+        data[0].append((NN_vecs[i][0], np.array([[expit(r)]])))
+        data[0].append((NN_vecs[i][1], np.array([[expit(-1 * r)]])))
         if len(NN_vecs[i]) > 2:
-            data[1].append((NN_vecs[i][2], expit(r)))
-            data[1].append((NN_vecs[i][3], expit(-1 * r)))
+            data[1].append((NN_vecs[i][2], np.array([[expit(r)]])))
+            data[1].append((NN_vecs[i][3], np.array([[expit(-1 * r)]])))
             if len(NN_vecs[i]) == 16:
                 for j in range(4, 10):
-                    data[2].append((NN_vecs[i][j], expit(r)))
+                    data[2].append((NN_vecs[i][j], np.array([[expit(r)]])))
                 for j in range(10, 16):
-                    data[2].append((NN_vecs[i][j], expit(-1 * r)))
+                    data[2].append((NN_vecs[i][j], np.array([[expit(-1 * r)]])))
 
     board_helper.verify_data(data, p, False)
     
