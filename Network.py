@@ -708,6 +708,7 @@ class Network:
                 print('  ', np.round_(self.popVar[lay][:5], 3).T)
         print('Number of training steps total:', self.age)
         print('Unique examples seen: ~', self.experience, sep="")
+        print('Moving certainty:', round(self.certainty, 3))
         print('Residual "input" layers:', self.resInputs)
         print('Residual "output" layers:', self.resOutputs)
         print('Linear downsample layers:', self.downSampLays)
@@ -739,7 +740,9 @@ class Network:
                 "certainty": self.certainty,
                 "certaintyRate": self.certaintyRate,
                 "blockWidth": self.blockWidth,
-                "blocksPerGroup": self.blocksPerGroup}
+                "blocksPerGroup": self.blocksPerGroup,
+                "tCosts": self.tCosts,
+                "vCosts": self.vCosts}
         f = open(filename, "w")
         json.dump(data, f)
         f.close()
@@ -783,6 +786,8 @@ def load(filename, lazy=False):
     net.experience = data["experience"]
     net.certainty = data["certainty"]
     net.certaintyRate = data["certaintyRate"]
+    net.tCosts = data["tCosts"]
+    net.vCosts = data["vCosts"]
 
     tBuffer = [[],[],[],[]]
     vBuffer = [[],[],[],[]]
