@@ -1,7 +1,11 @@
 TODO:
 
+-momentum terms should be saved with Network to avoid sudden halting of momentum when saving and restarting
+ program
+
+TODO (maybe):
+
 -maybe implement "autosaving" on some interval to avoid multiprocessing getting stuck
--make p['alpha'] independent from network certainty
 -consider programming in a resignation threshold to speed up training
 -implement alpha-beta-like pruning to greatly optimize tree search
 -add estimated time remaining when training/generating data
@@ -13,6 +17,12 @@ TODO:
 	 series of points where the 2 axes of the graph are the PCs (each point is another snapshot of the weights)
 -Consider recording 'certainty' on some interval so it can be graphed vs. number of training steps or unique examples
 -add computational time as Network attribute (to supplement 'age' and 'experience')
+
+Misc thoughts/worries:
+
+-does having a minimum certainty threshold (>0) for computing NN evals in policy.getEvals make more sense?
+-currently, when certainty <= 0 and there are no captures available, the policy selects the first legal move
+ computed (this is certainly not rational and could hurt exploration- the move should be randomly selected)
 
 Eventually:
 
