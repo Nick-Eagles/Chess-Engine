@@ -97,7 +97,7 @@ def processNode(node, p):
     else:
         r = min(node[1])
 
-    return float(r * p['gamma'])
+    return float(r * p['gamma_exec'])
 
 
 def per_thread_job(trav_obj):

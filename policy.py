@@ -165,14 +165,14 @@ def getBestMoveTreeEG(net, game, p, pool=None):
             #   move from this position of the most rewarding move sequence explored
             res_objs = pool.map(per_thread_job, trav_objs)
 
-            #   Here we check for the presence of a mate in 1, which should override the normal scaling
-            #   by certainty (since we are guaranteed we found the optimal move, mate, from this node)
+            #   Here we check for the presence of a mate in 1, which should override the normal decay
+            #   by gamma (since we are guaranteed we found the optimal move, mate, from this node)
             baseRs = np.array([ob.baseR for ob in res_objs])
             temp_bools = np.absolute(baseRs) == p['mateReward']
             if any(temp_bools):
-                baseRs[temp_bools] = baseRs[temp_bools] / p['gamma']
+                baseRs[temp_bools] = baseRs[temp_bools] / p['gamma_exec']
                 #baseRs[temp_bools] = baseRs[temp_bools] / certainty
-            rTemp += p['gamma'] * baseRs
+            rTemp += p['gamma_exec'] * baseRs
             #rTemp += certainty * baseRs
         else:  
             for i, m in enumerate(moves):
@@ -182,7 +182,7 @@ def getBestMoveTreeEG(net, game, p, pool=None):
                         
                 trav = Traversal.Traversal(g, net, p)
                 trav.traverse()
-                rTemp[i] = game.getReward(m, p['mateReward'], True)[0] + p['gamma'] * trav.baseR
+                rTemp[i] = game.getReward(m, p['mateReward'], True)[0] + p['gamma_exec'] * trav.baseR
                 #rTemp[i] = game.getReward(m, p['mateReward'], True)[0] + certainty * trav.baseR
 
         if game.whiteToMove:
