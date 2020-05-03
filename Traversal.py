@@ -76,7 +76,7 @@ class Traversal:
                         self.nodeHops += 2
                 #   At a leaf, we want to add the NN evaluation of the position, scaled by our
                 #   confidence in the NN, to make sure rewards are not simply undone later in the game
-                elif self.net.certainty > 0:
+                elif self.net.certainty > p['minCertainty']:
                     stack[-1][1][-1] += self.net.certainty * float(logit(self.net.feedForward(g.toNN_vecs(every=False)[0])))
 
             else:   # otherwise hop down one node
