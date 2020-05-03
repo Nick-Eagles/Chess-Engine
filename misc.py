@@ -91,4 +91,16 @@ def match(needle, stack):
         found = needle == stack[i]
 
     return i
-    
+
+#   Determine if all elements of an iterable x of float-like values are unique
+def is_unique(x, tol=0.0001):
+    i = 0
+    while i < len(x) - 1:
+        j = i + 1
+        while j < len(x):
+            if abs(x[i] - x[j]) > tol:
+                return False
+            j += 1
+        i += 1
+
+    return True

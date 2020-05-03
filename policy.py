@@ -59,7 +59,7 @@ def sampleMovesEG(net, game, p):
     #   This is the choice of epsilon such that if [subMovesLen] moves are chosen under
     #   an epsilon-greedy strategy, with each move constrained to be distinct, then the probability
     #   that none of those moves have the highest NN evaluation is eps.
-    epsEffective = 1 - (fullMovesLen * p['epsSearch'] / (fullMovesLen - subMovesLen))**(1/subMovesLen)
+    epsEffective = (fullMovesLen * p['epsSearch'] / (fullMovesLen - subMovesLen))**(1/subMovesLen)
     inds = []
     remainInds = list(range(fullMovesLen))
     chooseBest = [x > epsEffective for x in np.random.uniform(size=subMovesLen)]
@@ -108,10 +108,7 @@ def getBestMoveHuman(net, game, p):
         vals = getEvals(moves, net, game, p)
         noise = np.random.normal(np.mean(vals), np.std(vals), vals.shape[0])
         
-        if game.whiteToMove:
-            bestMove = legalMoves[np.argmax((1 - eps) * vals + eps * noise)]
-        else:
-            bestMove = legalMoves[np.argmin((1 - eps) * vals + eps * noise)]
+        bestMove = legalMoves[np.argmax((1 - eps) * vals + eps * noise)]
             
         return bestMove
 
@@ -127,10 +124,7 @@ def getBestMoveEG(net, game, p):
     else:
         vals = getEvals(moves, net, game, p)
 
-        if game.whiteToMove:
-            return legalMoves[np.argmax(vals)]
-        else:
-            return legalMoves[np.argmin(vals)]
+        return legalMoves[np.argmax(vals)]
 
 def per_thread_job(trav_obj):
     trav_obj.traverse()
@@ -197,19 +191,25 @@ def getBestMoveTreeEG(net, game, p, pool=None):
 #   immediate reward for performing the respective move and a scaled
 #   NN-evaluation of the resulting position. The NN evaluation is computed only
 #   if net.certainty is positive, in which case net.certainty is the scalar to
-#   the NN-evaluation.
+#   the NN-evaluation. Note that evals are flipped: larger values match to
+#   better moves for the current player!
 def getEvals(moves, net, game, p):
     #   Compute NN evaluations on each move if certainty is positive
     evals = np.zeros(len(moves))
-    if net.certainty > 0:
+    if net.certainty > p['minCertainty']:
         scalar = p['gamma_exec'] * net.certainty / p['gamma']
         for i, m in enumerate(moves):
             temp = game.getReward(m, p['mateReward'])
             evals[i] = temp[0] + scalar * float(logit(net.feedForward(temp[1])))
     else:
         evals = np.array([game.getReward(m, p['mateReward'], True)[0] for m in moves])
+
+        #   If evals are not all unique, add a tiny amount of noise to eliminate
+        #   bias for moves occuring earlier in the list of legal moves
+        if not misc.is_unique(evals):
+            noise = np.random.normal(scale=0.0001, size=evals.shape)
+            evals = evals + noise
     
-            
     if not game.whiteToMove:
         evals = -1 * evals
 
