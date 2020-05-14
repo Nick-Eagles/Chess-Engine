@@ -144,7 +144,12 @@ def getCertainty(net, data, p):
     actRew = logit(np.array([x[1] for x in origData]).flatten())
 
     #   Normalized dot product of expected and actual reward vectors
-    certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
+    actNorm = np.linalg.norm(actRew)
+    if round(float(actNorm), 5) == 0:
+        certainty = 0
+    else:
+        certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
+        
     if p['epsGreedy'] < 0.5:
         #   0.5 is an arbitrarily established cutoff to prevent catastrophic
         #   amplification of 'noise' in estimating true certainty
