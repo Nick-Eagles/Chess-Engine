@@ -5,7 +5,9 @@ visualization/random_position.fen
 visualization/rewards.csv
 visualization/edge_positions/*
 visualization/alpha_tests.txt
+visualization/test_losses.csv
 data/*Buffer*.csv
+data/*/*Buffer*.csv
 __pycache__
 config.txt
 nets/*

@@ -5,6 +5,8 @@ TODO:
 
 TODO (maybe):
 
+-explore covariance (or other metrics) between observed and expected rewards to see if the network is learning this
+ (even when network.certainty ~= 0)
 -maybe implement "autosaving" on some interval to avoid multiprocessing getting stuck
 -consider programming in a resignation threshold to speed up training
 -implement alpha-beta-like pruning to greatly optimize tree search
