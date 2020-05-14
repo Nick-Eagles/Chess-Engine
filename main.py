@@ -160,7 +160,7 @@ if __name__ == '__main__':
         blockWidth = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
         
         #   Number of neurons in one layer of each block
-        for i in range(blocksPerGroup):
+        for i in range(numGroups):
             messDef = "Length of neurons in group " + str(i+1) + "? "
             cond = 'var > 0 and var < 10000'
             layLen = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
