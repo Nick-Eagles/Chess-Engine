@@ -159,15 +159,8 @@ def getBestMoveTreeEG(net, game, p, pool=None):
             #   move from this position of the most rewarding move sequence explored
             res_objs = pool.map(per_thread_job, trav_objs)
 
-            #   Here we check for the presence of a mate in 1, which should override the normal decay
-            #   by gamma (since we are guaranteed we found the optimal move, mate, from this node)
             baseRs = np.array([ob.baseR for ob in res_objs])
-            temp_bools = np.absolute(baseRs) == p['mateReward']
-            if any(temp_bools):
-                baseRs[temp_bools] = baseRs[temp_bools] / p['gamma_exec']
-                #baseRs[temp_bools] = baseRs[temp_bools] / certainty
             rTemp += p['gamma_exec'] * baseRs
-            #rTemp += certainty * baseRs
         else:  
             for i, m in enumerate(moves):
                 g = game.copy()
@@ -197,7 +190,7 @@ def getEvals(moves, net, game, p):
     #   Compute NN evaluations on each move if certainty is positive
     evals = np.zeros(len(moves))
     if net.certainty > p['minCertainty']:
-        scalar = p['gamma_exec'] * net.certainty / p['gamma']
+        scalar = p['gamma_exec'] * net.certainty
         for i, m in enumerate(moves):
             temp = game.getReward(m, p['mateReward'])
             evals[i] = temp[0] + scalar * float(logit(net.feedForward(temp[1])))

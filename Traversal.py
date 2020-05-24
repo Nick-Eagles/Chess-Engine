@@ -35,7 +35,9 @@ class Traversal:
     def traverse(self):
         #   Handle the case where the game is already finished
         if self.game.gameResult != 17:
-            self.baseR = self.p['mateReward'] * self.game.gameResult
+            #   Here it is assumed reward for the move resulting in the position given by
+            #   self.game is already accounted for
+            self.baseR = 0
             return
         
         np.random.seed()
@@ -54,8 +56,7 @@ class Traversal:
                 #   Compute reward for the top move on the top slice of the stack, and add
                 #   it to the top slice's cumulative total
                 g0 = stack[-1][2]
-                r = float(np.log(g.wValue * g0.bValue / (g.bValue * g0.wValue)))
-                assert abs(r) < 1.3 * p['mateReward'], r
+                r = GetReward(g0, g, p)
                 stack[-1][1].append(r)
 
                 #   If we aren't at the leaves, compute the next set of moves/probs and add
@@ -66,18 +67,16 @@ class Traversal:
                         stack.append([moves, [], g, fullMovesLen])
                         self.nodeHops += 1
                     elif g.gameResult == 0:
-                        #   Recompute reward received for the move, since the game ended
-                        stack[-1][1][-1] = float(np.log(g0.bValue / g0.wValue))
                         self.nodeHops += 2
                     else:
-                        stack[-1][1][-1] = g.gameResult * p['mateReward']
-                        stack[-1][3] = len(stack[-1][1]) # this tells processNode we might as well have explored all moves
-                        stack[-1][0] = [] # signal to stop branching here since we found a mate
+                        #   Signal to stop branching here since we found a mate
+                        #   (the strongest possible move)
+                        stack[-1][0] = [] 
                         self.nodeHops += 2
                 #   At a leaf, we want to add the NN evaluation of the position, scaled by our
                 #   confidence in the NN, to make sure rewards are not simply undone later in the game
                 elif self.net.certainty > p['minCertainty']:
-                    stack[-1][1][-1] += self.net.certainty * float(logit(self.net.feedForward(g.toNN_vecs(every=False)[0])))
+                    stack[-1][1][-1] += self.net.certainty * p['gamma_exec'] * float(logit(self.net.feedForward(g.toNN_vecs(every=False)[0])))
 
             else:   # otherwise hop down one node
                 self.nodeHops += 1
@@ -88,7 +87,17 @@ class Traversal:
                     stack[-1][1][-1] += r
                 else:
                     self.baseR = r
-    
+
+
+def GetReward(g0, g, p):
+    if abs(g.gameResult) == 1:
+        return g.gameResult * p['mateReward']
+    elif g.gameResult == 0:
+        return float(np.log(g0.bValue / g0.wValue))
+    else:
+        return float(np.log(g.wValue * g0.bValue / (g.bValue * g0.wValue)))
+
+
 #   Given a list (element on the stack during traversal), return the expected value of
 #   the reward from the position associated with that element.
 def processNode(node, p):
@@ -97,7 +106,7 @@ def processNode(node, p):
     else:
         r = min(node[1])
 
-    return float(r * p['gamma_exec'])
+    return r * p['gamma_exec']
 
 
 def per_thread_job(trav_obj):
