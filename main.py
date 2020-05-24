@@ -178,11 +178,15 @@ if __name__ == '__main__':
 
     messDef = 'Which of the following would you like to do:\n'
     options = ['Train the current network including new data',
-                'Show a sample game for the current network', 'Save the current network',
-                'Check neuron activations using current data', 'Train the network from previous data only',
-                'Write existing novel checkmates to file', 'Run new games to generate checkmate positions',
-                'Write the N least and greatest-loss positions to file',
-               'Play a game against the network']
+               'Show a sample game for the current network',
+               'Save the current network',
+               'Check neuron activations using current data',
+               'Train the network from previous data only',
+               'Write existing novel checkmates to file',
+               'Run new games to generate checkmate positions',
+               'Write the N least and greatest-loss positions to file',
+               'Play a game against the network',
+               'Add a dataset to the current buffers']
     for i, opt in enumerate(options):
         messDef += '(' + str(i+1) + ') ' + opt + '\n'
     messDef += 'Enter 0 to exit: '
@@ -303,3 +307,12 @@ if __name__ == '__main__':
             print("Done. See 'visualization/edge_positions/'.")
         elif choice == 9:
             demonstration.interact(net)
+        elif choice == 10:
+            p = input_handling.readConfig()
+
+            messDef2 = "Name of dataset? "
+            messOnErr = "Error."
+            prefix = "data/" + input_handling.getUserInput(messDef2, messOnErr, 'str', 'True')
+            for i in range(4):
+                tBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/tBuffer' + str(i) + '.csv', p))
+                vBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/vBuffer' + str(i) + '.csv', p))
