@@ -21,7 +21,7 @@ def decompressGames(games):
     cGames = []
     for g in games:
         NN_vec = []
-        result = g.pop()
+        result = np.array(g.pop()).reshape((1,1))
         board = np.array(g[:64]).reshape(8,8).tolist()
         for file in range(8):
             for rank in range(8):
@@ -33,6 +33,7 @@ def decompressGames(games):
                         NN_vec.append(0)
         NN_vec += g[64:]
         final_vec = np.array(NN_vec).reshape(-1,1)
+        assert final_vec.dtype == 'float64', final_vec.dtype
         assert final_vec.shape[0] == 839, final_vec.shape[0]
         assert abs(result - 0.5) < 0.5, result 
         cGames.append((final_vec, result))
@@ -77,7 +78,8 @@ def readGames(filepath, p):
     #   Convert data to list of tuples as required
     games = []
     for row in range(len(flatData)):
-        games.append([np.array([[float(i)]]) for i in flatData[row]])  # csv reader returns a line as list of strings
+        # csv reader returns a line as list of strings
+        games.append([float(i) for i in flatData[row]])
 
     return games
 

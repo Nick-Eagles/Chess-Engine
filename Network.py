@@ -252,6 +252,7 @@ class Network:
     #   Inference for training on all members of a batch simultaneously
     def ff_track(self, aInput):
         assert len(aInput.shape) == 2 and aInput.shape[0] == 839, aInput.shape
+        assert aInput.dtype == 'float64', aInput.dtype
         z, zNorm = [], []
         a = [aInput]
         for lay in range(len(self.layers)):
