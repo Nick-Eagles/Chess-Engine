@@ -3,26 +3,26 @@ mode 1
 baseBreadth 12
 epsGreedy 0.2
 mateReward 3
-gamma 0.4
+gamma 0.2
 #	Tree traversal
-gamma_exec 0.6
+gamma_exec 0.7
 breadth 10
 depth 2
 curiosity 5
-epsSearch 0.05
+epsSearch 0.03
 minCertainty 0.02
 policy "sampleMovesEG"
 #	Network/ training-related
-memDecay 0.05
-weightDec 0.00001
-nu 0.002
+memDecay 0.07
+weightDec 0.000001
+nu 0.05
 mom 0.9
 batchSize 2000
 epochs 10
 fracValidation 0.1
-fracFromFile 0.02
-popPersist 0.5
-costLimit 6000
+fracFromFile 0.01
+popPersist 0.3
+costLimit 4000
 batchNormScale 1.0
 #	Q-learning
 maxSteps 200
