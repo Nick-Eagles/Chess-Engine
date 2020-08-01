@@ -1,5 +1,7 @@
 TODO:
 
+-fix issue with epoch number associated with recorded loss value being incorrect when p['epochs'] changes
+ during training
 -momentum terms should be saved with Network to avoid sudden halting of momentum when saving and restarting
  program
 
