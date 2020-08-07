@@ -19,8 +19,8 @@ import Move
 game = Game.Game()
 vecs = game.toNN_vecs()
 assert len(vecs) == 2, len(vecs)
-filename0 = '../visualization/test_positions/start.fen'
-filename1 = '../visualization/test_positions/start_invert.fen'
+filename0 = '../visualization/toNN_vecs_test/start.fen'
+filename1 = '../visualization/toNN_vecs_test/start_invert.fen'
 file_IO.toFEN(file_IO.compressNNinput(vecs[0]), filename0)
 file_IO.toFEN(file_IO.compressNNinput(vecs[1]), filename1)
 
@@ -38,7 +38,7 @@ game.doMove(Move.Move((4, 7), (5, 6), -6))
 
 vecs = game.toNN_vecs()
 assert len(vecs) == 4, len(vecs)
-fileBase = '../visualization/test_positions/moved_kings'
+fileBase = '../visualization/toNN_vecs_test/moved_kings'
 for i in range(4):
     file_IO.toFEN(file_IO.compressNNinput(vecs[i]), fileBase + str(i) + '.fen')
 
@@ -58,7 +58,7 @@ game.bPieces = [0, 0, 0, 0, 0, 0]
 
 vecs = game.toNN_vecs()
 assert len(vecs) == 16, len(vecs)
-fileBase = '../visualization/test_positions/endgame'
+fileBase = '../visualization/toNN_vecs_test/endgame'
 for i in range(16):
     file_IO.toFEN(file_IO.compressNNinput(vecs[i]), fileBase + str(i) + '.fen')
 
