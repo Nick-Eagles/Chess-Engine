@@ -16,6 +16,7 @@ class Traversal:
         self.game = game
         self.net = net         
         self.nodeHops = 0
+        self.pruneCuts = 0
         self.baseR = 0
         
         if p['policy'] == 'sampleMovesEG':
@@ -42,71 +43,90 @@ class Traversal:
         
         np.random.seed()
         p = self.p
+
+        #   The maximum reward that could possibly be received from any position
+        MAX_R = p['gamma_exec'] * p['mateReward']
         
         moves, fullMovesLen = self.policy(self.net, self.game, p)
-        stack = [[moves, [], self.game, fullMovesLen]]
+
+        #   One element (node) on the stack is composed of the following:
+        #   [moves, rewards, Game, reward up to this, alpha, beta]
+        stack = [[moves, [], self.game, 0, -1 * MAX_R, MAX_R]]
         while len(stack) > 0:
             assert len(stack) <= p['depth'] + 1, "Tried to explore too far"
             assert self.nodeHops < self.limit, \
                    "Exceeded the number of node hops required to perform the entire traversal"
             if len(stack[-1][0]) > 0:   # if there are moves left to explore
-                g = stack[-1][2].copy()
-                g.doMove(stack[-1][0].pop(0))
-                    
-                #   Compute reward for the top move on the top slice of the stack, and add
-                #   it to the top slice's cumulative total
-                g0 = stack[-1][2]
-                r = GetReward(g0, g, p)
-                stack[-1][1].append(r)
+                #   alpha-beta pruning
+                if stack[-1][5] <= stack[-1][4]:
+                    #   None of the remaining lines are relevant in this case
+                    self.pruneCuts += len(stack[-1][0])
+                    stack[-1][0] = []
+                else:
+                    #   Pop the first move and do it
+                    g = stack[-1][2].copy()
+                    r = g.getReward(stack[-1][0].pop(0), p['mateReward'], simple=True, copy=False)[0]
+                    stack[-1][1].append(r)
 
-                #   If we aren't at the leaves, compute the next set of moves/probs and add
-                #   to the stack
-                if len(stack) < p['depth']:
-                    if g.gameResult == 17:
-                        moves, fullMovesLen = self.policy(self.net, g, p)
-                        stack.append([moves, [], g, fullMovesLen])
-                        self.nodeHops += 1
-                    elif g.gameResult == 0:
-                        self.nodeHops += 2
-                    else:
-                        #   Signal to stop branching here since we found a mate
-                        #   (the strongest possible move)
-                        stack[-1][0] = [] 
-                        self.nodeHops += 2
-                #   At a leaf, we want to add the NN evaluation of the position, scaled by our
-                #   confidence in the NN, to make sure rewards are not simply undone later in the game
-                elif self.net.certainty > p['minCertainty']:
-                    stack[-1][1][-1] += self.net.certainty * p['gamma_exec'] * float(logit(self.net.feedForward(g.toNN_vecs(every=False)[0])))
+                    #   If we aren't at the leaves, compute the next set of moves/probs and add
+                    #   to the stack
+                    if len(stack) < p['depth']:
+                        if g.gameResult == 17:  
+                            moves, fullMovesLen = self.policy(self.net, g, p)
+                            stack.append([moves, [], g, stack[-1][3] + p['gamma_exec'] * r, stack[-1][4], stack[-1][5]])
+                            self.nodeHops += 1
+                        elif g.gameResult == 0:
+                            self.nodeHops += 2
+                        else:
+                            #   Signal to stop branching here since we found a mate
+                            #   (the strongest possible move)
+                            stack[-1][0] = [] 
+                            self.nodeHops += 2
+                    #   At a leaf, we want to add the NN evaluation of the position, scaled by our
+                    #   confidence in the NN, to make sure rewards are not simply undone later in the game
+                    elif self.net.certainty > p['minCertainty'] and g.gameResult != 17:
+                        stack[-1][1][-1] += self.net.certainty * p['gamma_exec'] * float(logit(self.net.feedForward(g.toNN_vecs(every=False)[0])))
 
             else:   # otherwise hop down one node
-                self.nodeHops += 1
-                r = processNode(stack.pop(), p)
-
-                #   Pass reward down if applicable
-                if len(stack) > 0:
-                    stack[-1][1][-1] += r
-                else:
-                    self.baseR = r
+                processNode(stack, self, p)
 
 
-def GetReward(g0, g, p):
-    if abs(g.gameResult) == 1:
-        return g.gameResult * p['mateReward']
-    elif g.gameResult == 0:
-        return float(np.log(g0.bValue / g0.wValue))
-    else:
-        return float(np.log(g.wValue * g0.bValue / (g.bValue * g0.wValue)))
+#def GetReward(g0, g, p):
+    #if abs(g.gameResult) == 1:
+        #return g.gameResult * p['mateReward']
+    #elif g.gameResult == 0:
+        #return float(np.log(g0.bValue / g0.wValue))
+    #else:
+        #return float(np.log(g.wValue * g0.bValue / (g.bValue * g0.wValue)))
 
 
-#   Given a list (element on the stack during traversal), return the expected value of
-#   the reward from the position associated with that element.
-def processNode(node, p):
+#   Descend one step of depth in the search after all moves for a node have been
+#   explored. Pass reward down (minimax), along with alpha or beta as
+#   appropriate.
+def processNode(stack, trav, p):
+    node = stack.pop()
     if node[2].whiteToMove:
-        r = max(node[1])
-    else:
-        r = min(node[1])
+        r = p['gamma_exec'] * max(node[1])
+        
+        #   Update beta if necessary
+        if len(stack) > 0:
+            stack[-1][5] = min(stack[-1][5], stack[-1][3] + r)
 
-    return r * p['gamma_exec']
+        
+    else:
+        r = p['gamma_exec'] * min(node[1])
+
+        #   Update alpha if necessary
+        if len(stack) > 0:
+            stack[-1][4] = max(stack[-1][4], stack[-1][3] + r)
+
+    #   Pass reward down if applicable
+    if len(stack) > 0:
+        stack[-1][1][-1] += r
+    else:
+        trav.baseR = r
+
+    trav.nodeHops += 1
 
 
 def per_thread_job(trav_obj):
