@@ -20,6 +20,8 @@ import numpy as np
 from scipy.special import expit, logit
 import cProfile
 
+net_name = 'res3'
+
 def do_train(arg_list):
     #   Given a network, asks the user for training hyper-parameters,
     #   trains the network, and asks what to do next.
@@ -30,18 +32,34 @@ def do_train(arg_list):
 
     #   print relevant information about parameters that affect
     #   computational time
-    param_names = ['epochs', 'baseBreadth', 'maxSteps', 'breadth', 'depth', 'epsGreedy', 'batchSize']
+    param_names = ['epochs', 'baseBreadth', 'maxSteps', 'breadth', 'depth',
+                   'epsGreedy', 'epsSearch', 'batchSize']
     for x in param_names:
         print(x + ': ', p[x])
 
     #   Now do an episode of data generation/training
     main.trainOption(net, tBuffer, vBuffer, 1)
+
+def do_generate_examples(arg_list):
+    net, p = arg_list
+    data = q_learn.generateExamples(net, p)
         
     
-net, tBuffer, vBuffer = Network.load('nets/8deep6')
+net, tBuffer, vBuffer = Network.load('nets/' + net_name)
+p = input_handling.readConfig(1)
+p.update(input_handling.readConfig(3))
 
 net.print()
-print('tBuffer and vBuffer sizes: ', sum([len(x) for x in tBuffer]), ',', sum([len(x) for x in vBuffer]))
+print('tBuffer and vBuffer sizes: ', sum([len(x) for x in tBuffer]), ',',
+      sum([len(x) for x in vBuffer]))
+print('\n-----------------------')
+print('  main.trainOption')
+print('-----------------------\n')
 
 cProfile.run('do_train([net,tBuffer,vBuffer])')
 
+print('\n-----------------------')
+print('  q_learn.generateExamples')
+print('-----------------------\n')
+
+cProfile.run('do_generate_examples([net, p])')
