@@ -23,6 +23,7 @@ import cProfile
 net_name = 'res3'
 
 def do_train(arg_list):
+    random.seed(0)
     #   Given a network, asks the user for training hyper-parameters,
     #   trains the network, and asks what to do next.
     net, tBuffer, vBuffer = arg_list
@@ -41,6 +42,7 @@ def do_train(arg_list):
     main.trainOption(net, tBuffer, vBuffer, 1)
 
 def do_generate_examples(arg_list):
+    random.seed(0)
     net, p = arg_list
     data = q_learn.generateExamples(net, p)
         
@@ -57,6 +59,10 @@ print('  main.trainOption')
 print('-----------------------\n')
 
 cProfile.run('do_train([net,tBuffer,vBuffer])')
+
+#   Reload network since generated examples are in nondeterministic order,
+#   subtly affecting network parameters after training
+net, tBuffer, vBuffer = Network.load('nets/' + net_name)
 
 print('\n-----------------------')
 print('  q_learn.generateExamples')
