@@ -277,9 +277,8 @@ def invert(board):
 #   A simple check that a square, when perturbed a distance in both
 #   dimensions, remains in bounds on a chess board. Both are 2-tuples of ints.
 def inBounds(square, perturb):
-    h = (square[0] + perturb[0] >= 0) and (square[0] + perturb[0]) <= 7
-    v = (square[1] + perturb[1] >= 0) and (square[1] + perturb[1]) <= 7
-    return h and v
+    return (square[0] + perturb[0] >= 0) and (square[0] + perturb[0]) <= 7 and \
+           (square[1] + perturb[1] >= 0) and (square[1] + perturb[1]) <= 7
 
 #   Return if a legitimate move is legal (ie. doesn't end with the player in
 #   check). The passed move is relative to game.board, and should not be a
