@@ -12,7 +12,10 @@ import os
 import time
 
 def generateExamples(net, p):
-    np.random.seed()
+    if p['mode'] >= 3:
+        np.random.seed(0)
+    else:
+        np.random.seed()
         
     game = Game.Game()
     step = 0
@@ -26,7 +29,7 @@ def generateExamples(net, p):
             bestMove = policy.getBestMoveTreeEG(net, game, p)
 
             #   Append the reward received from the best move
-            rewards[len(game_results)].append(game.getReward(bestMove, p['mateReward'])[0])
+            rewards[len(game_results)].append(game.getReward(bestMove, p['mateReward'], True)[0])
 
             #   Perform move
             NN_vecs.append(game.toNN_vecs())

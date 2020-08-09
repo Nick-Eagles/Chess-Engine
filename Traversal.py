@@ -6,7 +6,6 @@ import misc
 import policy
 
 import numpy as np
-import random
 from scipy.special import expit, logit
 from multiprocessing import Pool
 
@@ -40,9 +39,12 @@ class Traversal:
             #   self.game is already accounted for
             self.baseR = 0
             return
-        
-        np.random.seed()
+
         p = self.p
+        if p['mode'] >= 3:
+            np.random.seed(0)
+        else:
+            np.random.seed()
 
         #   The maximum reward that could possibly be received from any position
         MAX_R = p['gamma_exec'] * p['mateReward']
@@ -89,15 +91,6 @@ class Traversal:
 
             else:   # otherwise hop down one node
                 processNode(stack, self, p)
-
-
-#def GetReward(g0, g, p):
-    #if abs(g.gameResult) == 1:
-        #return g.gameResult * p['mateReward']
-    #elif g.gameResult == 0:
-        #return float(np.log(g0.bValue / g0.wValue))
-    #else:
-        #return float(np.log(g.wValue * g0.bValue / (g.bValue * g0.wValue)))
 
 
 #   Descend one step of depth in the search after all moves for a node have been

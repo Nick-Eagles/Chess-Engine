@@ -69,9 +69,17 @@ class Game:
 
     #   Return the (absolute reward for doing move "move" (positive means to the
     #   benefit of white), NN input vector for the resulting position) as a tuple
-    def getReward(self, move, mateRew, simple=False):
-        g = self.copy()
-        g.quiet = True
+    def getReward(self, move, mateRew, simple=False, copy=True):
+        if copy:
+            g = self.copy()
+            g.quiet = True
+        else:
+            g = self
+
+        #   Save original material values, since g may be self
+        old_b_value = g.bValue
+        old_w_value = g.wValue
+        
         g.doMove(move)
 
         if simple:
@@ -82,9 +90,9 @@ class Game:
         if abs(g.gameResult) == 1:
             return (g.gameResult * mateRew, NN_vecs)
         elif g.gameResult == 0:
-            return (np.log(self.bValue / self.wValue), NN_vecs)
+            return (np.log(old_b_value / old_w_value), NN_vecs)
         else:
-            return (np.log(g.wValue * self.bValue / (self.wValue * g.bValue)), NN_vecs)
+            return (np.log(g.wValue * old_b_value / (old_w_value * g.bValue)), NN_vecs)
 
     def printBoard(self):
         print("board:  -----")
@@ -170,6 +178,14 @@ class Game:
         if not check and len(moves) == 0:
             return (0, "Draw by stalemate.")
 
+        ########################################################
+        #   50 MOVE RULE
+        ########################################################
+        
+        if self.movesSinceAction >= 50:
+            note = "Draw: no capture or pawn advance in 50 moves."
+            return (0, note)
+
         ########################################################  
         #   Insufficient material
         ########################################################
@@ -196,15 +212,6 @@ class Game:
                     if numKnights < 2:
                         note = "Draw by insufficient material."
                         return (0, note)
-                    
-        
-        ########################################################
-        #   50 MOVE RULE
-        ########################################################
-        
-        if self.movesSinceAction >= 50:
-            note = "Draw: no capture or pawn advance in 50 moves."
-            return (0, note)
 
         return (17, "Not a terminal position")
 
@@ -366,7 +373,7 @@ class Game:
 
         return ""
 
-    def toPGN(self):
+    def toPGN(self, filename='visualization/latest_game.pgn'):
         date = datetime.datetime.now()
         dateStr = '"' + str(date.year) + '.' + str(date.month) + '.' + str(date.day) + '"'
         if self.gameResult == -1:
@@ -381,8 +388,6 @@ class Game:
               + '[Result "' + result + '"]\n\n'
         txt = txt + self.annotation + result
 
-        #   Write to pgn in current directory
-        filename = 'visualization/latest_game.pgn'
         try:
             with open(filename, 'w') as pgn_file:
                 pgn_file.write(txt)

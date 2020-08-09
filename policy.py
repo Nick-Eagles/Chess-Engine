@@ -142,17 +142,14 @@ def getBestMoveTreeEG(net, game, p, pool=None):
         p = p_copy
         
         moves, fullMovesLen = sampleMovesEG(net, game, p)
-        #certainty = 1 - (fullMovesLen - len(moves)) * (1 - p['alpha'])**len(moves) / fullMovesLen
         
         rTemp = np.zeros(len(moves))
         if pool != None:
             trav_objs = []
             for i, m in enumerate(moves):
-                rTemp[i] = game.getReward(m, p['mateReward'], True)[0]
-
                 g = game.copy()
                 g.quiet = True
-                g.doMove(m)
+                rTemp[i] = g.getReward(m, p['mateReward'], simple=True, copy=False)[0]
                 trav_objs.append(Traversal.Traversal(g, net, p))
 
             #   Perform the traversals in parallel to return the index of the first
@@ -165,12 +162,12 @@ def getBestMoveTreeEG(net, game, p, pool=None):
             for i, m in enumerate(moves):
                 g = game.copy()
                 g.quiet = True
-                g.doMove(m)
-                        
+                rTemp[i] = g.getReward(m, p['mateReward'], simple=True,
+                                       copy=False)[0]
+                
                 trav = Traversal.Traversal(g, net, p)
                 trav.traverse()
-                rTemp[i] = game.getReward(m, p['mateReward'], True)[0] + p['gamma_exec'] * trav.baseR
-                #rTemp[i] = game.getReward(m, p['mateReward'], True)[0] + certainty * trav.baseR
+                rTemp[i] += p['gamma_exec'] * trav.baseR
 
         if game.whiteToMove:
             bestMove = moves[np.argmax(rTemp)]
