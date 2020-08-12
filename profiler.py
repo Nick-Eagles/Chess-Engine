@@ -20,7 +20,7 @@ import numpy as np
 from scipy.special import expit, logit
 import cProfile
 
-net_name = 'res3'
+net_name = 'res_profile'
 
 def do_train(arg_list):
     random.seed(0)
@@ -47,7 +47,7 @@ def do_generate_examples(arg_list):
     data = q_learn.generateExamples(net, p)
         
     
-net, tBuffer, vBuffer = Network.load('nets/' + net_name)
+net, tBuffer, vBuffer = Network.load('nets/' + net_name, data_prefix='profile')
 p = input_handling.readConfig(1)
 p.update(input_handling.readConfig(3))
 
