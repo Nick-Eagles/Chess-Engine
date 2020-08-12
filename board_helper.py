@@ -7,7 +7,7 @@ import Move
 #   considers adjacent kings to be a form of check
 def inCheck(board):
     assert len(board) == 8 and len(board[0]) == 8, "inCheck() was passed an illegitimate board"
-        
+    
     #   find the rank and file of the white king
     for file in range(8):
         for rank in range(8):
@@ -27,15 +27,16 @@ def inCheck(board):
             #print("check by pawn to top left")
             return True
 
-    #   CHECK BY KING (allows for convenient computation of illegal moves):
-    #   define a box around the king and iterate through to check if the
-    #   black king is in it (including, for simplicity, the case where kings share a square)
-    ranks = list(range(max(0,kingRank-1),min(8,kingRank+2)))
-    files = list(range(max(0,kingFile-1),min(8,kingFile+2)))
+    #   CHECK BY ADJACENT QUEEN OR KING (allows for convenient computation of
+    #   illegal moves): define a box around the king and iterate through to
+    #   check if the black king is in it (including, for simplicity, the case
+    #   where kings share a square)
+    ranks = range(max(0,kingRank-1),min(8,kingRank+2))
+    files = range(max(0,kingFile-1),min(8,kingFile+2))
     for r in ranks:
         for f in files:
-            if board[f][r] == -6:
-                #print("check by king (illegal move)")
+            if board[f][r] <= -5:
+                #print("check by king (illegal move) or queen")
                 return True
 
     #   x and y are perturbations in file and rank, respectively, relative to the king's square.
@@ -155,7 +156,7 @@ def getLegalMoves(game):
             if (game.whiteToMove and not inCheck(newBoard)) or (not game.whiteToMove and not inCheck(invert(newBoard))):
                 moves.append(Move.Move((game.lastMove.endSq[0]-1, game.lastMove.endSq[1]),(game.lastMove.endSq[0],game.lastMove.endSq[1]+coeff),coeff))
         #   Look to the right for a white pawn
-        if game.lastMove.endSq[0] < 7 and game.board[game.lastMove.endSq[0]+1][game.lastMove.endSq[1]] == coeff:
+        elif game.lastMove.endSq[0] < 7 and game.board[game.lastMove.endSq[0]+1][game.lastMove.endSq[1]] == coeff:
             newBoard = [x.copy() for x in game.board]
             #   Move above the black pawn
             newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]+coeff] = coeff
@@ -220,8 +221,8 @@ def getLegalMoves(game):
                                 moves.append(move)
             #   King
             elif piece*coeff == 6:
-                ranks = list(range(max(0,rank-1),min(8,rank+2)))
-                files = list(range(max(0,file-1),min(8,file+2)))
+                ranks = range(max(0, rank-1), min(8, rank+2))
+                files = range(max(0, file-1), min(8, file+2))
                 for r in ranks:
                     for f in files:
                         if game.board[f][r]*coeff <= 0:
@@ -305,11 +306,8 @@ def piece_to_vector(netInput, piece, c):
     for i in range(-6, 7):
         if piece == i:
             netInput[c][0] = 1
-        else:
-            netInput[c][0] = 0
         c += 1
-        
-    return netInput
+
 
 #   invert: (bool) determines whether to invert board by color (white and
 #           black switch)
@@ -327,49 +325,49 @@ def generate_NN_vec(game, invert, flip0, flip1, swap):
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[file][rank]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
     elif not flip0 and not flip1 and swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[rank][file]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
     elif not flip0 and flip1 and not swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[file][7-rank]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
     elif not flip0 and flip1 and swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[rank][7-file]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
     elif flip0 and not flip1 and not swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-file][rank]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
     elif flip0 and not flip1 and swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-rank][file]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
     elif flip0 and flip1 and not swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-file][7-rank]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
     else: # all are true
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-rank][7-file]
-                netInput = piece_to_vector(netInput, piece, c)
+                piece_to_vector(netInput, piece, c)
                 c += 13
 
     netInput[832][0] = int(invert + game.whiteToMove == 1)
