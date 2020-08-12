@@ -750,15 +750,15 @@ class Network:
 
         #   Write each sub-buffer to separate file
         for i in range(4):
-            file_IO.writeGames(tBuffer[i], 'data/tBuffer' + str(i) + '.csv', True, False)
-            file_IO.writeGames(vBuffer[i], 'data/vBuffer' + str(i) + '.csv', True, False)
+            file_IO.writeGames(tBuffer[i], 'data/default/tBuffer' + str(i) + '.csv', True, False)
+            file_IO.writeGames(vBuffer[i], 'data/default/vBuffer' + str(i) + '.csv', True, False)
 
 def train_thread(net, batch, p):  
     z, zNorm, a = net.ff_track(batch[0])
     
     return net.backprop(z, zNorm, a, batch[1], p)
       
-def load(filename, lazy=False):
+def load(filename, lazy=False, data_prefix='default'):
     f = open(filename, "r")
     data = json.load(f)
     f.close()
@@ -790,13 +790,11 @@ def load(filename, lazy=False):
     net.tCosts = data["tCosts"]
     net.vCosts = data["vCosts"]
 
-    tBuffer = [[],[],[],[]]
-    vBuffer = [[],[],[],[]]
-    if not lazy:
-        p = input_handling.readConfig()
-        for i in range(4):
-            tBuffer[i] = file_IO.decompressGames(file_IO.readGames('data/tBuffer' + str(i) + '.csv', p))
-            vBuffer[i] = file_IO.decompressGames(file_IO.readGames('data/vBuffer' + str(i) + '.csv', p))
+    if lazy:
+        tBuffer = [[],[],[],[]]
+        vBuffer = [[],[],[],[]]
+    else:
+        tBuffer, vBuffer = file_IO.loadBuffers(data_prefix)
     
     return (net, tBuffer, vBuffer)
              

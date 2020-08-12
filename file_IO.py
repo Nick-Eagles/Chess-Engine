@@ -3,6 +3,8 @@ import os
 import numpy as np
 from scipy.special import expit, logit
 
+import input_handling
+
 #   Take np array used as input to the NN and return a list more suitable for
 #   writing to a csv: the sparse board representation is condensed into the
 #   64 integer rep, and the booleans are appended "as is".
@@ -192,3 +194,15 @@ def toFEN(NN_vec, filename, verbose=True):
         fenFile.write(game_str)
     if verbose:
         print("Done.")
+
+def loadBuffers(prefix):
+    p = input_handling.readConfig()
+
+    tBuffer = [[],[],[],[]]
+    vBuffer = [[],[],[],[]]
+    
+    for i in range(4):
+        tBuffer[i] = decompressGames(readGames('data/' + prefix + '/tBuffer' + str(i) + '.csv', p))
+        vBuffer[i] = decompressGames(readGames('data/' + prefix + '/vBuffer' + str(i) + '.csv', p))
+
+    return (tBuffer, vBuffer)
