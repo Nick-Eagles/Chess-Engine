@@ -9,11 +9,16 @@ def inCheck(board):
     assert len(board) == 8 and len(board[0]) == 8, "inCheck() was passed an illegitimate board"
     
     #   find the rank and file of the white king
-    for file in range(8):
-        for rank in range(8):
-            if board[file][rank] == 6:
-                kingRank = rank
-                kingFile = file
+    kingFile = -1
+    kingRank = -1
+    found = False
+
+    while kingFile < 7 and not found:
+        kingFile += 1
+        while kingRank < 7 and not found:
+            kingRank += 1
+            if board[kingFile][kingRank] == 6:
+                found = True
                 
     #   CHECK BY PAWN
     if kingRank < 7:
