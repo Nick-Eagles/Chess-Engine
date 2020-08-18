@@ -131,12 +131,18 @@ def getLegalMoves(game):
     coeff = 2 * game.whiteToMove - 1
     if game.whiteToMove:
         backRank = 0
+        currently_check = inCheck(game.board)
     else:
         backRank = 7
         game.invBoard = invert(game.board)
+        currently_check = inCheck(game.invBoard)
 
     #   Castling
-    castling = canCastle(game)
+    if currently_check:
+        castling = (False, False)
+    else:
+        castling = canCastle(game)
+    
     if castling[0]:
         moves.append(Move.Move((4,backRank),(6,backRank),6*coeff))
     if castling[1]:
@@ -234,37 +240,116 @@ def getLegalMoves(game):
             #   Rook, bishop, and queen are more complicated to deal with individually
             #   ----------------------------------------------------------------------
             else:
-                #   Diagonals (bishop or queen)
-                if piece*coeff == 3 or piece*coeff == 5:
-                    for x in [-1, 1]:
-                        for y in [-1, 1]:
-                            i = 1
-                            while inBounds((file, rank), (i*x, i*y)):
-                                pieceTemp = game.board[file+i*x][rank+i*y]
-                                if pieceTemp*coeff <= 0:
-                                    move = Move.Move((file,rank),(file+i*x,rank+i*y), piece)
-                                    if tryMove(game, move):
-                                        moves.append(move)
-                                if pieceTemp == 0:
-                                    i += 1
-                                else:
-                                    i = 8
-                                
-                #   Lateral, up/down movement (rook or queen)
-                if piece*coeff == 4 or piece*coeff == 5:
-                    for x, y in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                        i = 1
-                        while inBounds((file, rank), (i*x, i*y)):
-                            pieceTemp = game.board[file+i*x][rank+i*y]
-                            if pieceTemp*coeff <= 0:
-                                move = Move.Move((file,rank),(file+i*x,rank+i*y), piece)
-                                if tryMove(game, move):
-                                    moves.append(move)
-                            if pieceTemp == 0:
-                                i += 1
-                            else:
-                                i = 8
-             
+                if currently_check:
+                    #   Diagonals (bishop or queen)
+                    if piece*coeff == 3 or piece*coeff == 5:
+                        for diagonal in [-1, 1]:
+                            num_legal = 0
+                            num_illegal = 0
+                            for direction in [-1, 1]:
+                                i = 1
+                                #   If the second condition is False, we have found the
+                                #   unique legal move along this diagonal already
+                                while inBounds((file, rank), (direction*diagonal*i, direction*i)) and (num_legal < 1 or num_illegal < 1):
+                                    x = file + direction*diagonal*i
+                                    y = rank + direction*i
+                                    
+                                    pieceTemp = game.board[x][y]
+                                    if pieceTemp*coeff <= 0:
+                                        move = Move.Move((file, rank),(x, y), piece)
+                                        #   If 2 moves are legal, all are
+                                        if num_legal >= 2 or tryMove(game, move):
+                                            num_legal += 1
+                                            moves.append(move)
+                                        else:
+                                            num_illegal += 1
+                                    if pieceTemp == 0:
+                                        i += 1
+                                    else:
+                                        i = 8
+
+                    #   Lateral, up/down movement (rook or queen)
+                    if piece*coeff == 4 or piece*coeff == 5:
+                        for line in [0, 1]:
+                            num_legal = 0
+                            num_illegal = 0
+                            for direction in [-1, 1]:
+                                i = 1
+                                #   If the second condition is False, we have found the
+                                #   unique legal move along this diagonal already
+                                while inBounds((file, rank), (line*direction*i, (1-line)*direction*i)) and (num_legal < 1 or num_illegal < 1):
+                                    x = file + line*direction*i
+                                    y = rank + (1-line)*direction*i
+                                    
+                                    pieceTemp = game.board[x][y]
+                                    if pieceTemp*coeff <= 0:
+                                        move = Move.Move((file, rank),(x, y), piece)
+                                        #   If 2 moves are legal, all are
+                                        if num_legal >= 2 or tryMove(game, move):
+                                            num_legal += 1
+                                            moves.append(move)
+                                        else:
+                                            num_illegal += 1
+                                    if pieceTemp == 0:
+                                        i += 1
+                                    else:
+                                        i = 8
+                                        
+                #   If not currently in check
+                else:
+                    #   Diagonals (bishop or queen)
+                    if piece*coeff == 3 or piece*coeff == 5:
+                        for diagonal in [-1, 1]:
+                            num_legal = 0
+                            any_illegal = False
+                            for direction in [-1, 1]:
+                                i = 1
+                                while not any_illegal and inBounds((file, rank), (direction*diagonal*i, direction*i)):
+                                    x = file + direction*diagonal*i
+                                    y = rank + direction*i
+                                    
+                                    pieceTemp = game.board[x][y]
+                                    if pieceTemp*coeff <= 0:
+                                        move = Move.Move((file, rank),(x, y), piece)
+                                        #   If 1 move is legal, all are
+                                        if num_legal >= 1 or tryMove(game, move):
+                                            num_legal += 1
+                                            moves.append(move)
+                                        #   If any are illegal, all are
+                                        else:
+                                            any_illegal = True
+                                    if pieceTemp == 0:
+                                        i += 1
+                                    else:
+                                        i = 8
+
+                    #   Lateral, up/down movement (rook or queen)
+                    if piece*coeff == 4 or piece*coeff == 5:
+                        for line in [0, 1]:
+                            num_legal = 0
+                            any_illegal = False
+                            for direction in [-1, 1]:
+                                i = 1
+                                while not any_illegal and inBounds((file, rank), (line*direction*i, (1-line)*direction*i)):
+                                    x = file + line*direction*i
+                                    y = rank + (1-line)*direction*i
+                                    
+                                    pieceTemp = game.board[x][y]
+                                    if pieceTemp*coeff <= 0:
+                                        move = Move.Move((file, rank),(x, y), piece)
+                                        #   If 1 move is legal, all are
+                                        if num_legal >= 1 or tryMove(game, move):
+                                            num_legal += 1
+                                            moves.append(move)
+                                        #   If any are illegal, all are
+                                        else:
+                                            any_illegal = True
+                                    if pieceTemp == 0:
+                                        i += 1
+                                    else:
+                                        i = 8                
+    
+    
     return moves              
 
 #   Inverts board in the expected sense (by rank, file and color)
