@@ -1,7 +1,7 @@
 import board_helper
 
 #   Encapsulates information that comprises a chess move and provides a function
-#   to return the formal move name (ex. Qxe). Does not support "+" or "#".
+#   to return the formal move name (ex. Qxe7). Does not support "+" or "#".
 class Move:
     def __init__(self, startSq, endSq, endPiece):
         assert endPiece != 0, "Tried to create move with self-deleting piece"
@@ -39,7 +39,7 @@ class Move:
         text += "self.endPiece: " + str(self.endPiece)
         return text
     
-    #   Prints the move name in chess standard notation (excludes castling).
+    #   Prints the move name in chess standard notation.
     #   NOTE: the move is assumed to be legitimate; function does not check
     #   legality of move.
     def getMoveName(self, board):
