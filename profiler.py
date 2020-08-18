@@ -21,9 +21,11 @@ from scipy.special import expit, logit
 import cProfile
 
 net_name = 'res_profile'
+train_option = False
+generate_option = True
+generate_times = 4
 
 def do_train(arg_list):
-    random.seed(0)
     #   Given a network, asks the user for training hyper-parameters,
     #   trains the network, and asks what to do next.
     net, tBuffer, vBuffer = arg_list
@@ -31,41 +33,56 @@ def do_train(arg_list):
     for i in range(2, 4):
         p.update(input_handling.readConfig(i))
 
-    #   print relevant information about parameters that affect
-    #   computational time
-    param_names = ['epochs', 'baseBreadth', 'maxSteps', 'breadth', 'depth',
-                   'epsGreedy', 'epsSearch', 'batchSize']
-    for x in param_names:
-        print(x + ': ', p[x])
+    if p['mode'] >= 3:
+        random.seed(0)
 
     #   Now do an episode of data generation/training
     main.trainOption(net, tBuffer, vBuffer, 1)
 
 def do_generate_examples(arg_list):
-    random.seed(0)
-    net, p = arg_list
-    data = q_learn.generateExamples(net, p)
-        
+    net, p, times = arg_list
     
-net, tBuffer, vBuffer = Network.load('nets/' + net_name, data_prefix='profile')
+    if p['mode'] >= 3:
+        random.seed(0)
+    
+    for i in range(times):
+        data = q_learn.generateExamples(net, p)
+        
+
+
 p = input_handling.readConfig(1)
-p.update(input_handling.readConfig(3))
+for i in range(2, 4):
+    p.update(input_handling.readConfig(i))
+    
+#   print relevant information about parameters that affect
+#   computational time
+param_names = ['epochs', 'baseBreadth', 'maxSteps', 'breadth', 'depth',
+               'epsGreedy', 'epsSearch', 'batchSize', 'mode']
+for x in param_names:
+    print(x + ': ', p[x])
+        
+if train_option:
+    net, tBuffer, vBuffer = Network.load('nets/' + net_name, data_prefix='profile')
 
-net.print()
-print('tBuffer and vBuffer sizes: ', sum([len(x) for x in tBuffer]), ',',
-      sum([len(x) for x in vBuffer]))
-print('\n-----------------------')
-print('  main.trainOption')
-print('-----------------------\n')
+    net.print()
+    print('tBuffer and vBuffer sizes: ', sum([len(x) for x in tBuffer]), ',',
+          sum([len(x) for x in vBuffer]))
+    print('\n-----------------------')
+    print('  main.trainOption')
+    print('-----------------------\n')
 
-cProfile.run('do_train([net,tBuffer,vBuffer])')
+    cProfile.run('do_train([net,tBuffer,vBuffer])')
 
-#   Reload network since generated examples are in nondeterministic order,
-#   subtly affecting network parameters after training
-net, tBuffer, vBuffer = Network.load('nets/' + net_name)
+if generate_option:
+    #   Reload network since generated examples are in nondeterministic order,
+    #   subtly affecting network parameters after training
+    net, tBuffer, vBuffer = Network.load('nets/' + net_name, data_prefix='profile')
 
-print('\n-----------------------')
-print('  q_learn.generateExamples')
-print('-----------------------\n')
+    if not train_option:
+        net.print()
 
-cProfile.run('do_generate_examples([net, p])')
+    print('\n-----------------------')
+    print('  q_learn.generateExamples')
+    print('-----------------------\n')
+
+    cProfile.run('do_generate_examples([net, p, generate_times])')
