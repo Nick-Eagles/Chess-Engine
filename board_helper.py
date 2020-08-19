@@ -413,7 +413,7 @@ def getLegalMoves(game):
 
 #   Inverts board in the expected sense (by rank, file and color)
 def invert(board):
-    b = np.zeros((8,8))
+    b = [[0 for i in range(8)] for j in range(8)]
     for f in range(8):
         for r in range(8):
             b[f][r] = -1*board[7-f][7-r]
