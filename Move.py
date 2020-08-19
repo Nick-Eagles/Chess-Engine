@@ -20,6 +20,13 @@ class Move:
 
         return Move(startSq, endSq, self.endPiece)
 
+    def invert(self):
+        startSq = (7 - self.startSq[0], 7 - self.startSq[1])
+        endSq = (7 - self.endSq[0], 7 - self.endSq[1])
+        endPiece = -1 * self.endPiece
+
+        return Move(startSq, endSq, endPiece)
+
     def isCapture(self, board):
         #   The end square is occupied
         if board[self.endSq[0]][self.endSq[1]] != 0:

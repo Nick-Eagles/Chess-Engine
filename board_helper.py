@@ -3,6 +3,60 @@ from scipy.special import expit
 
 import Move
 
+#   A helper function for tryMove. Given the original board, a move that is not
+#   capturing en passant or castling, and integers together representing the
+#   direction along which to look for checking pieces, returns True iff in
+#   check after performing the move. For example, df = 1 and dr = -1 would
+#   indicate that we should look for checking pieces downward and to the right
+#   of the moving piece's start square
+def check_along_line(board, move, df, dr, kingFile, kingRank):
+    #   Determine whether to look for (rooks and queens) or (bishops and queens)
+    pieces = [-5]
+    if df == 0 or abs(dr / df) != 1:
+        pieces.append(-4)
+    else:
+        pieces.append(-3)
+
+    newBoard = [x.copy() for x in board]
+    newBoard[move.startSq[0]][move.startSq[1]] = 0
+    newBoard[move.endSq[0]][move.endSq[1]] = move.endPiece
+
+    #   Look for pieces beyond the moving piece's starting square
+    i = 1
+    while inBounds((kingFile, kingRank), (i*df, i*dr)):
+        piece = newBoard[kingFile + i*df][kingRank + i*dr]
+        if piece in pieces:
+            return True
+        elif piece != 0:
+            i = 7
+        i += 1
+
+    return False
+
+#   A helper function for tryMove, calling check_along_line for the appropriate
+#   direction given the move's starting square relative to the king's square
+def nonVerticalCheck(board, move, slope_start, delta_f_start, kingFile, kingRank):
+    if slope_start == 1:
+        if delta_f_start > 0:
+            return check_along_line(board, move, 1, 1, kingFile, kingRank)
+        else:
+            return check_along_line(board, move, -1, -1, kingFile, kingRank)
+    elif slope_start == -1:
+        if delta_f_start > 0:
+            return check_along_line(board, move, 1, -1, kingFile, kingRank)
+        else:
+            return check_along_line(board, move, -1, 1, kingFile, kingRank)
+    elif slope_start == 0:
+        if delta_f_start > 0:
+            return check_along_line(board, move, 1, 0, kingFile, kingRank)
+        else:
+            return check_along_line(board, move, -1, 0, kingFile, kingRank)
+    else:
+        #   The moving piece is not "lined up" with the king, and therefore
+        #   can't "discover" a check upon moving
+        return False
+
+
 #   returns true iff white is in check; to simplify its applications, the function also
 #   considers adjacent kings to be a form of check
 def inCheck(board):
@@ -10,11 +64,11 @@ def inCheck(board):
     
     #   find the rank and file of the white king
     kingFile = -1
-    kingRank = -1
     found = False
-
+    
     while kingFile < 7 and not found:
         kingFile += 1
+        kingRank = -1
         while kingRank < 7 and not found:
             kingRank += 1
             if board[kingFile][kingRank] == 6:
@@ -203,19 +257,19 @@ def getLegalMoves(game):
                                 #   Piece type doesn't affect whether promotion puts
                                 #   white in check
                                 move = Move.Move((file,rank),(file+offset,rank+coeff),i*coeff)
-                                if canPromote or tryMove(game, move):
+                                if canPromote or tryMove(game, move, currently_check):
                                     canPromote = True
                                     moves.append(move)
                         else:
                             move = Move.Move((file,rank),(file+offset,rank+coeff),coeff)
-                            if tryMove(game, move):
+                            if tryMove(game, move, currently_check):
                                 moves.append(move)  
 
                 #   Also an empty square two spaces ahead for a pawn that
                 #   hasn't moved
                 if rank == 6 - 5*game.whiteToMove and game.board[file][rank+coeff] == 0 and game.board[file][rank+2*coeff] == 0:
                     move = Move.Move((file,rank),(file,rank+2*coeff),coeff)
-                    if tryMove(game, move):
+                    if tryMove(game, move, currently_check):
                         moves.append(move)                            
 
             #   Knight --------------------------------------------------------------
@@ -228,7 +282,7 @@ def getLegalMoves(game):
                         if game.board[file+x][rank+y]*coeff <= 0:
                             assert game.board[file+x][rank+y] != -6*coeff, "Had the option for knight to capture king" + game.verbosePrint()
                             move = Move.Move((file,rank),(file+x, rank+y), 2*coeff)
-                            if tryMove(game, move):
+                            if tryMove(game, move, currently_check):
                                 moves.append(move)
             #   King
             elif piece*coeff == 6:
@@ -239,7 +293,7 @@ def getLegalMoves(game):
                         if game.board[f][r]*coeff <= 0:
                             assert game.board[f][r] != -6*coeff, "Kings were adjacent and one had the option to capture the other" + game.verbosePrint()
                             move = Move.Move((file,rank),(f,r), 6*coeff)
-                            if tryMove(game, move):
+                            if tryMove(game, move, currently_check):
                                 moves.append(move)
 
             #   Rook, bishop, and queen are more complicated to deal with individually
@@ -263,7 +317,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 2 moves are legal, all are
-                                        if num_legal >= 2 or tryMove(game, move):
+                                        if num_legal >= 2 or tryMove(game, move, currently_check):
                                             num_legal += 1
                                             moves.append(move)
                                         else:
@@ -290,7 +344,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 2 moves are legal, all are
-                                        if num_legal >= 2 or tryMove(game, move):
+                                        if num_legal >= 2 or tryMove(game, move, currently_check):
                                             num_legal += 1
                                             moves.append(move)
                                         else:
@@ -317,7 +371,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 1 move is legal, all are
-                                        if num_legal >= 1 or tryMove(game, move):
+                                        if num_legal >= 1 or tryMove(game, move, currently_check):
                                             num_legal += 1
                                             moves.append(move)
                                         #   If any are illegal, all are
@@ -343,7 +397,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 1 move is legal, all are
-                                        if num_legal >= 1 or tryMove(game, move):
+                                        if num_legal >= 1 or tryMove(game, move, currently_check):
                                             num_legal += 1
                                             moves.append(move)
                                         #   If any are illegal, all are
@@ -374,21 +428,64 @@ def inBounds(square, perturb):
 #   Return if a legitimate move is legal (ie. doesn't end with the player in
 #   check). The passed move is relative to game.board, and should not be a
 #   castling move or en passant.
-def tryMove(game, move):
+def tryMove(game, move_orig, currently_check):
+    #   Make the current player appear as white
     if game.whiteToMove:
-        newBoard = [x.copy() for x in game.board]
-        startSq = move.startSq
-        endSq = move.endSq
-        endPiece = move.endPiece
+        board = game.board
+        move = move_orig
     else:
-        newBoard = [x.copy() for x in game.invBoard]
-        startSq = (7 - move.startSq[0], 7 - move.startSq[1])
-        endSq = (7 - move.endSq[0], 7 - move.endSq[1])
-        endPiece = -1 * move.endPiece
+        board = game.invBoard
+        move = move_orig.invert()
+    
+    #   In these particular cases, we don't have useful shortcuts and
+    #   will use the generic inCheck function to test legality
+    if move.endPiece == 6 or currently_check:
+        newBoard = [x.copy() for x in board]
+        newBoard[move.startSq[0]][move.startSq[1]] = 0
+        newBoard[move.endSq[0]][move.endSq[1]] = move.endPiece
+        return not inCheck(newBoard)
+        
+    #   Find the rank and file of the white king
+    kingFile = -1
+    found = False
 
-    newBoard[startSq[0]][startSq[1]] = 0
-    newBoard[endSq[0]][endSq[1]] = endPiece
-    return not inCheck(newBoard)
+    while kingFile < 7 and not found:
+        kingFile += 1
+        kingRank = -1
+        while kingRank < 7 and not found:
+            kingRank += 1
+            if board[kingFile][kingRank] == 6:
+                found = True
+                
+    delta_f_start = move.startSq[0] - kingFile
+    delta_r_start = move.startSq[1] - kingRank
+    if delta_f_start == 0: # Then king and moving piece are on same file
+        #   If the moving piece doesn't change files
+        if move.endSq[0] - move.startSq[0] == 0:
+            return True
+
+        #   Now we must check if there is a checking piece (i.e. rook or
+        #   queen) in the same direction on the king's file which would be
+        #   "discovered" by the move
+        if delta_r_start > 0:
+            return not check_along_line(board, move, 0, 1, kingFile, kingRank)
+        else:
+            return not check_along_line(board, move, 0, -1, kingFile, kingRank)
+    else:
+        slope_start = delta_r_start / delta_f_start
+
+        delta_f_end = move.endSq[0] - kingFile
+        if delta_f_end == 0:
+            return not nonVerticalCheck(board, move, slope_start, delta_f_start, kingFile, kingRank)
+        else:
+            slope_end = (move.endSq[1] - kingRank) / delta_f_end
+
+            #   Movement along the same line cannot discover a check
+            if slope_start == slope_end:
+                return True
+
+            return not nonVerticalCheck(board, move, slope_start, delta_f_start, kingFile, kingRank)
+
 
 #   Take a game board and initialized numpy array (netInput), and fill in the
 #   numpy array with a representation of the board used for input to the NN.
