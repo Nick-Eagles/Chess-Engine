@@ -138,7 +138,7 @@ def inCheck(board):
 #   and queenside, respectively. 
 def canCastle(game):
     coeff = 2 * game.whiteToMove - 1
-    if (game.whiteToMove and inCheck(game.board)) or (not game.whiteToMove and inCheck(game.invBoard)):
+    if game.currentlyCheck:
         return (False, False)
 
     if game.whiteToMove:
@@ -188,19 +188,14 @@ def canCastle(game):
 def getLegalMoves(game):
     moves = []
     coeff = 2 * game.whiteToMove - 1
+    
     if game.whiteToMove:
         backRank = 0
-        currently_check = inCheck(game.board)
     else:
         backRank = 7
-        game.invBoard = invert(game.board)
-        currently_check = inCheck(game.invBoard)
 
     #   Castling
-    if currently_check:
-        castling = (False, False)
-    else:
-        castling = canCastle(game)
+    castling = canCastle(game)
     
     if castling[0]:
         moves.append(Move.Move((4,backRank),(6,backRank),6*coeff))
@@ -257,19 +252,19 @@ def getLegalMoves(game):
                                 #   Piece type doesn't affect whether promotion puts
                                 #   white in check
                                 move = Move.Move((file,rank),(file+offset,rank+coeff),i*coeff)
-                                if canPromote or tryMove(game, move, currently_check):
+                                if canPromote or tryMove(game, move):
                                     canPromote = True
                                     moves.append(move)
                         else:
                             move = Move.Move((file,rank),(file+offset,rank+coeff),coeff)
-                            if tryMove(game, move, currently_check):
+                            if tryMove(game, move):
                                 moves.append(move)  
 
                 #   Also an empty square two spaces ahead for a pawn that
                 #   hasn't moved
                 if rank == 6 - 5*game.whiteToMove and game.board[file][rank+coeff] == 0 and game.board[file][rank+2*coeff] == 0:
                     move = Move.Move((file,rank),(file,rank+2*coeff),coeff)
-                    if tryMove(game, move, currently_check):
+                    if tryMove(game, move):
                         moves.append(move)                            
 
             #   Knight --------------------------------------------------------------
@@ -282,7 +277,7 @@ def getLegalMoves(game):
                         if game.board[file+x][rank+y]*coeff <= 0:
                             assert game.board[file+x][rank+y] != -6*coeff, "Had the option for knight to capture king" + game.verbosePrint()
                             move = Move.Move((file,rank),(file+x, rank+y), 2*coeff)
-                            if tryMove(game, move, currently_check):
+                            if tryMove(game, move):
                                 moves.append(move)
             #   King
             elif piece*coeff == 6:
@@ -293,13 +288,13 @@ def getLegalMoves(game):
                         if game.board[f][r]*coeff <= 0:
                             assert game.board[f][r] != -6*coeff, "Kings were adjacent and one had the option to capture the other" + game.verbosePrint()
                             move = Move.Move((file,rank),(f,r), 6*coeff)
-                            if tryMove(game, move, currently_check):
+                            if tryMove(game, move):
                                 moves.append(move)
 
             #   Rook, bishop, and queen are more complicated to deal with individually
             #   ----------------------------------------------------------------------
             else:
-                if currently_check:
+                if game.currentlyCheck:
                     #   Diagonals (bishop or queen)
                     if piece*coeff == 3 or piece*coeff == 5:
                         for diagonal in [-1, 1]:
@@ -317,7 +312,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 2 moves are legal, all are
-                                        if num_legal >= 2 or tryMove(game, move, currently_check):
+                                        if num_legal >= 2 or tryMove(game, move):
                                             num_legal += 1
                                             moves.append(move)
                                         else:
@@ -344,7 +339,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 2 moves are legal, all are
-                                        if num_legal >= 2 or tryMove(game, move, currently_check):
+                                        if num_legal >= 2 or tryMove(game, move):
                                             num_legal += 1
                                             moves.append(move)
                                         else:
@@ -371,7 +366,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 1 move is legal, all are
-                                        if num_legal >= 1 or tryMove(game, move, currently_check):
+                                        if num_legal >= 1 or tryMove(game, move):
                                             num_legal += 1
                                             moves.append(move)
                                         #   If any are illegal, all are
@@ -397,7 +392,7 @@ def getLegalMoves(game):
                                     if pieceTemp*coeff <= 0:
                                         move = Move.Move((file, rank),(x, y), piece)
                                         #   If 1 move is legal, all are
-                                        if num_legal >= 1 or tryMove(game, move, currently_check):
+                                        if num_legal >= 1 or tryMove(game, move):
                                             num_legal += 1
                                             moves.append(move)
                                         #   If any are illegal, all are
@@ -410,6 +405,136 @@ def getLegalMoves(game):
     
     
     return moves              
+
+
+#   A variant of getLegalMoves which returns True iff at least one legal move
+#   exists for the current player
+def anyLegalMoves(game):
+    coeff = 2 * game.whiteToMove - 1
+    
+    #   Check normal moves (not en passant captures or castling)
+    for file in range(8):
+        for rank in range(8):
+            piece = game.board[file][rank]
+            assert abs(piece) <= 6, "Tried to get legal moves with a corrupt board"
+            if piece*coeff <= 0:
+                continue
+
+            #   Pawn -----------------------------------------------------------
+            if piece*coeff == 1:
+                #   Offset is the change in file for the potential pawn move
+                for offset in range(-1, 2):
+                    if inBounds((file, rank), (offset, coeff)) \
+                       and ((offset == 0 and game.board[file][rank+coeff]*coeff == 0) \
+                       or (offset != 0 and game.board[file+offset][rank+coeff]*coeff < 0)):
+                        assert game.board[file+offset][rank+coeff] != -6*coeff, \
+                            "Had the option to capture king to promote" + game.verbosePrint()
+                        #   Pawn moves possibly involving captures or promotion,
+                        #   but only moving up one rank (also note that the
+                        #   promotion piece is a pawn, which suffices for the
+                        #   purposes of this function)
+                        move = Move.Move((file,rank),(file+offset,rank+coeff),coeff)
+                        if tryMove(game, move):
+                            return True 
+
+                #   Also an empty square two spaces ahead for a pawn that
+                #   hasn't moved
+                if rank == 6 - 5*game.whiteToMove and game.board[file][rank+coeff] == 0 and game.board[file][rank+2*coeff] == 0:
+                    move = Move.Move((file,rank),(file,rank+2*coeff),coeff)
+                    if tryMove(game, move):
+                        return True
+
+            #   Knight --------------------------------------------------------------
+            elif piece*coeff == 2:
+                horizontals = [-2, -2, -1, -1, 1, 1, 2, 2]
+                verticals = [-1, 1, -2, 2, -2, 2, -1, 1]
+                for x, y in zip(horizontals, verticals):
+                    if inBounds((file, rank), (x, y)):
+                        #   Empty square or black piece (includes king, shouldn't matter)
+                        if game.board[file+x][rank+y]*coeff <= 0:
+                            assert game.board[file+x][rank+y] != -6*coeff, \
+                                "Had the option for knight to capture king" + game.verbosePrint()
+                            move = Move.Move((file,rank),(file+x, rank+y), 2*coeff)
+                            if tryMove(game, move):
+                                return True
+
+            #   King
+            elif piece*coeff == 6:
+                ranks = range(max(0, rank-1), min(8, rank+2))
+                files = range(max(0, file-1), min(8, file+2))
+                for r in ranks:
+                    for f in files:
+                        if game.board[f][r]*coeff <= 0:
+                            assert game.board[f][r] != -6*coeff, \
+                                "Kings were adjacent and one had the option to capture the other" + game.verbosePrint()
+                            move = Move.Move((file,rank),(f,r), 6*coeff)
+                            if tryMove(game, move):
+                                return True
+
+            #   Rook, bishop, and queen are more complicated to deal with individually
+            #   ----------------------------------------------------------------------
+            else:
+                #   Diagonals (bishop or queen)
+                if piece*coeff == 3 or piece*coeff == 5:
+                    for x in [-1, 1]:
+                        for y in [-1, 1]:
+                            i = 1
+                            while inBounds((file, rank), (i*x, i*y)):
+                                pieceTemp = game.board[file+i*x][rank+i*y]
+                                if pieceTemp*coeff <= 0:
+                                    move = Move.Move((file,rank),(file+i*x,rank+i*y), piece)
+                                    if tryMove(game, move):
+                                        return True
+                                if pieceTemp == 0:
+                                    i += 1
+                                else:
+                                    i = 8
+
+                #   Lateral, up/down movement (rook or queen)
+                if piece*coeff == 4 or piece*coeff == 5:
+                    for x, y in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        i = 1
+                        while inBounds((file, rank), (i*x, i*y)):
+                            pieceTemp = game.board[file+i*x][rank+i*y]
+                            if pieceTemp*coeff <= 0:
+                                move = Move.Move((file,rank),(file+i*x,rank+i*y), piece)
+                                if tryMove(game, move):
+                                    return True
+                            if pieceTemp == 0:
+                                i += 1
+                            else:
+                                i = 8
+
+    #   En passant: looks for any white pawns next to the black pawn that just moved
+    if game.enPassant:
+        #   Look to the left for a white pawn
+        if game.lastMove.endSq[0] > 0 and game.board[game.lastMove.endSq[0]-1][game.lastMove.endSq[1]] == coeff:
+            newBoard = [x.copy() for x in game.board]
+            #   Move above the black pawn
+            newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]+coeff] = coeff
+            #   Capture the black pawn
+            newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]] = 0
+            #   Remove the white pawn from its starting position
+            newBoard[game.lastMove.endSq[0]-1][game.lastMove.endSq[1]] = 0
+            if (game.whiteToMove and not inCheck(newBoard)) or (not game.whiteToMove and not inCheck(invert(newBoard))):
+                return True
+        #   Look to the right for a white pawn
+        elif game.lastMove.endSq[0] < 7 and game.board[game.lastMove.endSq[0]+1][game.lastMove.endSq[1]] == coeff:
+            newBoard = [x.copy() for x in game.board]
+            #   Move above the black pawn
+            newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]+coeff] = coeff
+            #   Capture the black pawn
+            newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]] = 0
+            #   Remove the white pawn from its starting position
+            newBoard[game.lastMove.endSq[0]+1][game.lastMove.endSq[1]] = 0
+            if (game.whiteToMove and not inCheck(newBoard)) or (not game.whiteToMove and not inCheck(invert(newBoard))):
+                return True
+
+    #   Note that ability to castle need not be checked, since castling is
+    #   possible iff the king and rook have other legal moves
+    
+    return False
+
 
 #   Inverts board in the expected sense (by rank, file and color)
 def invert(board):
@@ -428,7 +553,7 @@ def inBounds(square, perturb):
 #   Return if a legitimate move is legal (ie. doesn't end with the player in
 #   check). The passed move is relative to game.board, and should not be a
 #   castling move or en passant.
-def tryMove(game, move_orig, currently_check):
+def tryMove(game, move_orig):
     #   Make the current player appear as white
     if game.whiteToMove:
         board = game.board
@@ -439,7 +564,7 @@ def tryMove(game, move_orig, currently_check):
     
     #   In these particular cases, we don't have useful shortcuts and
     #   will use the generic inCheck function to test legality
-    if move.endPiece == 6 or currently_check:
+    if move.endPiece == 6 or game.currentlyCheck:
         newBoard = [x.copy() for x in board]
         newBoard[move.startSq[0]][move.startSq[1]] = 0
         newBoard[move.endSq[0]][move.endSq[1]] = move.endPiece

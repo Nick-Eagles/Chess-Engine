@@ -10,7 +10,10 @@ class Game:
                      [3, 1, 0, 0, 0, 0, -1, -3], [5, 1, 0, 0, 0, 0, -1, -5], \
                      [6, 1, 0, 0, 0, 0, -1, -6], [3, 1, 0, 0, 0, 0, -1, -3], \
                      [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]]
-        self.invBoard = [[0 for i in range(8)] for j in range(8)]
+        self.invBoard = [[4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2], \
+                     [3, 1, 0, 0, 0, 0, -1, -3], [6, 1, 0, 0, 0, 0, -1, -6], \
+                     [5, 1, 0, 0, 0, 0, -1, -5], [3, 1, 0, 0, 0, 0, -1, -3], \
+                     [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]]
         
         #   Amount of the pieces on the board: P, N, light B, dark B, R, Q
         self.wPieces = [8, 2, 1, 1, 2, 1]
@@ -28,6 +31,7 @@ class Game:
 
         self.whiteToMove = True
         self.enPassant = False
+        self.currentlyCheck = False
         self.quiet = quiet
 
         self.movesSinceAction = 0
@@ -41,6 +45,7 @@ class Game:
         g = Game()
 
         g.board = [x.copy() for x in self.board]
+        g.invBoard = [x.copy() for x in self.invBoard]
         g.wPieces = self.wPieces.copy()
         g.bPieces = self.bPieces.copy()
         g.canW_K_Castle = self.canW_K_Castle
@@ -51,6 +56,7 @@ class Game:
         g.bValue = self.bValue
         g.whiteToMove = self.whiteToMove
         g.enPassant = self.enPassant
+        g.currentlyCheck = self.currentlyCheck
         g.quiet = self.quiet
         g.movesSinceAction = self.movesSinceAction
         g.gameResult = self.gameResult
@@ -159,12 +165,17 @@ class Game:
         ########################################################
         #   See if the position is checkmate
         ########################################################
-        
-        check = (self.whiteToMove and board_helper.inCheck(self.board)) or \
-                (not self.whiteToMove and board_helper.inCheck(board_helper.invert(self.board)))
-        moves = board_helper.getLegalMoves(self)
 
-        if check and len(moves) == 0:
+        #   Update variables 'currentlyCheck' and inverted board
+        if self.whiteToMove:
+            self.currentlyCheck = board_helper.inCheck(self.board)
+        else:
+            self.invBoard = board_helper.invert(self.board)
+            self.currentlyCheck = board_helper.inCheck(self.invBoard)
+
+        any_moves = board_helper.anyLegalMoves(self)
+
+        if self.currentlyCheck and not any_moves:
             return (coeff, "Checkmate")
 
         #   Rule out any draws
@@ -175,7 +186,7 @@ class Game:
         #   Stalemate
         ########################################################
 
-        if not check and len(moves) == 0:
+        if not self.currentlyCheck and not any_moves:
             return (0, "Draw by stalemate.")
 
         ########################################################
