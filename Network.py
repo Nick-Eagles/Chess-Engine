@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import expit, logit
 import copy
-import json
+import _pickle as pickle
 import random
 import csv
 import os
@@ -714,39 +714,10 @@ class Network:
         print('Residual "output" layers:', self.resOutputs)
         print('Linear downsample layers:', self.downSampLays)
 
-    def save(self, tBuffer, vBuffer, filename):       
-        beta, gamma, popMean, popVar = [], [], [], []
-        for i in range(len(self.layers)):
-            if i in self.downSampLays:
-                beta.append([])
-                gamma.append([])
-                popMean.append([])
-                popVar.append([])
-            else:
-                if i < len(self.layers) - 1:
-                    beta.append(self.beta[i].tolist())
-                    gamma.append(self.gamma[i].tolist())
-                popMean.append(self.popMean[i].tolist())
-                popVar.append(self.popVar[i].tolist())
-                
-        data = {"layers": self.layers,
-                "weights": [w.tolist() for w in self.weights],
-                "biases": [self.biases[0].tolist()],
-                "beta": beta,
-                "gamma": gamma,
-                "popMean": popMean,
-                "popVar": popVar,
-                "age": self.age,
-                "experience": self.experience,
-                "certainty": self.certainty,
-                "certaintyRate": self.certaintyRate,
-                "blockWidth": self.blockWidth,
-                "blocksPerGroup": self.blocksPerGroup,
-                "tCosts": self.tCosts,
-                "vCosts": self.vCosts}
-        f = open(filename, "w")
-        json.dump(data, f)
-        f.close()
+    def save(self, tBuffer, vBuffer, filename):
+        #   Pickle the Network object
+        with open(filename, "wb") as f:
+            pickle.dump(self, f)
 
         #   Write each sub-buffer to separate file
         for i in range(4):
@@ -757,39 +728,12 @@ def train_thread(net, batch, p):
     z, zNorm, a = net.ff_track(batch[0])
     
     return net.backprop(z, zNorm, a, batch[1], p)
-      
+
+#   Load a Network object and associated data buffers
 def load(filename, lazy=False, data_prefix='default'):
-    f = open(filename, "r")
-    data = json.load(f)
-    f.close()
+    with open(filename, "rb") as f:
+        net = pickle.load(f)
     
-    net = Network(data["layers"], data["blockWidth"], data["blocksPerGroup"])
-    net.weights = [np.array(w) for w in data["weights"]]
-    net.biases = [np.array(data["biases"]).reshape((-1,1))]
-
-    net.beta, net.gamma, net.popMean, net.popVar, net.popDev = [], [], [], [], []
-    for i in range(len(net.layers)):
-        if i in net.downSampLays:
-            net.beta.append(data["beta"][i])
-            net.gamma.append(data["gamma"][i])
-            net.popMean.append(data["popMean"][i])
-            net.popVar.append(data["popVar"][i])
-            net.popDev.append('Not computed for projection layers!')
-        else:
-            if i < len(net.layers) - 1:
-                net.beta.append(np.array(data["beta"][i]).reshape((-1,1)))
-                net.gamma.append(np.array(data["gamma"][i]).reshape((-1,1)))
-            net.popMean.append(np.array(data["popMean"][i]).reshape((-1,1)))
-            net.popVar.append(np.array(data["popVar"][i]).reshape((-1,1)))
-            net.popDev.append(np.sqrt(np.add(net.popVar[-1], net.eps)).reshape((-1,1)))
-
-    net.age = data["age"]
-    net.experience = data["experience"]
-    net.certainty = data["certainty"]
-    net.certaintyRate = data["certaintyRate"]
-    net.tCosts = data["tCosts"]
-    net.vCosts = data["vCosts"]
-
     if lazy:
         tBuffer = [[],[],[],[]]
         vBuffer = [[],[],[],[]]

@@ -172,7 +172,7 @@ if __name__ == '__main__':
         net = Network.Network(layers, blockWidth, blocksPerGroup)
     elif choice == "l":
         filename = input("Load from what file? ")
-        net, tBuffer, vBuffer = Network.load('nets/' + filename)
+        net, tBuffer, vBuffer = Network.load('nets/' + filename + '.pkl')
         print("Loaded successfully.")
         net.print()
 
@@ -211,7 +211,7 @@ if __name__ == '__main__':
             #net.showGame(verbose = p['mode'] >= 2)
             network_helper.bestGame(net)
         elif choice == 3:
-            filename = 'nets/' + input("Name a file to save the network to: ")
+            filename = 'nets/' + input("Name a file to save the network to: ") + '.pkl'
             net.save(tBuffer, vBuffer, filename)
             print("Saved. Continuing...")
         elif choice == 4:
