@@ -1,17 +1,10 @@
 TODO:
 
--fix issue with epoch number associated with recorded loss value being incorrect when p['epochs'] changes
- during training
--momentum terms should be saved with Network to avoid sudden halting of momentum when saving and restarting
- program
-
 TODO (maybe):
 
--explore covariance (or other metrics) between observed and expected rewards to see if the network is learning this
- (even when network.certainty ~= 0)
+-explore covariance (or other metrics) between observed and expected rewards to see if the network is learning this (even when network.certainty ~= 0)
 -maybe implement "autosaving" on some interval to avoid multiprocessing getting stuck
 -consider programming in a resignation threshold to speed up training
--implement alpha-beta-like pruning to greatly optimize tree search
 -add estimated time remaining when training/generating data
 -More visualizations to better understand network progress:
 	-Euclidean distance of current weight vector relative to initial vector
@@ -24,12 +17,8 @@ TODO (maybe):
 
 Misc thoughts/worries:
 
--does having a minimum certainty threshold (>0) for computing NN evals in policy.getEvals make more sense?
--currently, when certainty <= 0 and there are no captures available, the policy selects the first legal move
- computed (this is certainly not rational and could hurt exploration- the move should be randomly selected)
+-there are two functions for showing the current game for a Network, and the current one is a network_helper function when it should be a Network method probably
 
 Eventually:
 
--allow the network freedom to parameterize its own training: namely at least having it
- compute some metric rating its competency, and weight the relative values of material to
- wins/losses accordingly.
+-allow the network freedom to parameterize its own training: namely at least having it compute some metric rating its competency, and weight the relative values of material to wins/losses accordingly.
