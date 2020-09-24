@@ -3,7 +3,6 @@ from scipy.special import expit, logit
 import copy
 import _pickle as pickle
 import random
-import csv
 import os
 from multiprocessing import Pool
 import time
@@ -15,9 +14,10 @@ import input_handling
 import Traversal
 import Move
 import file_IO
+import Loss
 
 class Network:
-    def __init__(self, layers, blockWidth, blocksPerGroup, weights=[], biases=[], beta=[], gamma=[], popMean=[], popVar=[], tCosts=[], vCosts=[], age=0, experience=0, certainty=0, certaintyRate=0):
+    def __init__(self, layers, blockWidth, blocksPerGroup, weights=[], biases=[], beta=[], gamma=[], popMean=[], popVar=[], loss=Loss.Loss(), age=0, experience=0, certainty=0, certaintyRate=0, isFresh=True):
         var_scale = 1.0
         alpha = 1.0
 
@@ -124,13 +124,13 @@ class Network:
         self.last_dC_dbias = [np.zeros(self.biases[0].shape)]
 
         #   For analysis of cost vs. epoch after training
-        self.tCosts = tCosts
-        self.vCosts = vCosts
+        self.loss = loss
 
         self.age = age  # number of training steps
         self.experience = experience # number of unique training examples seen
         self.certainty = certainty # see README- a measure of how much observed recent events match expected ones
         self.certaintyRate = certaintyRate
+        self.isFresh = isFresh
 
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
@@ -140,7 +140,7 @@ class Network:
         popMean = [lay.copy() for lay in self.popMean]
         popVar = [lay.copy() for lay in self.popVar]
         
-        return Network(self.layers, self.blockWidth, self.blocksPerGroup, weights, biases, beta, gamma, popMean, popVar, self.tCosts, self.vCosts, self.age, self.experience, self.certainty, self.certaintyRate)
+        return Network(self.layers, self.blockWidth, self.blocksPerGroup, weights, biases, beta, gamma, popMean, popVar, self.loss.Copy(), self.age, self.experience, self.certainty, self.certaintyRate, self.isFresh)
         
     #   Prints an annotated game of the neural network playing itself
     def showGame(self, verbose=True):
@@ -326,8 +326,7 @@ class Network:
 
             #   Baseline calculation of cost on training, validation data
             if epoch == 0:
-                self.tCosts.append(self.totalCost(games, p))
-                self.vCosts.append(self.totalCost(vGames, p))
+                self.loss.Update(self.totalCost(games, p), self.totalCost(vGames, p), True)
             
             for i in range(numBatches):
                 ###############################################################
@@ -380,12 +379,10 @@ class Network:
                 
             #   Approximate loss using batch statistics
             if p['mode'] >= 1 and epoch < epochs - 1:
-                self.tCosts.append(self.totalCost(games, p))
-                self.vCosts.append(self.totalCost(vGames, p))
+                self.loss.Update(self.totalCost(games, p), self.totalCost(vGames, p), False)
             elif epoch == epochs - 1:
                 self.setPopStats(games, p)
-                self.tCosts.append(self.totalCost(games, p))
-                self.vCosts.append(self.totalCost(vGames, p))
+                self.loss.Update(self.totalCost(games, p), self.totalCost(vGames, p), False)
                 
             print("Finished epoch ", epoch+1, ".", sep="")
 
@@ -401,9 +398,12 @@ class Network:
         
         #   Write cost analytics to file
         if p['mode'] >= 1:
-            self.costToCSV(epochs)
-        else:
-            self.costToCSV(1)
+            self.loss.WriteToCSV(epochs, self.isFresh)
+
+        #   This indicates that Network parameters have changed since load, and
+        #   'visualization/costs.csv' has been rewritten
+        self.isFresh = False
+        
 
     #   Backprop is performed at once on the entire batch, where:
     #       -z, zNorm, and a are lists of 2d np arrays, with index of axis 1 in each array
@@ -569,49 +569,6 @@ class Network:
         return -1 * float(np.mean(labels * np.log(a) + (1 - labels) * np.log(1 - a)))
         
 
-    #   Writes the info about costs vs. epoch, that was saved during training,
-    #   to a .csv file. This is designed to produce a temporary file that an
-    #   R script can read and generate informative plots from.
-    def costToCSV(self, epochs):
-        #   Generate a a list of "epochNum, cost, cost type label" sets for each
-        #   cost type recorded: this format is designed to take advantage of R's
-        #   "ggplot2" package
-        append = len(self.tCosts) > epochs + 1
-        if append:
-            costData = []
-        else:
-            costData = [["epochNum", "cost", "costType", "isStart"]]
-
-        costTypes = [self.tCosts, self.vCosts]
-        costLabels = ["t_cost", "v_cost"]
-
-        numEpisodes = int(len(self.tCosts) / (epochs + 1))
-        for epoch in range(epochs + 1):
-            costIndex = 0
-            for costType in costTypes:
-                e = len(self.tCosts) - 1 - epochs + epoch
-                costData.append([e - numEpisodes + 1, costType[e], costLabels[costIndex], int(epoch == 0)])
-                costIndex += 1
-
-        #   Open "costs.csv" and write the cost data
-        filename = "visualization/costs.csv"
-        try:
-            #   Want to combine episodes into one big table
-            if append:
-                costFile = open(filename, 'a')
-            else:
-                costFile = open(filename, 'w')
-
-            #   The actual writing of data
-            with costFile:
-                writer = csv.writer(costFile)
-                writer.writerows(costData)
-            print("Writing to costs.csv complete.")
-        except:
-            print("Encountered an error while opening or handling file 'costs.csv'")
-        finally:
-            costFile.close()
-
     #   Takes a list of tuples representing training data, and sets population mean, variance
     #   and standard deviation for the network (used for feedForward())
     def setPopStats(self, pop, p):
@@ -733,6 +690,8 @@ def train_thread(net, batch, p):
 def load(filename, lazy=False, data_prefix='default'):
     with open(filename, "rb") as f:
         net = pickle.load(f)
+
+    net.isFresh = True
     
     if lazy:
         tBuffer = [[],[],[],[]]
