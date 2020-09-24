@@ -3,7 +3,7 @@ library(ggplot2)
 setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/Chess_Engine/visualization")
 #setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/MNIST_chess/visualization")
 costData = read.csv(file="costs.csv")
-costData$isStart = as.factor(costData$isStart)
+costData$isStart = as.logical(costData$isStart)
 
 costData = tail(costData, 400)
 #costData = costData[costData$costType == 'v_cost',]
@@ -27,10 +27,14 @@ numEpochs = temp[2] - temp[1]
 
 # Print mean drop in cost within each episode
 for (cType in c('t_cost', 'v_cost')) {
-  startCosts = costData[(costData$isStart == 1) & (costData$costType == cType), 'cost']
-  endCosts = costData[(costData$epochNum %% numEpochs == 0) & (costData$costType == cType) & 
-                      (costData$epochNum > 0) & (costData$isStart == 0), 'cost']
-  print(paste0("Mean drop in ", cType, ": ", mean(startCosts - endCosts)))
+    tempData = costData[costData$costType == cType,]
+  
+    startEpochs = tempData$epochNum == tempData[tempData$isStart, 'epochNum']
+  
+    startCosts = tempData[tempData$isStart, 'cost']
+    endCosts = tempData[! tempData$isStart & startEpochs & tempData$epochNum > 0, 'cost']
+    
+    print(paste0("Mean drop in ", cType, ": ", mean(startCosts - endCosts)))
 }
 
 # A linear model of the starting costs vs. epoch number
