@@ -48,10 +48,14 @@ class Network:
         else:
             self.weights = weights
 
+        self.last_dC_dw = [np.zeros(lay.shape) for lay in self.weights]
+
         if len(biases) == 0:
             self.biases = [np.zeros((layers[-1], 1))]
         else:
             self.biases = biases
+
+        self.last_dC_dbias = [np.zeros(self.biases[0].shape)]
 
         #   Ideal activation means "beta" for batch norm
         if len(beta) == 0:
@@ -66,6 +70,13 @@ class Network:
                     self.last_dC_db.append(np.zeros((layers[i], 1)))
         else:
             self.beta = beta
+
+            self.last_dC_db = []
+            for i in range(len(layers) - 1):
+                if i in self.downSampLays:
+                    self.last_dC_db.append('Projection layers have no BN!')
+                else:
+                    self.last_dC_db.append(np.zeros((layers[i], 1)))
             
         #   Ideal activation stddevs "gamma" for batch norm
         if len(gamma) == 0:
@@ -84,6 +95,15 @@ class Network:
 
         else:
             self.gamma = gamma
+
+            self.last_dC_dg = []
+            for i in range(len(layers) - 1):
+                if i in self.resInputs:
+                    self.last_dC_dg.append(np.zeros((layers[i], 1)))
+                elif i in self.downSampLays:
+                    self.last_dC_dg.append('Projection layers have no BN!')
+                else:
+                    self.last_dC_dg.append(np.zeros((layers[i], 1)))
 
         #   Population mean, variance, and stddev for inputs to each layer
         if len(popMean) == 0:
@@ -119,10 +139,6 @@ class Network:
         self.blockWidth = blockWidth
         self.blocksPerGroup = blocksPerGroup
 
-        #   For momentum term in SGD
-        self.last_dC_dw = [np.zeros(lay.shape) for lay in self.weights]
-        self.last_dC_dbias = [np.zeros(self.biases[0].shape)]
-
         #   For analysis of cost vs. epoch after training
         self.loss = loss
 
@@ -135,12 +151,42 @@ class Network:
     def copy(self):
         weights = [lay.copy() for lay in self.weights]
         biases = [self.biases[0].copy()]
-        beta = [lay.copy() for lay in self.beta]
-        gamma = [lay.copy() for lay in self.gamma]
-        popMean = [lay.copy() for lay in self.popMean]
-        popVar = [lay.copy() for lay in self.popVar]
+
+        beta = []
+        gamma = []
+        popMean = []
+        popVar = []
+        for i in range(len(self.layers)):
+            if i in self.downSampLays:
+                if i < len(self.layers) - 1:
+                    beta.append(self.beta[i])
+                    gamma.append(self.gamma[i])
+                popMean.append(self.popMean[i])
+                popVar.append(self.popVar[i])
+            else:
+                if i < len(self.layers) - 1:
+                    beta.append(self.beta[i].copy())
+                    gamma.append(self.gamma[i].copy())
+                popMean.append(self.popMean[i].copy())
+                popVar.append(self.popVar[i].copy())
         
-        return Network(self.layers, self.blockWidth, self.blocksPerGroup, weights, biases, beta, gamma, popMean, popVar, self.loss.Copy(), self.age, self.experience, self.certainty, self.certaintyRate, self.isFresh)
+        net = Network(self.layers, self.blockWidth, self.blocksPerGroup, weights, biases, beta, gamma, popMean, popVar, self.loss.Copy(), self.age, self.experience, self.certainty, self.certaintyRate, self.isFresh)
+
+        #   Copy over partials for momentum term in SGD w/ momentum
+        net.last_dC_dw = [lay.copy() for lay in net.last_dC_dw]
+        net.last_dC_dbias = [lay.copy() for lay in net.last_dC_dbias]
+
+        net.last_dC_db = []
+        net.last_dC_dg = []
+        for i in range(len(self.layers) - 1):
+            if i in self.downSampLays:
+                net.last_dC_db.append(self.last_dC_db[i])
+                net.last_dC_dg.append(self.last_dC_dg[i])
+            else:
+                net.last_dC_db.append(self.last_dC_db[i].copy())
+                net.last_dC_dg.append(self.last_dC_dg[i].copy())
+
+        return net
         
     #   Prints an annotated game of the neural network playing itself
     def showGame(self, verbose=True):
