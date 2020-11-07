@@ -16,6 +16,9 @@ import csv
 import random
 import numpy as np
 from scipy.special import expit, logit
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 
 #   Convenience function for flattening training buffers into one list
 def collapseBuffer(buff):
@@ -128,6 +131,35 @@ def trainOption(net, tBuffer=[[],[],[],[]], vBuffer=[[],[],[],[]], numEps=0):
 def analyzeOption(network):
     return
 
+def InitializeNet(numGroups, blocksPerGroup, blockWidth):
+    inputs = keras.Input(shape=(839,), name="game_position")
+    x = inputs
+
+    for i in range(numGroups):
+        messDef = "Length of neurons in group " + str(i+1) + "? "
+        cond = 'var > 0 and var < 10000'
+        layLen = input_handling.getUserInput(messDef, "Not a valid number.", 'int', cond)
+
+        #   Linear projection to match block input and output lengths
+        x = layers.Dense(layLen, name='linear_projection' + str(i+1))(x)
+        
+        for j in range(blocksPerGroup):
+            blockInput = x
+            for k in range(blockWidth-1):
+                x = layers.Dense(layLen, activation="relu")(x)
+                x = layers.BatchNormalization()(x)
+            x = layers.Dense(layLen, activation="relu")(x)
+
+            #   Residual connection, with batch norm afterward
+            x = layers.add([x, blockInput], name='residual_conn' + str(i+1))
+            x = layers.BatchNormalization(name='block_output' + str(i+1))(x)
+
+    #   Output layer
+    output = layers.Dense(1, activation="sigmoid", name="output")(x)
+
+    return keras.Model(inputs=inputs, outputs=output, name="network")
+            
+    
 #   Main -----------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -144,7 +176,6 @@ if __name__ == '__main__':
         ##################################################################
         
         #   Number of groups of residual blocks
-        layers = []  # size of the input layer
         messDef = "Define network architecture: how many residual groups? "
         messOnErr = "Not a valid number."
         cond = 'var >= 0 and var < 50'
@@ -159,17 +190,8 @@ if __name__ == '__main__':
         cond = 'var > 0 and var < 10'
         blockWidth = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
         
-        #   Number of neurons in one layer of each block
-        for i in range(numGroups):
-            messDef = "Length of neurons in group " + str(i+1) + "? "
-            cond = 'var > 0 and var < 10000'
-            layLen = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
-            for j in range(blockWidth * blocksPerGroup + 1):
-                layers.append(layLen)
-
-        layers.append(1)    #   output of NN is a single value
-
-        net = Network.Network(layers, blockWidth, blocksPerGroup)
+        net = InitializeNet(numGroups, blocksPerGroup, blockWidth)
+        
     elif choice == "l":
         filename = input("Load from what file? ")
         net, tBuffer, vBuffer = Network.load('nets/' + filename + '.pkl')
@@ -194,7 +216,7 @@ if __name__ == '__main__':
 
     choice = 1
     while choice > 0 and choice <= len(options):
-        net.print()
+        net.summary()
         choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= ' + str(len(options)))
         print()
 
