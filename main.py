@@ -20,9 +20,14 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-#   Convenience function for flattening training buffers into one list
+#   Combine buffers and reformat for compatibility with Keras
 def collapseBuffer(buff):
-    return buff[0] + buff[1] + buff[2] + buff[3]
+    bigBuff = buff[0] + buff[1] + buff[2] + buff[3]
+
+    x = np.array([z[0] for z in bigBuff])
+    y = np.array([z[1] for z in bigBuff])
+
+    return (x, y)
 
 #   Function for dropping a fraction of the existing examples, without
 #   causing overrepresentation of augmented data examples in the steady-state
@@ -54,7 +59,7 @@ def filterBuffers(tBuffer, vBuffer, p):
 
 #   Given a network, asks the user for training hyper-parameters,
 #   trains the network, and asks what to do next.
-def trainOption(net, tBuffer=[[],[],[],[]], vBuffer=[[],[],[],[]], numEps=0): 
+def trainOption(net, tBuffer, vBuffer, numEps=0): 
     p = input_handling.readConfig(2)
  
     #   traverseCount
@@ -116,7 +121,11 @@ def trainOption(net, tBuffer=[[],[],[],[]], vBuffer=[[],[],[],[]], numEps=0):
             print("Mean magnitude:", np.round_(np.mean(mags), 5), "\n")
       
         #   Train on data in the buffer  
-        net.train(collapseBuffer(tBuffer), collapseBuffer(vBuffer), p)
+        network_helper.train(net,
+                             collapseBuffer(tBuffer),
+                             collapseBuffer(vBuffer),
+                             p,
+                             'visualization/costs.csv')
 
         #   Adjust net's expected input mean and variances for each layer.
         #   Then drop a fraction of the buffers
@@ -226,7 +235,7 @@ if __name__ == '__main__':
             if len(tBuffer[0]) > 0 and len(vBuffer[0]) > 0:
                 tBuffer, vBuffer = filterBuffers(tBuffer, vBuffer, p)
         
-            net, tBuffer, vBuffer = trainOption(net, tBuffer, vBuffer)
+            trainOption(net, tBuffer, vBuffer)
         elif choice == 2:
             p = input_handling.readConfig(2)
             print("Generating the current network's 'best' game...")
