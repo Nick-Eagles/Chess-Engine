@@ -143,7 +143,7 @@ def getCertainty(net, data, p):
                [data[1][i] for i in range(len(data[1])) if i % 4 == 0] + \
                [data[2][i] for i in range(len(data[2])) if i % 16 == 0]
     #   Form vectors of expected and actual rewards received
-    expRew = logit(np.array([net.feedForward(x[0]) for x in origData]).flatten())
+    expRew = logit(np.array([net.predict(x[0].reshape((1, -1))) for x in origData]).flatten())
     actRew = logit(np.array([x[1] for x in origData]).flatten())
 
     #   Normalized dot product of expected and actual reward vectors

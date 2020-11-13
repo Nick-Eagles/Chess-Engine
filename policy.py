@@ -189,8 +189,8 @@ def getEvals(moves, net, game, p):
     if net.certainty > p['minCertainty']:
         scalar = p['gamma_exec'] * net.certainty
         for i, m in enumerate(moves):
-            temp = game.getReward(m, p['mateReward'])
-            evals[i] = temp[0] + scalar * float(logit(net.feedForward(temp[1])))
+            r, vec = game.getReward(m, p['mateReward'])
+            evals[i] = r + scalar * float(logit(net.predict(np.array(vec))))
     else:
         evals = np.array([game.getReward(m, p['mateReward'], True)[0] for m in moves])
 
