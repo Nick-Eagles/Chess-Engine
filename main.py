@@ -83,7 +83,6 @@ def trainOption(net, tBuffer, vBuffer, numEps=0):
             vBuffer[j] += temp[j][0]
             tBuffer[j] += temp[j][1]
         numGenExamples = len(temp[0][1])
-        net.experience += numGenExamples
 
         #   Add checkmates from file
         temp = file_IO.readGames('data/checkmates_t.csv', p)
@@ -160,13 +159,17 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth):
             x = layers.Dense(layLen, activation="relu")(x)
 
             #   Residual connection, with batch norm afterward
-            x = layers.add([x, blockInput], name='residual_conn' + str(i+1))
-            x = layers.BatchNormalization(name='block_output' + str(i+1))(x)
+            layer_num = str(i*blocksPerGroup + j)
+            x = layers.add([x, blockInput], name='residual_conn' + layer_num)
+            x = layers.BatchNormalization(name='block_output' + layer_num)(x)
 
     #   Output layer
     output = layers.Dense(1, activation="sigmoid", name="output")(x)
 
-    return keras.Model(inputs=inputs, outputs=output, name="network")
+    net = keras.Model(inputs=inputs, outputs=output, name="network")
+    net.certainty = 0
+    net.certaintyRate = 0
+    return net
             
     
 #   Main -----------------------------------------------------------------------
