@@ -8,7 +8,6 @@ import Traversal
 import numpy as np
 from scipy.special import expit, logit
 import os
-from multiprocessing import Pool
 
 #################################################################################
 #   Functions for sampling several legal moves (subsetting search tree)
@@ -130,7 +129,7 @@ def per_thread_job(trav_obj):
     trav_obj.traverse()
     return trav_obj
 
-def getBestMoveTreeEG(net, game, p, pool=None):
+def getBestMoveTreeEG(net, game, p):
     if np.random.uniform() < p['epsGreedy']:
         legalMoves = board_helper.getLegalMoves(game)
         return legalMoves[np.random.randint(len(legalMoves))]
@@ -144,30 +143,21 @@ def getBestMoveTreeEG(net, game, p, pool=None):
         moves, fullMovesLen = sampleMovesEG(net, game, p)
         
         rTemp = np.zeros(len(moves))
-        if pool != None:
-            trav_objs = []
-            for i, m in enumerate(moves):
-                g = game.copy()
-                g.quiet = True
-                rTemp[i] = g.getReward(m, p['mateReward'], simple=True, copy=False)[0]
-                trav_objs.append(Traversal.Traversal(g, net, p))
+        baseRs = np.zeros(len(moves))        
 
-            #   Perform the traversals in parallel to return the index of the first
-            #   move from this position of the most rewarding move sequence explored
-            res_objs = pool.map(per_thread_job, trav_objs)
-
-            baseRs = np.array([ob.baseR for ob in res_objs])
-            rTemp += p['gamma_exec'] * baseRs
-        else:  
-            for i, m in enumerate(moves):
-                g = game.copy()
-                g.quiet = True
-                rTemp[i] = g.getReward(m, p['mateReward'], simple=True,
-                                       copy=False)[0]
+        for i, m in enumerate(moves):
+            g = game.copy()
+            g.quiet = True
                 
-                trav = Traversal.Traversal(g, net, p)
-                trav.traverse()
-                rTemp[i] += p['gamma_exec'] * trav.baseR
+            rTemp[i] = g.getReward(m,
+                                   p['mateReward'],
+                                   simple=True,
+                                   copy=False)[0]
+            t = Traversal.Traversal(g, net, p)
+            t.traverse()
+            baseRs[i] = t.baseR
+
+        rTemp += p['gamma_exec'] * baseRs
 
         if game.whiteToMove:
             bestMove = moves[np.argmax(rTemp)]

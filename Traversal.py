@@ -7,7 +7,6 @@ import policy
 
 import numpy as np
 from scipy.special import expit, logit
-from multiprocessing import Pool
 
 class Traversal:
     def __init__(self, game, net, p):
@@ -120,8 +119,3 @@ def processNode(stack, trav, p):
         trav.baseR = r
 
     trav.nodeHops += 1
-
-
-def per_thread_job(trav_obj):
-    trav_obj.traverse()
-    return trav_obj

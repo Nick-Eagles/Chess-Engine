@@ -7,7 +7,6 @@ import Traversal
 
 import numpy as np
 from scipy.special import expit, logit
-from multiprocessing import Pool
 import os
 import time
 
@@ -103,39 +102,30 @@ def generateExamples(net, p):
 def async_q_learn(net):
     p = input_handling.readConfig(1)
     p.update(input_handling.readConfig(3))
-    
-    if p['mode'] >= 2:
-        print(os.cpu_count(), "cores available.")
 
-    print("Performing asynchronous Q-learning (" + str(p['baseBreadth']) + " tasks)...")
+    print("Performing Q-learning (" + str(p['baseBreadth']) + " tasks)...")
     if p['mode'] >= 2:
         start_time = time.time()
 
     #   Run asynchronous data generation
-    pool = Pool()
-    inList = [(net, p) for i in range(p['baseBreadth'])]
-    thread_data = pool.starmap_async(generateExamples, inList).get()
-    pool.close()
+    data = [[], [], []]
+    for i in range(p['baseBreadth']):
+        this_data = generateExamples(net, p)
+        for j in range(3):
+            data[j] += this_data[j]
 
-    #   Collect each process's results (data) into a single list
-    tData = [[],[],[]]
-    for data in thread_data:
-        for i in range(3):
-            tData[i] += data[i]
-
-    board_helper.verify_data(tData, p, withMates=False)
+    board_helper.verify_data(data, p, withMates=False)
 
     if p['mode'] >= 2:
         elapsed = round(time.time() - start_time, 2)
-        print("Done in", elapsed, "seconds. Generated " + str(sum([len(x) for x in tData])) + " training examples.\n")
+        print("Done in", elapsed, "seconds. Generated " + str(sum([len(x) for x in data])) + " training examples.\n")
     else:
-        
-        print("Done. Generated " + str(sum([len(x) for x in tData])) + " training examples.\n")
+        print("Done. Generated " + str(sum([len(x) for x in data])) + " training examples.\n")
 
     print("Determining certainty of network on the generated examples...")
-    getCertainty(net, tData, p)
+    getCertainty(net, data, p)
 
-    return tData
+    return data
 
 def getCertainty(net, data, p):
     #   Get only the originally generated examples (do not include augmented data)

@@ -1,8 +1,9 @@
 import numpy as np
 import os
-from multiprocessing import Pool
-from keras.models import load_model
-from keras.callbacks import CSVLogger
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import CSVLogger
 
 import input_handling
 import Game
@@ -68,11 +69,9 @@ def bestGame(net):
 
     game = Game.Game(quiet=False)
 
-    pool = Pool()
     while (game.gameResult == 17):
-        bestMove = policy.getBestMoveTreeEG(net, game, p, pool=pool)
+        bestMove = policy.getBestMoveTreeEG(net, game, p)
         game.doMove(bestMove)
-    pool.close()
 
     print(game.annotation)
     game.toPGN()
