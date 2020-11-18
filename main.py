@@ -8,6 +8,7 @@ import misc
 import q_learn
 import demonstration
 import board_helper
+import Session
 
 import sys
 import os
@@ -55,12 +56,15 @@ def filterBuffers(tBuffer, vBuffer, p):
     board_helper.verify_data(tBuffer, p)
     board_helper.verify_data(vBuffer, p)
 
-    return (tBuffer, vBuffer)
 
 #   Given a network, asks the user for training hyper-parameters,
 #   trains the network, and asks what to do next.
-def trainOption(net, tBuffer, vBuffer, numEps=0): 
+def trainOption(session, numEps=0): 
     p = input_handling.readConfig(2)
+
+    net = session.net
+    tBuffer = session.tBuffer
+    vBuffer = session.vBuffer
  
     #   traverseCount
     if numEps == 0:
@@ -123,8 +127,7 @@ def trainOption(net, tBuffer, vBuffer, numEps=0):
         network_helper.train(net,
                              collapseBuffer(tBuffer),
                              collapseBuffer(vBuffer),
-                             p,
-                             'visualization/costs.csv')
+                             p)
 
         #   Adjust net's expected input mean and variances for each layer.
         #   Then drop a fraction of the buffers
@@ -134,7 +137,6 @@ def trainOption(net, tBuffer, vBuffer, numEps=0):
 
             tBuffer, vBuffer = filterBuffers(tBuffer, vBuffer, p)
 
-    return (net, tBuffer, vBuffer)
 
 def analyzeOption(network):
     return
@@ -203,12 +205,14 @@ if __name__ == '__main__':
         blockWidth = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
         
         net = InitializeNet(numGroups, blocksPerGroup, blockWidth)
+        session = Session.Session(tBuffer, vBuffer, net)
         
     elif choice == "l":
         filename = input("Load from what file? ")
-        net, tBuffer, vBuffer = Network.load('nets/' + filename + '.pkl')
+
+        session = Session.Session([], [])
+        session.Load('nets/' + filename)
         print("Loaded successfully.")
-        net.print()
 
     messDef = 'Which of the following would you like to do:\n'
     options = ['Train the current network including new data',
@@ -228,31 +232,34 @@ if __name__ == '__main__':
 
     choice = 1
     while choice > 0 and choice <= len(options):
-        net.summary()
+        session.net.summary()
         choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= ' + str(len(options)))
         print()
 
         if choice == 1:
             #   Keep a fraction of examples
             p = input_handling.readConfig(2)
-            if len(tBuffer[0]) > 0 and len(vBuffer[0]) > 0:
-                tBuffer, vBuffer = filterBuffers(tBuffer, vBuffer, p)
+            if len(session.tBuffer[0]) > 0 and len(session.vBuffer[0]) > 0:
+                filterBuffers(session.tBuffer, session.vBuffer, p)
         
-            trainOption(net, tBuffer, vBuffer)
+            trainOption(session)
         elif choice == 2:
             p = input_handling.readConfig(2)
             print("Generating the current network's 'best' game...")
-            #net.showGame(verbose = p['mode'] >= 2)
-            network_helper.bestGame(net)
+            network_helper.bestGame(session.net)
         elif choice == 3:
-            filename = 'nets/' + input("Name a file to save the network to: ") + '.pkl'
-            net.save(tBuffer, vBuffer, filename)
+            dirname = 'nets/' + input("Name a file to save the network to: ")
+            session.Save(dirname)
             print("Saved. Continuing...")
         elif choice == 4:
-            network_helper.net_activity(net, collapseBuffer(tBuffer)+collapseBuffer(vBuffer))
+            network_helper.net_activity(net,
+                                        collapseBuffer(session.tBuffer)+collapseBuffer(session.vBuffer))
         elif choice == 5:
             p = input_handling.readConfig(2)
-            net.train(collapseBuffer(tBuffer), collapseBuffer(vBuffer), p)
+            network_helper.train(session.net,
+                                 collapseBuffer(session.tBuffer),
+                                 collapseBuffer(session.vBuffer),
+                                 p)
         elif choice == 6:
             p = input_handling.readConfig(0) # get mate reward
             
@@ -318,7 +325,7 @@ if __name__ == '__main__':
 
             print("Computing costs and writing positions...")
 
-            allData = collapseBuffer(tBuffer) + collapseBuffer(vBuffer)
+            allData = collapseBuffer(session.tBuffer) + collapseBuffer(session.vBuffer)
             costs = np.array([net.individualLoss([x]) for x in allData])
 
             #   Get rid of any old positions (to cover the case where the last choice
@@ -348,5 +355,5 @@ if __name__ == '__main__':
             messOnErr = "Error."
             prefix = "data/" + input_handling.getUserInput(messDef2, messOnErr, 'str', 'True')
             for i in range(4):
-                tBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/tBuffer' + str(i) + '.csv', p))
-                vBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/vBuffer' + str(i) + '.csv', p))
+                session.tBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/tBuffer' + str(i) + '.csv', p))
+                session.vBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/vBuffer' + str(i) + '.csv', p))
