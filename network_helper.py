@@ -15,7 +15,7 @@ import policy
 #   Utilities that are used by Model objects, specific to the chess engine
 #################################################################################
 
-def train(net, tData, vData, p, loss_path):
+def train(net, tData, vData, p):
     mom = p['mom']
     learn_rate = p['nu']
 
@@ -29,7 +29,7 @@ def train(net, tData, vData, p, loss_path):
     )
     
     #   Train the model
-    csv_logger = CSVLogger(loss_path, append=True)
+    csv_logger = CSVLogger('visualization/costs.csv', append=True)
     
     new_history = net.fit(
         tData[0],
