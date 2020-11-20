@@ -86,8 +86,8 @@ class Traversal:
                     #   At a leaf, we want to add the NN evaluation of the position, scaled by our
                     #   confidence in the NN, to make sure rewards are not simply undone later in the game
                     elif self.net.certainty > p['minCertainty'] and g.gameResult != 17:
-                        in_vec = g.toNN_vecs(every=False)[0].reshape(1,-1)
-                        stack[-1][1][-1] += self.net.certainty * p['gamma_exec'] * float(logit(self.net.predict(in_vec)))
+                        in_vec = g.toNN_vecs(every=False)[0]
+                        stack[-1][1][-1] += self.net.certainty * p['gamma_exec'] * float(logit(self.net(in_vec, training=False)))
 
             else:   # otherwise hop down one node
                 processNode(stack, self, p)

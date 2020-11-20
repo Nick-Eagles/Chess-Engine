@@ -6,7 +6,7 @@ import board_helper
 import Traversal
 
 import numpy as np
-from scipy.special import expit, logit
+from scipy.special import logit
 import os
 
 #################################################################################
@@ -180,7 +180,7 @@ def getEvals(moves, net, game, p):
         scalar = p['gamma_exec'] * net.certainty
         for i, m in enumerate(moves):
             r, vec = game.getReward(m, p['mateReward'])
-            evals[i] = r + scalar * float(logit(net.predict(vec.reshape(1,-1))))
+            evals[i] = r + scalar * logit(net(vec, training=False))
     else:
         evals = np.array([game.getReward(m, p['mateReward'], True)[0] for m in moves])
 
