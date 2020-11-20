@@ -617,7 +617,7 @@ def tryMove(game, move_orig):
 def piece_to_vector(netInput, piece, c):
     for i in range(-6, 7):
         if piece == i:
-            netInput[c][0] = 1
+            netInput[c] = 1
         c += 1
 
 
@@ -629,7 +629,7 @@ def piece_to_vector(netInput, piece, c):
 #   swap: (bool) switch the first and second axis (this corresponds to some
 #           rotation of the board, and its exact effect depends on flip0 and flip1)
 def generate_NN_vec(game, invert, flip0, flip1, swap):
-    netInput = np.zeros((839,1))
+    netInput = np.zeros((839,))
 
     coeff = 1 - 2 * invert
     c = 0
@@ -682,29 +682,29 @@ def generate_NN_vec(game, invert, flip0, flip1, swap):
                 piece_to_vector(netInput, piece, c)
                 c += 13
 
-    netInput[832][0] = int(invert + game.whiteToMove == 1)
-    netInput[833][0] = int(game.enPassant)
+    netInput[832] = int(invert + game.whiteToMove == 1)
+    netInput[833] = int(game.enPassant)
     if not invert and not flip0:
-        netInput[834][0] = int(game.canW_K_Castle)
-        netInput[835][0] = int(game.canW_Q_Castle)
-        netInput[836][0] = int(game.canB_K_Castle)
-        netInput[837][0] = int(game.canB_Q_Castle)
+        netInput[834] = int(game.canW_K_Castle)
+        netInput[835] = int(game.canW_Q_Castle)
+        netInput[836] = int(game.canB_K_Castle)
+        netInput[837] = int(game.canB_Q_Castle)
     elif not invert and flip0:
-        netInput[834][0] = int(game.canW_Q_Castle)
-        netInput[835][0] = int(game.canW_K_Castle)
-        netInput[836][0] = int(game.canB_Q_Castle)
-        netInput[837][0] = int(game.canB_K_Castle)
+        netInput[834] = int(game.canW_Q_Castle)
+        netInput[835] = int(game.canW_K_Castle)
+        netInput[836] = int(game.canB_Q_Castle)
+        netInput[837] = int(game.canB_K_Castle)
     elif invert and not flip0:
-        netInput[834][0] = int(game.canB_K_Castle)
-        netInput[835][0] = int(game.canB_Q_Castle)
-        netInput[836][0] = int(game.canW_K_Castle)
-        netInput[837][0] = int(game.canW_Q_Castle)
+        netInput[834] = int(game.canB_K_Castle)
+        netInput[835] = int(game.canB_Q_Castle)
+        netInput[836] = int(game.canW_K_Castle)
+        netInput[837] = int(game.canW_Q_Castle)
     else: # both are true
-        netInput[834][0] = int(game.canB_Q_Castle)
-        netInput[835][0] = int(game.canB_K_Castle)
-        netInput[836][0] = int(game.canW_Q_Castle)
-        netInput[837][0] = int(game.canW_K_Castle)
-    netInput[838][0] = game.movesSinceAction
+        netInput[834] = int(game.canB_Q_Castle)
+        netInput[835] = int(game.canB_K_Castle)
+        netInput[836] = int(game.canW_Q_Castle)
+        netInput[837] = int(game.canW_K_Castle)
+    netInput[838] = game.movesSinceAction
 
     return netInput
 
@@ -722,7 +722,7 @@ def verify_data(data, p, withMates=True):
             assert len(data[i][0]) == 2, len(data[i][0])
 
             # the input is of proper shape
-            assert data[i][0][0].shape == (839, 1), data[i][0][0].shape
+            assert data[i][0][0].shape == (839,), data[i][0][0].shape
             assert data[i][0][1].shape == (1, 1), data[i][0][1].shape
         elif p['mode'] >= 2:
             print("Warning: buffer", i, "was empty.")

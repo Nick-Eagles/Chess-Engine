@@ -180,7 +180,7 @@ def getEvals(moves, net, game, p):
         scalar = p['gamma_exec'] * net.certainty
         for i, m in enumerate(moves):
             r, vec = game.getReward(m, p['mateReward'])
-            evals[i] = r + scalar * float(logit(net.predict(np.array(vec))))
+            evals[i] = r + scalar * float(logit(net.predict(vec.reshape(1,-1))))
     else:
         evals = np.array([game.getReward(m, p['mateReward'], True)[0] for m in moves])
 

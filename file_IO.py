@@ -9,11 +9,11 @@ import input_handling
 #   writing to a csv: the sparse board representation is condensed into the
 #   64 integer rep, and the booleans are appended "as is".
 def compressNNinput(NN_vec):
-    assert NN_vec.shape == (839, 1), NN_vec.shape
+    assert NN_vec.shape == (839,), NN_vec.shape
     
-    inds = [i for i in range(832) if NN_vec[i][0]]
+    inds = [i for i in range(832) if NN_vec[i]]
     assert len(inds) == 64, "NN_input to compress encodes a faulty board; num squares encoded: " + str(len(inds))
-    outList = [i % 13 for i in inds] + NN_vec[832:].flatten().tolist()
+    outList = [i % 13 for i in inds] + NN_vec[832:].tolist()
     assert len(outList) == 71, len(outList)
     return outList
 
@@ -34,9 +34,9 @@ def decompressGames(games):
                     else:
                         NN_vec.append(0)
         NN_vec += g[64:]
-        final_vec = np.array(NN_vec).reshape(-1,1)
+        final_vec = np.array(NN_vec)
         assert final_vec.dtype == 'float64', final_vec.dtype
-        assert final_vec.shape[0] == 839, final_vec.shape[0]
+        assert final_vec.shape == (839,), final_vec.shape
         assert abs(result - 0.5) < 0.5, result 
         cGames.append((final_vec, result))
 
@@ -45,7 +45,7 @@ def decompressGames(games):
 def writeGames(games, filepath, compress=False, append=True):
     if compress:
         if len(games) > 0:
-            assert games[0][0].shape == (839, 1), "Is data already compressed?"
+            assert games[0][0].shape == (839,), "Is data already compressed?"
             assert float(games[0][1]) <= 1 and float(games[0][1]) >= 0, "Data label is not in 'expit' form"
         else:
             print("Warning: writing an empty file (no games to write for current call to file_IO.writeGames).")
@@ -82,7 +82,7 @@ def readGames(filepath, p):
     for row in range(len(flatData)):
         # csv reader returns a line as list of strings
         games.append([float(i) for i in flatData[row]])
-
+    
     return games
 
 #   Return only the positions in newGames that are not present in the file specified by filepath
