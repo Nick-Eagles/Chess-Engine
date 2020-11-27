@@ -89,7 +89,7 @@ class Game:
         g.doMove(move)
 
         if simple:
-            NN_vecs = np.array([])
+            NN_vecs = None
         else:
             NN_vecs = g.toNN_vecs(every=False)[0]
             
