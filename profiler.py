@@ -1,4 +1,4 @@
-import Network
+import Session
 import network_helper
 import file_IO
 import input_handling
@@ -19,16 +19,30 @@ import random
 import numpy as np
 from scipy.special import expit, logit
 import cProfile
+import tensorflow as tf
 
-net_name = 'res_profile'
+net_name = 'tf_profile'
 train_option = False
 generate_option = True
-generate_times = 4
+generate_times = 1
 
-def do_train(arg_list):
+'''
+config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=4,
+                        inter_op_parallelism_threads=2,
+                        allow_soft_placement=True,
+                        device_count = {'CPU': 4})
+session = tf.compat.v1.Session(config=config)
+
+
+os.environ["OMP_NUM_THREADS"] = "4"
+#os.environ["KMP_BLOCKTIME"] = "30"
+#os.environ["KMP_SETTINGS"] = "1"
+#os.environ["KMP_AFFINITY"]= "granularity=fine,verbose,compact,1,0"
+'''
+
+def do_train(session):
     #   Given a network, asks the user for training hyper-parameters,
     #   trains the network, and asks what to do next.
-    net, tBuffer, vBuffer = arg_list
     p = input_handling.readConfig(1)
     for i in range(2, 4):
         p.update(input_handling.readConfig(i))
@@ -37,16 +51,16 @@ def do_train(arg_list):
         random.seed(0)
 
     #   Now do an episode of data generation/training
-    main.trainOption(net, tBuffer, vBuffer, 1)
+    main.trainOption(session, 1)
 
 def do_generate_examples(arg_list):
-    net, p, times = arg_list
+    session, p, times = arg_list
     
     if p['mode'] >= 3:
         random.seed(0)
     
     for i in range(times):
-        data = q_learn.generateExamples(net, p)
+        data = q_learn.generateExamples(session.net, p)
         
 
 
@@ -62,27 +76,29 @@ for x in param_names:
     print(x + ': ', p[x])
         
 if train_option:
-    net, tBuffer, vBuffer = Network.load('nets/' + net_name, data_prefix='profile')
+    session = Session.Session([], [])
+    session.Load('nets/' + net_name, data_prefix='tf_profile')
 
-    net.print()
-    print('tBuffer and vBuffer sizes: ', sum([len(x) for x in tBuffer]), ',',
-          sum([len(x) for x in vBuffer]))
+    session.net.summary()
+    print('tBuffer and vBuffer sizes: ', sum([len(x) for x in session.tBuffer]), ',',
+          sum([len(x) for x in session.vBuffer]))
     print('\n-----------------------')
     print('  main.trainOption')
     print('-----------------------\n')
 
-    cProfile.run('do_train([net,tBuffer,vBuffer])')
+    cProfile.run('do_train(session)')
 
 if generate_option:
     #   Reload network since generated examples are in nondeterministic order,
     #   subtly affecting network parameters after training
-    net, tBuffer, vBuffer = Network.load('nets/' + net_name, data_prefix='profile')
+    session = Session.Session([], [])
+    session.Load('nets/' + net_name, data_prefix='tf_profile')
 
     if not train_option:
-        net.print()
+        session.net.summary()
 
     print('\n-----------------------')
     print('  q_learn.generateExamples')
     print('-----------------------\n')
 
-    cProfile.run('do_generate_examples([net, p, generate_times])')
+    cProfile.run('do_generate_examples([session, p, generate_times])')
