@@ -8,6 +8,7 @@ import Traversal
 import numpy as np
 from scipy.special import logit
 import os
+import tensorflow as tf
 
 #################################################################################
 #   Functions for sampling several legal moves (subsetting search tree)
@@ -175,12 +176,16 @@ def getBestMoveTreeEG(net, game, p):
 #   better moves for the current player!
 def getEvals(moves, net, game, p):
     #   Compute NN evaluations on each move if certainty is positive
-    evals = np.zeros(len(moves))
     if net.certainty > p['minCertainty']:
         scalar = p['gamma_exec'] * net.certainty
+        r_real = np.zeros(len(moves))
+        net_inputs = []
         for i, m in enumerate(moves):
             r, vec = game.getReward(m, p['mateReward'])
-            evals[i] = r + scalar * logit(net(vec, training=False))
+            r_real[i] = r
+            net_inputs.append(tf.reshape(vec, (839,)))
+            
+        evals = r_real + scalar * logit(net(tf.stack(net_inputs), training=False)).flatten()
     else:
         evals = np.array([game.getReward(m, p['mateReward'], True)[0] for m in moves])
 
