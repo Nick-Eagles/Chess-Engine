@@ -6,9 +6,10 @@ import misc
 import Traversal
 
 import numpy as np
-from scipy.special import expit, logit
+from scipy.special import logit, expit
 import os
 import time
+import tensorflow as tf
 
 def generateExamples(net, p):
     if p['mode'] >= 3:
@@ -84,16 +85,16 @@ def generateExamples(net, p):
 
     data = [[],[],[]]
     for i, r in enumerate(rSeqFlat):
-        data[0].append((NN_vecs[i][0], np.array([[expit(r)]])))
-        data[0].append((NN_vecs[i][1], np.array([[expit(-1 * r)]])))
+        data[0].append((NN_vecs[i][0], tf.constant(expit(r), shape=(1,1))))
+        data[0].append((NN_vecs[i][1], tf.constant(expit(-1 * r), shape=(1,1))))
         if len(NN_vecs[i]) > 2:
-            data[1].append((NN_vecs[i][2], np.array([[expit(r)]])))
-            data[1].append((NN_vecs[i][3], np.array([[expit(-1 * r)]])))
+            data[1].append((NN_vecs[i][2], tf.constant(expit(r), shape=(1,1))))
+            data[1].append((NN_vecs[i][3], tf.constant(expit(-1 * r), shape=(1,1))))
             if len(NN_vecs[i]) == 16:
                 for j in range(4, 10):
-                    data[2].append((NN_vecs[i][j], np.array([[expit(r)]])))
+                    data[2].append((NN_vecs[i][j], tf.constant(expit(r), shape=(1,1))))
                 for j in range(10, 16):
-                    data[2].append((NN_vecs[i][j], np.array([[expit(-1 * r)]])))
+                    data[2].append((NN_vecs[i][j], tf.constant(expit(-1 * r), shape=(1,1))))
 
     board_helper.verify_data(data, p, False)
     
@@ -133,8 +134,9 @@ def getCertainty(net, data, p):
                [data[1][i] for i in range(len(data[1])) if i % 4 == 0] + \
                [data[2][i] for i in range(len(data[2])) if i % 16 == 0]
     #   Form vectors of expected and actual rewards received
-    expRew = logit(net.predict(np.array([x[0] for x in origData]))).flatten()
-    actRew = logit(np.array([x[1] for x in origData]).flatten())
+    inputs = tf.stack([tf.reshape(x[0], [839]) for x in origData], axis=0)
+    expRew = logit(net(inputs, training=False)).flatten()
+    actRew = logit(tf.stack([tf.reshape(x[1], [1]) for x in origData], axis=0)).flatten()
 
     #   Normalized dot product of expected and actual reward vectors
     actNorm = np.linalg.norm(actRew)

@@ -25,8 +25,8 @@ from tensorflow.keras import layers
 def collapseBuffer(buff):
     bigBuff = buff[0] + buff[1] + buff[2] + buff[3]
 
-    x = np.array([z[0] for z in bigBuff])
-    y = np.array([z[1] for z in bigBuff])
+    x = tf.stack([tf.reshape(z[0], [839]) for z in bigBuff])
+    y = tf.stack([tf.reshape(z[1], [1]) for z in bigBuff])
 
     return (x, y)
 

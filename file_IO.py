@@ -2,6 +2,7 @@ import csv
 import os
 import numpy as np
 from scipy.special import expit, logit
+import tensorflow as tf
 
 import input_handling
 
@@ -34,9 +35,7 @@ def decompressGames(games):
                     else:
                         NN_vec.append(0)
         NN_vec += g[64:]
-        final_vec = np.array(NN_vec)
-        assert final_vec.dtype == 'float64', final_vec.dtype
-        assert final_vec.shape == (839,), final_vec.shape
+        final_vec = tf.constant(NN_vec, shape=(1,839))
         assert abs(result - 0.5) < 0.5, result 
         cGames.append((final_vec, result))
 

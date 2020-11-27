@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import expit
+import tensorflow as tf
 
 import Move
 
@@ -614,11 +615,12 @@ def tryMove(game, move_orig):
 
 #   Take a game board and initialized numpy array (netInput), and fill in the
 #   numpy array with a representation of the board used for input to the NN.
-def piece_to_vector(netInput, piece, c):
+def piece_to_vector(netInput, piece):
     for i in range(-6, 7):
         if piece == i:
-            netInput[c] = 1
-        c += 1
+            netInput.append(1)
+        else:
+            netInput.append(0)
 
 
 #   invert: (bool) determines whether to invert board by color (white and
@@ -629,84 +631,75 @@ def piece_to_vector(netInput, piece, c):
 #   swap: (bool) switch the first and second axis (this corresponds to some
 #           rotation of the board, and its exact effect depends on flip0 and flip1)
 def generate_NN_vec(game, invert, flip0, flip1, swap):
-    netInput = np.zeros((839,))
+    netInput = []
 
     coeff = 1 - 2 * invert
-    c = 0
     if not flip0 and not flip1 and not swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[file][rank]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
     elif not flip0 and not flip1 and swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[rank][file]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
     elif not flip0 and flip1 and not swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[file][7-rank]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
     elif not flip0 and flip1 and swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[rank][7-file]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
     elif flip0 and not flip1 and not swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-file][rank]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
     elif flip0 and not flip1 and swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-rank][file]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
     elif flip0 and flip1 and not swap:
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-file][7-rank]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
     else: # all are true
         for file in range(8):
             for rank in range(8):
                 piece = coeff * game.board[7-rank][7-file]
-                piece_to_vector(netInput, piece, c)
-                c += 13
+                piece_to_vector(netInput, piece)
 
-    netInput[832] = int(invert + game.whiteToMove == 1)
-    netInput[833] = int(game.enPassant)
+    netInput.append(int(invert + game.whiteToMove == 1))
+    netInput.append(int(game.enPassant))
     if not invert and not flip0:
-        netInput[834] = int(game.canW_K_Castle)
-        netInput[835] = int(game.canW_Q_Castle)
-        netInput[836] = int(game.canB_K_Castle)
-        netInput[837] = int(game.canB_Q_Castle)
+        netInput.append(int(game.canW_K_Castle))
+        netInput.append(int(game.canW_Q_Castle))
+        netInput.append(int(game.canB_K_Castle))
+        netInput.append(int(game.canB_Q_Castle))
     elif not invert and flip0:
-        netInput[834] = int(game.canW_Q_Castle)
-        netInput[835] = int(game.canW_K_Castle)
-        netInput[836] = int(game.canB_Q_Castle)
-        netInput[837] = int(game.canB_K_Castle)
+        netInput.append(int(game.canW_Q_Castle))
+        netInput.append(int(game.canW_K_Castle))
+        netInput.append(int(game.canB_Q_Castle))
+        netInput.append(int(game.canB_K_Castle))
     elif invert and not flip0:
-        netInput[834] = int(game.canB_K_Castle)
-        netInput[835] = int(game.canB_Q_Castle)
-        netInput[836] = int(game.canW_K_Castle)
-        netInput[837] = int(game.canW_Q_Castle)
+        netInput.append(int(game.canB_K_Castle))
+        netInput.append(int(game.canB_Q_Castle))
+        netInput.append(int(game.canW_K_Castle))
+        netInput.append(int(game.canW_Q_Castle))
     else: # both are true
-        netInput[834] = int(game.canB_Q_Castle)
-        netInput[835] = int(game.canB_K_Castle)
-        netInput[836] = int(game.canW_Q_Castle)
-        netInput[837] = int(game.canW_K_Castle)
-    netInput[838] = game.movesSinceAction
+        netInput.append(int(game.canB_Q_Castle))
+        netInput.append(int(game.canB_K_Castle))
+        netInput.append(int(game.canW_Q_Castle))
+        netInput.append(int(game.canW_K_Castle))
+    netInput.append(game.movesSinceAction)
 
-    return netInput
+    return tf.constant(netInput, shape=(1,839), dtype=tf.float32)
 
 def verify_data(data, p, withMates=True):
     if withMates:
@@ -722,7 +715,7 @@ def verify_data(data, p, withMates=True):
             assert len(data[i][0]) == 2, len(data[i][0])
 
             # the input is of proper shape
-            assert data[i][0][0].shape == (839,), data[i][0][0].shape
+            assert data[i][0][0].shape == (1,839), data[i][0][0].shape
             assert data[i][0][1].shape == (1, 1), data[i][0][1].shape
         elif p['mode'] >= 2:
             print("Warning: buffer", i, "was empty.")
