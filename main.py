@@ -135,7 +135,7 @@ def trainOption(session, numEps=0):
             if p['mode'] >= 2:
                 print("Filtering buffers...")
 
-            tBuffer, vBuffer = filterBuffers(tBuffer, vBuffer, p)
+            filterBuffers(tBuffer, vBuffer, p)
 
 
 def analyzeOption(network):
