@@ -1,88 +1,46 @@
 import csv
 import os
+import gzip
+import _pickle as pickle
 import numpy as np
 from scipy.special import expit, logit
 import tensorflow as tf
 
 import input_handling
+import board_helper
 
-#   Take np array used as input to the NN and return a list more suitable for
-#   writing to a csv: the sparse board representation is condensed into the
-#   64 integer rep, and the booleans are appended "as is".
-def compressNNinput(NN_vec):
-    assert NN_vec.shape == (839,), NN_vec.shape
+#   Write a buffer (the standard in-memory representation of data for this
+#   chess engine) to a compressed file
+def writeBuffer(buff, filepath):
+    #   First restructure data to use numpy arrays instead of tf.Tensors. The
+    #   idea is that numpy arrays seem to be more 'lightweight', and it should
+    #   be far simpler to serialize 8 numpy arrays than thousands of tf.Tensors
+    simple_buff = []
+    for b in buff:
+        x = tf.stack([tf.reshape(e[0], [839]) for e in b]).numpy()
+        y = tf.stack([tf.reshape(e[1], [1]) for e in b]).numpy()
+        simple_buff.append((x, y))
+
+    #   Write the simpler representation to a compressed file
+    with gzip.open(filepath, 'wb') as gz_file:
+        pickle.dump(simple_buff, gz_file)
+
+def readBuffer(filepath, p):
+    #   Load the simplified representation of the data
+    with gzip.open(filepath, 'rb') as gz_file:
+        simple_buff = pickle.load(gz_file)
+
+    #   Reformat into the standard in-memory representation
+    buff = [[],[],[],[]]
+    for i, b in enumerate(simple_buff):
+        for j in range(b[0].shape[0]):
+            buff[i].append((tf.constant(b[0][j,:], shape=[1,839], dtype=tf.float32),
+                            tf.constant(b[1][j,:], shape=[1,1], dtype=tf.float32)))
+
+    board_helper.verify_data(buff, p)
     
-    inds = [i for i in range(832) if NN_vec[i]]
-    assert len(inds) == 64, "NN_input to compress encodes a faulty board; num squares encoded: " + str(len(inds))
-    outList = [i % 13 for i in inds] + NN_vec[832:].tolist()
-    assert len(outList) == 71, len(outList)
-    return outList
+    return buff
 
-#   Given games in the format they are read from readGames(), produce a list
-#   of tuples in the format required for training examples for the network
-def decompressGames(games):
-    cGames = []
-    for g in games:
-        NN_vec = []
-        result = np.array(g.pop()).reshape((1,1))
-        board = np.array(g[:64]).reshape(8,8).tolist()
-        for file in range(8):
-            for rank in range(8):
-                piece = board[file][rank]
-                for i in range(13):
-                    if piece == i:
-                        NN_vec.append(1)
-                    else:
-                        NN_vec.append(0)
-        NN_vec += g[64:]
-        final_vec = tf.constant(NN_vec, shape=(1,839))
-        assert abs(result - 0.5) < 0.5, result 
-        cGames.append((final_vec, result))
-
-    return cGames
-
-def writeGames(games, filepath, compress=False, append=True):
-    if compress:
-        if len(games) > 0:
-            assert games[0][0].shape == (839,), "Is data already compressed?"
-            assert float(games[0][1]) <= 1 and float(games[0][1]) >= 0, "Data label is not in 'expit' form"
-        else:
-            print("Warning: writing an empty file (no games to write for current call to file_IO.writeGames).")
-        games = [compressNNinput(g[0]) + [float(g[1])] for g in games]
-    else:
-        assert type(games[0][0]) is int, "Is data actually compressed?"
-    
-    if os.path.exists(filepath) and append:
-        gameFile = open(filepath, 'a')
-    else:
-        gameFile = open(filepath, 'w')
-
-    with gameFile:
-        writer = csv.writer(gameFile)
-        writer.writerows(games)
-    
-#   Reads game from a file as specified by the user; returns data as a list of tuples with
-#   the first entry (the game) in compressed form
-def readGames(filepath, p):
-    flatData = []
-
-    #   Open and read file
-    with open(filepath, 'r') as gameFile:
-        reader = csv.reader(gameFile, delimiter=',', quotechar=',', quoting=csv.QUOTE_MINIMAL)
-
-        for line in reader:
-            flatData.append(line)
-
-    if p['mode'] >= 2:
-        print("Found", len(flatData), "position(s) in", os.path.basename(filepath) + ".")
-
-    #   Convert data to list of tuples as required
-    games = []
-    for row in range(len(flatData)):
-        # csv reader returns a line as list of strings
-        games.append([float(i) for i in flatData[row]])
-    
-    return games
 
 #   Return only the positions in newGames that are not present in the file specified by filepath
 def filterByNovelty(newGames, filepath, p):
@@ -193,15 +151,3 @@ def toFEN(NN_vec, filename, verbose=True):
         fenFile.write(game_str)
     if verbose:
         print("Done.")
-
-def loadBuffers(prefix):
-    p = input_handling.readConfig()
-
-    tBuffer = [[],[],[],[]]
-    vBuffer = [[],[],[],[]]
-    
-    for i in range(4):
-        tBuffer[i] = decompressGames(readGames('data/' + prefix + '/tBuffer' + str(i) + '.csv', p))
-        vBuffer[i] = decompressGames(readGames('data/' + prefix + '/vBuffer' + str(i) + '.csv', p))
-
-    return (tBuffer, vBuffer)

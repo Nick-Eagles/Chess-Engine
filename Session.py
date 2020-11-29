@@ -1,4 +1,5 @@
 import file_IO
+import input_handling
 
 import _pickle as pickle
 import csv
@@ -87,15 +88,14 @@ class Session:
             writer.writerows(temp_losses)
 
         ########################################################################
-        #   Write data buffers to CSV files
+        #   Write data buffers to gzipped pickle files
         ########################################################################
 
         #   Write each sub-buffer to separate file
-        for i in range(4):
-            tFileName = 'data/' + data_prefix + '/tBuffer' + str(i) + '.csv'
-            vFileName = 'data/' + data_prefix + '/vBuffer' + str(i) + '.csv'
-            file_IO.writeGames(self.tBuffer[i], tFileName, True, False)
-            file_IO.writeGames(self.vBuffer[i], vFileName, True, False)
+        t_filename = 'data/' + data_prefix + '/tBuffer.pkl.gz'
+        v_filename = 'data/' + data_prefix + '/vBuffer.pkl.gz'
+        file_IO.writeBuffer(self.tBuffer, t_filename)
+        file_IO.writeBuffer(self.vBuffer, v_filename)
 
         #   The 'currently loaded net' is the one just saved
         self.loadedNet = dirname
@@ -113,4 +113,12 @@ class Session:
             self.tBuffer = [[],[],[],[]]
             self.vBuffer = [[],[],[],[]]
         else:
-            self.tBuffer, self.vBuffer = file_IO.loadBuffers(data_prefix)
+            p = input_handling.readConfig()
+            
+            t_filename = 'data/' + data_prefix + '/tBuffer.pkl.gz'
+            v_filename = 'data/' + data_prefix + '/vBuffer.pkl.gz'
+            
+            self.tBuffer = file_IO.readBuffer(t_filename, p)
+            self.vBuffer = file_IO.readBuffer(v_filename, p)
+
+        self.loadedNet = dirname
