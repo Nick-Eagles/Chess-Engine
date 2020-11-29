@@ -85,16 +85,16 @@ def generateExamples(net, p):
 
     data = [[],[],[]]
     for i, r in enumerate(rSeqFlat):
-        data[0].append((NN_vecs[i][0], tf.constant(expit(r), shape=(1,1))))
-        data[0].append((NN_vecs[i][1], tf.constant(expit(-1 * r), shape=(1,1))))
+        data[0].append((NN_vecs[i][0], tf.constant(expit(r), shape=(1,1), dtype=tf.float32)))
+        data[0].append((NN_vecs[i][1], tf.constant(expit(-1 * r), shape=(1,1), dtype=tf.float32)))
         if len(NN_vecs[i]) > 2:
-            data[1].append((NN_vecs[i][2], tf.constant(expit(r), shape=(1,1))))
-            data[1].append((NN_vecs[i][3], tf.constant(expit(-1 * r), shape=(1,1))))
+            data[1].append((NN_vecs[i][2], tf.constant(expit(r), shape=(1,1), dtype=tf.float32)))
+            data[1].append((NN_vecs[i][3], tf.constant(expit(-1 * r), shape=(1,1), dtype=tf.float32)))
             if len(NN_vecs[i]) == 16:
                 for j in range(4, 10):
-                    data[2].append((NN_vecs[i][j], tf.constant(expit(r), shape=(1,1))))
+                    data[2].append((NN_vecs[i][j], tf.constant(expit(r), shape=(1,1), dtype=tf.float32)))
                 for j in range(10, 16):
-                    data[2].append((NN_vecs[i][j], tf.constant(expit(-1 * r), shape=(1,1))))
+                    data[2].append((NN_vecs[i][j], tf.constant(expit(-1 * r), shape=(1,1), dtype=tf.float32)))
 
     board_helper.verify_data(data, p, False)
     
