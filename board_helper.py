@@ -705,7 +705,9 @@ def generate_NN_vec(game, invert, flip0, flip1, swap):
         netInput[835] = int(game.canB_K_Castle)
         netInput[836] = int(game.canW_Q_Castle)
         netInput[837] = int(game.canW_K_Castle)
-    netInput[838] = game.movesSinceAction
+        
+    #   Normalize so it fits in [0, ~1)
+    netInput[838] = game.movesSinceAction / 25
 
     return tf.constant(netInput, shape=(1,839), dtype=tf.float32)
 
