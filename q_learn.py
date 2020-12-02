@@ -96,7 +96,7 @@ def generateExamples(net, p):
                 for j in range(10, 16):
                     data[2].append((NN_vecs[i][j], tf.constant(expit(-1 * r), shape=(1,1), dtype=tf.float32)))
 
-    board_helper.verify_data(data, p, False)
+    board_helper.verify_data(data, p, 3)
     
     return data
 
@@ -115,7 +115,7 @@ def async_q_learn(net):
         for j in range(3):
             data[j] += this_data[j]
 
-    board_helper.verify_data(data, p, withMates=False)
+    board_helper.verify_data(data, p, 3)
 
     if p['mode'] >= 2:
         elapsed = round(time.time() - start_time, 2)

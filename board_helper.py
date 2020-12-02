@@ -712,12 +712,7 @@ def generate_NN_vec(game, invert, flip0, flip1, swap):
     return tf.constant(netInput, shape=(1,839), dtype=tf.float32)
 
 
-def verify_data(data, p, withMates=True):
-    if withMates:
-        numBuffs = 4
-    else:
-        numBuffs = 3
-
+def verify_data(data, p, numBuffs=4):
     #   All buffers exist
     assert len(data) == numBuffs, len(data)
     for i in range(numBuffs):

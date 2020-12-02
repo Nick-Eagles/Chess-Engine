@@ -11,6 +11,12 @@ import board_helper
 
 #   Write a buffer (the standard in-memory representation of data for this
 #   chess engine) to a compressed file
+#
+#   buff:   A list whose elements are lists of 2-tuples: (input, label) pairs
+#
+#   filepath: a string giving the filename to write the data in buff to. This
+#           should end in '.pkl.gz', since it will be a gzipped pickled
+#           representation of the data
 def writeBuffer(buff, filepath):
     #   First restructure data to use numpy arrays instead of tf.Tensors. The
     #   idea is that numpy arrays seem to be more 'lightweight', and it should
@@ -25,19 +31,24 @@ def writeBuffer(buff, filepath):
     with gzip.open(filepath, 'wb') as gz_file:
         pickle.dump(simple_buff, gz_file)
 
+#   Read a restructured "buffer" of data (in the format produced by
+#   writeBuffer), returning a list whose elements are lists of 2-tuples:
+#   (input, label) pairs. Typically this list has 4 elements, when reading in
+#   'buffers' like session.tBuffer and session.vBuffer, or 1 element to read in
+#   a generic list of data (such as the list of pre-checkmate positions).
 def readBuffer(filepath, p):
     #   Load the simplified representation of the data
     with gzip.open(filepath, 'rb') as gz_file:
         simple_buff = pickle.load(gz_file)
 
     #   Reformat into the standard in-memory representation
-    buff = [[],[],[],[]]
+    buff = [[] for i in range(len(simple_buff))]
     for i, b in enumerate(simple_buff):
         for j in range(b[0].shape[0]):
             buff[i].append((tf.constant(b[0][j,:], shape=[1,839], dtype=tf.float32),
                             tf.constant(b[1][j,:], shape=[1,1], dtype=tf.float32)))
 
-    board_helper.verify_data(buff, p)
+    board_helper.verify_data(buff, p, len(simple_buff))
     
     return buff
 
