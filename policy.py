@@ -62,28 +62,31 @@ def sampleMovesEG(net, game, p):
     epsEffective = (fullMovesLen * p['epsSearch'] / (fullMovesLen - subMovesLen))**(1/subMovesLen)
     inds = []
     remainInds = list(range(fullMovesLen))
-    chooseBest = [x > epsEffective for x in np.random.uniform(size=subMovesLen)]
+    numRandom = np.random.binomial(subMovesLen, epsEffective)
     
     #   If all moves are to be chosen randomly, don't even compute their evals
-    if not any(chooseBest):
+    if numRandom < subMovesLen:
+        evals = getEvals(moves, net, game, p)
+
+        #   The moves to be chosen by best evaluation
+        for i in range(subMovesLen - numRandom):
+            temp = np.argmax(evals)
+            assert min(evals) >= -2 * p['mateReward'], min(evals)
+            evals[temp] = -2 * p['mateReward'] # which should be less than any eval
+            inds.append(temp)
+            remainInds.remove(temp)
+
+        #   The moves to randomly select
+        for i in range(numRandom):
+            temp = remainInds.pop(np.random.randint(len(remainInds)))
+            evals[temp] = -2 * p['mateReward']
+            inds.append(temp)
+    else:
+        #   Randomly select all moves
         for i in range(subMovesLen):
             temp = remainInds.pop(np.random.randint(len(remainInds)))
             inds.append(temp)
-    else:
-        evals = getEvals(moves, net, game, p)
-
-        #   Select distinct moves via an epsilon-greedy policy
-        for i in range(subMovesLen):
-            if chooseBest[i]:
-                temp = np.argmax(evals)
-                assert min(evals) >= -2 * p['mateReward'], min(evals)
-                evals[temp] = -2 * p['mateReward'] # which should be less than any eval
-                inds.append(temp)
-                remainInds.remove(temp)
-            else:
-                temp = remainInds.pop(np.random.randint(len(remainInds)))
-                evals[temp] = -2 * p['mateReward']
-                inds.append(temp)
+        
 
     return ([moves[i] for i in inds], fullMovesLen)
 
