@@ -399,10 +399,5 @@ class Game:
               + '[Result "' + result + '"]\n\n'
         txt = txt + self.annotation + result
 
-        try:
-            with open(filename, 'w') as pgn_file:
-                pgn_file.write(txt)
-        except:
-            print("Encountered an error while opening or handling file 'latest_game.pgn'")
-        finally:
-            pgn_file.close()
+        with open(filename, 'w') as pgn_file:
+            pgn_file.write(txt)
