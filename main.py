@@ -89,15 +89,13 @@ def trainOption(session, numEps=0):
         numGenExamples = len(temp[0][1])
 
         #   Add checkmates from file
-        temp = file_IO.readGames('data/checkmates_t.csv', p)
-        tGames = file_IO.decompressGames(temp)
+        tGames = file_IO.readBuffer('data/tCheckmates.pkl.gz', p)[0]
         fracToUse = p['fracFromFile'] * numGenExamples / (len(tGames) * (1 - p['fracFromFile']))
         tBuffer[3] += misc.divvy(tGames, fracToUse, False)[0]
         if p['mode'] >= 2:
             print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
 
-        temp = file_IO.readGames('data/checkmates_v.csv', p)
-        vGames = file_IO.decompressGames(temp)
+        vGames = file_IO.readBuffer('data/vCheckmates.pkl.gz', p)[0]
         fracToUse = p['fracValidation'] * fracToUse * len(tGames) / (len(vGames) * (1 - p['fracValidation']))
         vBuffer[3] += misc.divvy(vGames, fracToUse, False)[0]
         if p['mode'] >= 2:
@@ -354,6 +352,8 @@ if __name__ == '__main__':
             messDef2 = "Name of dataset? "
             messOnErr = "Error."
             prefix = "data/" + input_handling.getUserInput(messDef2, messOnErr, 'str', 'True')
+            temp_tBuffer = file_IO.readBuffer(prefix + '/tBuffer.pkl.gz', p)
+            temp_vBuffer = file_IO.readBuffer(prefix + '/vBuffer.pkl.gz', p)
             for i in range(4):
-                session.tBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/tBuffer' + str(i) + '.csv', p))
-                session.vBuffer[i] += file_IO.decompressGames(file_IO.readGames(prefix + '/vBuffer' + str(i) + '.csv', p))
+                session.tBuffer[i] += temp_tBuffer[i]
+                session.vBuffer[i] += temp_vBuffer[i]
