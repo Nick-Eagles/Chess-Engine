@@ -28,9 +28,10 @@ class Traversal:
         self.limit = 4 * p['breadth']**p['depth']
         
 
-    #   From a base game, performs a depth-first tree traversal with the goal of approximating
-    #   the reward along realistic move sequences. Breadth determines how many move options the
-    #   engine explores from any node; reward is determined using a minimax search. 
+    #   From a base game, performs a depth-first tree traversal with the goal of
+    #   approximating the reward along realistic move sequences. Breadth
+    #   determines how many move options the engine explores from any node;
+    #   reward is determined using a minimax search.
     def traverse(self):
         #   Handle the case where the game is already finished
         if self.game.gameResult != 17:
@@ -66,11 +67,14 @@ class Traversal:
                 else:
                     #   Pop the first move and do it
                     g = stack[-1][2].copy()
-                    r = g.getReward(stack[-1][0].pop(0), p['mateReward'], simple=True, copy=False)[0]
+                    r = g.getReward(stack[-1][0].pop(0),
+                                    p['mateReward'],
+                                    simple=True,
+                                    copy=False)[0]
                     stack[-1][1].append(r)
 
-                    #   If we aren't at the leaves, compute the next set of moves/probs and add
-                    #   to the stack
+                    #   If we aren't at the leaves, compute the next set of
+                    #   moves/probs and add to the stack
                     if len(stack) < p['depth']:
                         if g.gameResult == 17:  
                             moves, fullMovesLen = self.policy(self.net, g, p)
@@ -79,12 +83,13 @@ class Traversal:
                         elif g.gameResult == 0:
                             self.nodeHops += 2
                         else:
-                            #   Signal to stop branching here since we found a mate
-                            #   (the strongest possible move)
+                            #   Signal to stop branching here since we found a
+                            #   mate (the strongest possible move)
                             stack[-1][0] = [] 
                             self.nodeHops += 2
-                    #   At a leaf, we want to add the NN evaluation of the position, scaled by our
-                    #   confidence in the NN, to make sure rewards are not simply undone later in the game
+                    #   At a leaf, we want to add the NN evaluation of the
+                    #   position, scaled by our confidence in the NN, to make
+                    #   sure rewards are not simply undone later in the game
                     elif self.net.certainty > p['minCertainty'] and g.gameResult == 17:
                         in_vec = g.toNN_vecs(every=False)[0]
                         stack[-1][1][-1] += self.net.certainty * p['gamma_exec'] * float(logit(self.net(in_vec, training=False)))
