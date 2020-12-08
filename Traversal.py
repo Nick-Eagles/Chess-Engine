@@ -122,6 +122,6 @@ def processNode(stack, trav, p):
     if len(stack) > 0:
         stack[-1][1][-1] += r
     else:
-        trav.baseR = r
+        trav.baseR = r / p['gamma_exec']
 
     trav.nodeHops += 1
