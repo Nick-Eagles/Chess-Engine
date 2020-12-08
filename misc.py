@@ -2,14 +2,16 @@ import numpy as np
 import random
 import math
 
-# Given a numpy array "cdf", a cumulative discrete probability distribution function,
-# returns n indices, which are random selections proportional to the original probability
-# density function (ie. for a cdf [0.1 0.7 1], index 0 would be selected w/ P=0.1, index 1
-# w/ P=0.6, and index 2 w/ P=0.3). "exclusive" decides whether an index can be selected
-# > 1 time.
+#   Given a numpy array "cdf", a cumulative discrete probability distribution
+#   function, returns n indices, which are random selections proportional to the
+#   original probability density function (ie. for a cdf [0.1 0.7 1], index 0
+#   would be selected w/ P=0.1, index 1 w/ P=0.6, and index 2 w/ P=0.3).
+#   "exclusive" decides whether an index can be selected > 1 time.
 def sampleCDF(cdf, n=1, exclusive=True, tol=1e-12):
-    assert abs(cdf[-1] - 1) < tol, "Illegitimate CDF received as an argument: probabilities don't add to 1"
-    assert not exclusive or n <= len(cdf), "Pigeonhole principle: more ints requested than discrete 'slots'"
+    assert abs(cdf[-1] - 1) < tol, \
+        "Illegitimate CDF received as an argument: probabilities don't add to 1"
+    assert not exclusive or n <= len(cdf), \
+        "Pigeonhole principle: more ints requested than discrete 'slots'"
     if cdf.shape[0] == n:
         return list(range(n))
     
@@ -37,9 +39,10 @@ def sampleCDF(cdf, n=1, exclusive=True, tol=1e-12):
 
     return indices
 
-#   Given a list "data", randomly partition the list such that the first subset contains a
-#   fraction [frac] of the original number of elements. If [both], return the remaining
-#   portion as part 2 (otherwise part 2 = []). Return the tuple (part1, part2).
+#   Given a list "data", randomly partition the list such that the first subset
+#   contains a fraction [frac] of the original number of elements. If [both],
+#   return the remaining portion as part 2 (otherwise part 2 = []). Return the
+#   tuple (part1, part2).
 def divvy(data, frac, both=True):
     if len(data) == 0:
         return ([], [])
@@ -54,8 +57,9 @@ def divvy(data, frac, both=True):
 
     return (part1, part2)
 
-#   A naive implementation of finding the indices of the largest N values in vec.
-#   Recursively computes the argmax (not intended for large vectors/ large N)
+#   A naive implementation of finding the indices of the largest N values in
+#   vec. Recursively computes the argmax (not intended for large vectors/ large
+#   N).
 def topN(vec, N):
     assert N > 0, N
     realN = min(N, vec.shape[0])
@@ -78,7 +82,7 @@ def topN(vec, N):
     for i in range(realN):
         temp = np.argmax(vecCopy)
         inds.append(temp)
-        vecCopy[temp] = minVal
+        vecCopy[temp] = minVal - 1
 
     assert len(inds) == realN, inds
     return inds
@@ -104,3 +108,18 @@ def is_unique(x, tol=0.0001):
         i += 1
 
     return True
+
+def expect_equal(expected, actual, is_float=False, terminate=False, tol=0.00001):
+    if is_float:
+        cond = abs(expected - actual) < tol
+    else:
+        cond = expected == actual
+
+    if cond:
+        print('Test passed!')
+    else:
+        print('Test failed:')
+        print('    Expected value: ', expected)
+        print('    Actual value:   ', actual)
+        if terminate:
+            sys.exit()
