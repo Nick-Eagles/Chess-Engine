@@ -64,23 +64,16 @@ def topN(vec, N):
     assert N > 0, N
     realN = min(N, vec.shape[0])
     
-    #   Preliminary checks to make sure we don't use an extensive computation
-    #   for trivial cases
+    #   Handle a trivial case
     if realN == 1:
         return [int(np.argmax(vec))]
-    elif realN == vec.shape[0]:
-        return list(range(realN))
-    elif realN == vec.shape[0]-1:
-        inds = list(range(vec.shape[0]))
-        inds.pop(np.argmin(vec))
-        return inds
 
     vecCopy = vec.copy()
     minVal = min(vec)
 
     inds = []
     for i in range(realN):
-        temp = np.argmax(vecCopy)
+        temp = int(np.argmax(vecCopy))
         inds.append(temp)
         vecCopy[temp] = minVal - 1
 
