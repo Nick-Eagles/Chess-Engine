@@ -45,33 +45,51 @@ def net_activity(net, tData):
     #   TODO
     return
 
-#   A helper function for Network.showGame. Returns the string that is output for
-#   a game at its current state (the list of evaluations for whichever player is
-#   to move). These are printed when running the program in mode >= 2.
-def generateAnnLine(evalList, game):
+def display_evaluation(game, bestMoves, r):
     if game.whiteToMove:
-        line = "#####  Move " + str(game.moveNum) + ":  #####\n\n-- White: --\n"
-    else:
-        line = "-- Black: --\n"
+        print(str(game.moveNum) + '.')
         
-    for i, e in enumerate(evalList):
-        line += str(i) + ". " + e[0] + ", overall: " + str(round(e[1] + e[2], 4))
-        line += " | r = " + str(round(e[2], 4)) + " | NN eval = " + str(round(e[1], 4)) + "\n"
-    line += "\n"
+        print('    White to move; playing ' + \
+              bestMoves[0].getMoveName(game.board) + \
+              '.')
+    else:
+        print('    Black to move; playing ' + \
+              bestMoves[0].getMoveName(game.board) + \
+              '.')
 
-    return line
+    for i in range(len(bestMoves)):
+        print('        ' + str(i+1) + '.',
+              bestMoves[i].getMoveName(game.board),
+              '(' + str(r[i]) + ')')
+
 
 def bestGame(net):
+    #   Get parameters, but use a fully greedy policy
     p = input_handling.readConfig(3)
     p.update(input_handling.readConfig(1))
     p['epsGreedy'] = 0
     p['epsSearch'] = 0
 
+    if p['mode'] >= 2:
+        num_lines = input_handling.getUserInput("Display how many lines? ",
+                                                "Not a valid number.",
+                                                "int",
+                                                "var >= 2 and var < 50")
+    else:
+        num_lines = 1
+
     game = Game.Game(quiet=False)
 
     while (game.gameResult == 17):
-        bestMove = policy.getBestMoveTreeEG(net, game, p)
-        game.doMove(bestMove)
+        if num_lines == 1:
+            bestMove = policy.getBestMoveTreeEG(net, game, p)
+            game.doMove(bestMove)
+        else:
+            bestMoves, r = policy.getBestMoveTreeEG(net, game, p, num_lines)
+            display_evaluation(game, bestMoves, r)
+            game.doMove(bestMoves[0])
 
-    print(game.annotation)
+    if p['mode'] < 2:
+        print(game.annotation)
+    
     game.toPGN()
