@@ -90,6 +90,8 @@ def readConfig(mode=0, fName="config.txt"):
         else:
             p[var] = int(val)
 
+    validateP(p)
+    
     return p
 
 #   A function storing the lengthy user-input queries for different sections of the program.
@@ -196,4 +198,66 @@ def getP(mode):
         p['gBuffer'] = getUserInput(messDef, messOnErr, 'int', cond)
 
     return p
+
+def validateP(p):
+    #   General settings
+    assert p['baseBreadth'] > 0, p['baseBreadth']
+    assert p['epsGreedy'] >= 0 and p['epsGreedy'] <= 1, p['epsGreedy']
+    assert p['mateReward'] > 0, "Mate reward must be positive to be " + \
+           "consistent with rewards for captures"
+    
+    assert p['gamma'] > 0, p['gamma']
+    if p['gamma'] > 1 and p['mode'] >= 1:
+        print("Warning: you are asking for reward to increase with distance " +\
+              "(gamma = " + str(p['gamma']) + ")!")
+
+    #   Tree traversal parameters
+    if 'gamma_exec' in p:
+        assert p['gamma_exec'] > 0, p['gamma_exec']
+        if p['gamma_exec'] > 1 and p['mode'] >= 1:
+            print("Warning: you are asking for reward to increase with " + \
+                  "distance (gamma_exec = " + str(p['gamma_exec']) + ")!")
+
+        assert p['breadth'] >= 1, p['breadth']
+        assert p['depth'] >= 1, p['depth']
+        assert p['epsSearch'] >= 0 and p['epsSearch'] <= 1, p['epsSearch']
+
+        assert p['minCertainty'] < 1, p['minCertainty']
+        if p['minCertainty'] < 0 and p['mode'] >= 1:
+            print("Warning: 'minCertainty' is negative- is this intended?")
+            
+        assert p['policy'] == "sampleMovesEG" \
+               or p['policy'] == "sampleMovesSoft", p['policy']
         
+    #   Network/ training
+    if 'memDecay' in p:
+        assert p['memDecay'] >= 0 and p['memDecay'] < 1, p['memDecay']
+        if p['memDecay'] >= 0.125 and p['mode'] >= 1:
+            print("Warning: setting 'memDecay' to 0.125 or above causes " + \
+                  "some positions to be overrepresented in training data.")
+
+        assert p['weightDec'] >= 0, p['weightDec']
+        if p['mode'] >= 2:
+            print("Warning: weight decay is not implemented.")
+
+        assert p['nu'] > 0, p['nu']
+        
+        assert p['mom'] >= 0 and p['mom'] <= 1, p['mom']
+        if p['mom'] == 1 and p['mode'] >= 1:
+            print("Warning: using undamped momentum in SGD.")
+
+        assert p['batchSize'] > 1, p['batchSize']
+        assert p['epochs'] >= 1, p['epochs']
+        assert p['fracValidation'] >= 0 and p['fracValidation'] < 1, \
+               p['fracValidation']
+        assert p['fracFromFile'] >= 0 and p['fracFromFile'] < 1, \
+               p['fracFromFile']
+
+        assert p['popPersist'] >= 0 and p['popPersist'] < 1, p['popPersist']
+
+    #   Q learning
+    if 'maxSteps' in p:
+        assert p['maxSteps'] > p['rDepthMin'], "'maxSteps' must exceed " + \
+               "'rDepthMin' in order to produce training examples"
+        assert p['rDepthMin'] >= 1, p['rDepthMin']
+        assert p['persist'] >= 0 and p['persist'] < 1, p['persist']
