@@ -1,29 +1,27 @@
 #	General settings (apply everywhere or in multiple categories)
-mode 3
-baseBreadth 1
+mode 2
+baseBreadth 12
 epsGreedy 0.2
 mateReward 3
 gamma 0.2
 #	Tree traversal
 gamma_exec 0.7
 breadth 10
-depth 2
+depth 4
 curiosity 5
 epsSearch 0.03
 minCertainty 0.02
 policy "sampleMovesEG"
 #	Network/ training-related
-memDecay 0.1
+memDecay 0.01
 weightDec 0.000001
 nu 0.05
 mom 0.9
 batchSize 200
-epochs 5
+epochs 1
 fracValidation 0.1
 fracFromFile 0.01
 popPersist 0.3
-costLimit 4000
-batchNormScale 1.0
 #	Q-learning
 maxSteps 200
 rDepthMin 4
