@@ -133,7 +133,7 @@ def per_thread_job(trav_obj):
     trav_obj.traverse()
     return trav_obj
 
-def getBestMoveTreeEG(net, game, p):
+def getBestMoveTreeEG(net, game, p, num_lines=1):
     if np.random.uniform() < p['epsGreedy']:
         legalMoves = board_helper.getLegalMoves(game)
         return legalMoves[np.random.randint(len(legalMoves))]
@@ -163,12 +163,22 @@ def getBestMoveTreeEG(net, game, p):
 
         rTemp += p['gamma_exec'] * baseRs
 
-        if game.whiteToMove:
-            bestMove = moves[np.argmax(rTemp)]
-        else:
-            bestMove = moves[np.argmin(rTemp)]
+        if num_lines == 1:
+            if game.whiteToMove:
+                bestMove = moves[np.argmax(rTemp)]
+            else:
+                bestMove = moves[np.argmin(rTemp)]
 
-        return bestMove
+            return bestMove
+        else:
+            if game.whiteToMove:
+                indices = misc.topN(rTemp, num_lines)
+            else:
+                indices = misc.topN(-1 * rTemp, num_lines)
+                
+            return ([moves[i] for i in indices],
+                    rTemp[indices])
+
 
 #   A helper function to compute depth-1 evaluations of a list of moves. Returns
 #   a list the same length as 'moves', with each component being the sum of the
