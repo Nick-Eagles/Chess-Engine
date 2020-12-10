@@ -54,6 +54,7 @@ def generateExamples(net, p):
     #   "Unravel" reward sequences: assign each state an expected cumulative reward value,
     #   with minimum depth given by p['rDepth']
     rSeqFlat = []
+
     for i, rSeqIn in enumerate(rewards):
         #   Determine how many states to trim at the end of the game (to not use
         #   as training data)
@@ -85,20 +86,42 @@ def generateExamples(net, p):
 
     data = [[],[],[]]
     for i, r in enumerate(rSeqFlat):
-        data[0].append((NN_vecs[i][0], tf.constant(expit(r), shape=(1,1), dtype=tf.float32)))
-        data[0].append((NN_vecs[i][1], tf.constant(expit(-1 * r), shape=(1,1), dtype=tf.float32)))
-        if len(NN_vecs[i]) > 2:
-            data[1].append((NN_vecs[i][2], tf.constant(expit(r), shape=(1,1), dtype=tf.float32)))
-            data[1].append((NN_vecs[i][3], tf.constant(expit(-1 * r), shape=(1,1), dtype=tf.float32)))
-            if len(NN_vecs[i]) == 16:
-                for j in range(4, 10):
-                    data[2].append((NN_vecs[i][j], tf.constant(expit(r), shape=(1,1), dtype=tf.float32)))
-                for j in range(10, 16):
-                    data[2].append((NN_vecs[i][j], tf.constant(expit(-1 * r), shape=(1,1), dtype=tf.float32)))
+        num_examples = len(NN_vecs[i])
+
+        #   Based on the number of examples for this particular position,
+        #   assign the examples to the appropriate data buffer
+        if num_examples == 2:
+            buffer_index = 0
+        elif num_examples == 4:
+            buffer_index = 1
+        elif num_examples == 16:
+            buffer_index = 2
+        else:
+            sys.exit("Received an invalid number of augmented positions" + \
+                     "associated with one example: " + str(num_examples))
+
+        #   Add the data to the correct buffer
+        data[buffer_index] += [(NN_vecs[i][j], index_to_label(j, r))
+                               for j in range(len(NN_vecs[i]))]
 
     board_helper.verify_data(data, p, 3)
     
     return data
+
+
+#   An 'ad hoc' function: take any particular element of 'NN_vecs' as produced
+#   by 'generateExamples', and call it 'NN_vec_mirrors'. This is a list of
+#   inputs to the NN, where NN_vec_mirrors[0] is the original position, and
+#   NN_vec_mirrors[j] are augmented variations of this position for j >= 1. Let
+#   the parameter 'r' be the raw reward associated with NN_vec_mirrors[0]. If
+#   we are considering the position NN_vec_mirrors[i], this function returns the
+#   appropriate label for this position (a tf.Tensor of shape [1,1]).
+def index_to_label(i, r):
+    if i == 0 or i == 2 or (i >= 4 and i < 10):
+        return tf.constant(expit(r), shape=[1,1], dtype=tf.float32)
+    else:
+        return tf.constant(expit(-1 * r), shape=[1,1], dtype=tf.float32)
+
 
 def async_q_learn(net):
     p = input_handling.readConfig(1)
