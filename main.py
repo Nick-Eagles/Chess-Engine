@@ -33,25 +33,42 @@ def collapseBuffer(buff):
 #   Function for dropping a fraction of the existing examples, without
 #   causing overrepresentation of augmented data examples in the steady-state
 def filterBuffers(tBuffer, vBuffer, p):
-    for j in range(4):
+    md = p['memDecay']
+    
+    #   The user intends to drop the fraction p['memDecay'] of total examples
+    #   across the first 3 buffers. In practice, we must use different decay
+    #   fractions for each buffer so that positions that generate more training
+    #   examples are not overrepresented. Compute the decay fraction for the
+    #   first buffer, which we will call 'md'.
+
+    #   The number we want to drop
+    num_to_drop = md * sum([len(x) for x in tBuffer[:3]])
+
+    #   The number we would drop naively (note this can even be greater than the
+    #   total amount, which does not present problems)
+    num_dropped = md * len(tBuffer[0]) + \
+                  md * len(tBuffer[1]) * 2 + \
+                  md * len(tBuffer[2]) * 8
+
+    #   Adjust 'md' to achieve the correct number to drop
+    md *= num_to_drop / num_dropped
+    
+    for j in range(3):
         #   The fraction of each sub-buffer to keep. These are different
         #   to ensure positions able to be reflected/ rotated are not
         #   overrepresented in training
-        if j == 1:
-            md = (1 - p['memDecay']) / 2
+        if j == 0:
+            frac_keep = 1 - md
+        elif j == 1:
+            frac_keep = max(1 - 2 * md, 0)
         elif j == 2:
-            md = (1 - p['memDecay']) / 8
-        else:
-            md = 1 - p['memDecay']
+            frac_keep = max(1 - 8 * md, 0)
 
         #   Recycle old validation examples for use in training buffers
         #   (but do not put old validation checkmates in training buffer)
-        temp = misc.divvy(vBuffer[j], md)
+        temp = misc.divvy(vBuffer[j], frac_keep)
         vBuffer[j] = temp[0]
-        if j < 3:
-            tBuffer[j] = misc.divvy(tBuffer[j], md, False)[0] + temp[1]
-        else:
-            tBuffer[j] = misc.divvy(tBuffer[j], md, False)[0]
+        tBuffer[j] = misc.divvy(tBuffer[j], frac_keep, both=False)[0] + temp[1]
 
     board_helper.verify_data(tBuffer, p)
     board_helper.verify_data(vBuffer, p)
