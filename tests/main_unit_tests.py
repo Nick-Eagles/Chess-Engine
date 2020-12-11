@@ -48,7 +48,10 @@ misc.expect_equal(sum(orig_lens_v[:3]) * (1 - p['memDecay']),
                   is_float = True,
                   tol = 0.01 * sum(orig_lens_v[:3]))
 
-misc.expect_equal(orig_lens_v[3], new_lens_v[3])
+misc.expect_equal(orig_lens_v[3] * (1 - p['memDecay']),
+                  new_lens_v[3],
+                  is_float = True,
+                  tol = 0.02 * orig_lens_v[3])
 
 print("Confirming training buffers are of correct length after filtering " + \
       "(2 tests)...")
@@ -59,6 +62,9 @@ misc.expect_equal(expected_new_len_sum,
                   is_float = True,
                   tol = 0.01 * sum(orig_lens_t[:3]))
 
-misc.expect_equal(orig_lens_v[3], new_lens_v[3])
+misc.expect_equal(orig_lens_t[3] * (1 - p['memDecay']),
+                  new_lens_t[3],
+                  is_float = True,
+                  tol = 0.01 * orig_lens_t[3])
 
 

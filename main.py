@@ -53,7 +53,7 @@ def filterBuffers(tBuffer, vBuffer, p):
     #   Adjust 'md' to achieve the correct number to drop
     md *= num_to_drop / num_dropped
     
-    for j in range(3):
+    for j in range(4):
         #   The fraction of each sub-buffer to keep. These are different
         #   to ensure positions able to be reflected/ rotated are not
         #   overrepresented in training
@@ -63,12 +63,19 @@ def filterBuffers(tBuffer, vBuffer, p):
             frac_keep = max(1 - 2 * md, 0)
         elif j == 2:
             frac_keep = max(1 - 8 * md, 0)
+        else: # j = 3
+            frac_keep = 1 - p['memDecay']
 
-        #   Recycle old validation examples for use in training buffers
-        #   (but do not put old validation checkmates in training buffer)
-        temp = misc.divvy(vBuffer[j], frac_keep)
-        vBuffer[j] = temp[0]
-        tBuffer[j] = misc.divvy(tBuffer[j], frac_keep, both=False)[0] + temp[1]
+        if j < 3:
+            #   Recycle old validation examples for use in training buffers
+            #   (but do not put old validation checkmates in training buffer)
+            temp = misc.divvy(vBuffer[j], frac_keep)
+            vBuffer[j] = temp[0]
+            tBuffer[j] = misc.divvy(tBuffer[j], frac_keep, both=False)[0] + \
+                         temp[1]
+        else:
+            tBuffer[j] = misc.divvy(tBuffer[j], frac_keep, both=False)[0]
+            vBuffer[j] = misc.divvy(vBuffer[j], frac_keep, both=False)[0]
 
     board_helper.verify_data(tBuffer, p)
     board_helper.verify_data(vBuffer, p)
