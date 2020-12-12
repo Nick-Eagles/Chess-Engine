@@ -97,7 +97,7 @@ def is_unique(x, tol=0.0001):
     while i < len(x) - 1:
         j = i + 1
         while j < len(x):
-            if abs(x[i] - x[j]) > tol:
+            if abs(x[i] - x[j]) < tol:
                 return False
             j += 1
         i += 1
