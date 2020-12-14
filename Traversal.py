@@ -7,6 +7,7 @@ import policy
 
 import numpy as np
 from scipy.special import expit, logit
+import tensorflow as tf
 
 class Traversal:
     def __init__(self, game, net, p):
@@ -23,8 +24,8 @@ class Traversal:
             self.policy = policy.sampleMovesSoft
 
         self.p = p
-        #   A value not too far above the maximal number of node hops that can occur
-        #   given the user's parameter specifications
+        #   A value not too far above the maximal number of node hops that can
+        #   occur given the user's parameter specifications
         self.limit = 4 * p['breadth']**p['depth']
         
 
@@ -52,8 +53,9 @@ class Traversal:
         moves, fullMovesLen = self.policy(self.net, self.game, p)
 
         #   One element (node) on the stack is composed of the following:
-        #   [moves, rewards, Game, reward up to this, alpha, beta]
-        stack = [[moves, [], self.game, 0, -1 * MAX_R, MAX_R]]
+        #   [moves, rewards, Game, reward up to this, alpha, beta, list of
+        #    NN inputs]
+        stack = [[moves, [], self.game, 0, -1 * MAX_R, MAX_R, []]]
         while len(stack) > 0:
             assert len(stack) <= p['depth'] + 1, "Tried to explore too far"
             assert self.nodeHops < self.limit, \
@@ -78,7 +80,13 @@ class Traversal:
                     if len(stack) < p['depth']:
                         if g.gameResult == 17:  
                             moves, fullMovesLen = self.policy(self.net, g, p)
-                            stack.append([moves, [], g, stack[-1][3] + p['gamma_exec'] * r, stack[-1][4], stack[-1][5]])
+                            stack.append([moves,
+                                          [],
+                                          g,
+                                          stack[-1][3] + p['gamma_exec'] * r,
+                                          stack[-1][4],
+                                          stack[-1][5],
+                                          []])
                             self.nodeHops += 1
                         elif g.gameResult == 0:
                             self.nodeHops += 2
@@ -92,7 +100,9 @@ class Traversal:
                     #   sure rewards are not simply undone later in the game
                     elif self.net.certainty > p['minCertainty'] and g.gameResult == 17:
                         in_vec = g.toNN_vecs(every=False)[0]
-                        stack[-1][1][-1] += self.net.certainty * p['gamma_exec'] * float(logit(self.net(in_vec, training=False)))
+                        stack[-1][6].append(in_vec)
+                    else:
+                        stack[-1][6].append(None)
 
             else:   # otherwise hop down one node
                 processNode(stack, self, p)
@@ -103,6 +113,26 @@ class Traversal:
 #   appropriate.
 def processNode(stack, trav, p):
     node = stack.pop()
+
+    #   Adjust reward by adding NN evaluations, for whichever positions (if any)
+    #   are at max depth and are unfinished games
+    indices = [i for i in range(len(node[6])) if node[6][i] is not None]
+    if len(indices) > 1:
+        nn_vecs = tf.stack([tf.reshape(node[6][i], [839]) for i in indices])
+        nn_evals = p['gamma_exec'] * \
+                   trav.net.certainty * \
+                   logit(trav.net(nn_vecs, training=False))
+        for i in range(nn_evals.shape[0]):
+            node[1][indices[i]] += float(nn_evals[i])
+
+    elif len(indices) == 1:
+        nn_eval = p['gamma_exec'] * \
+                   trav.net.certainty * \
+                   float(logit(trav.net(node[6][indices[0]], training=False)))
+        node[1][indices[0]] += nn_eval
+
+    #   Pass reward down or set trav.baseR (whichever is applicable);
+    #   update alpha or beta if applicable
     if node[2].whiteToMove:
         r = p['gamma_exec'] * max(node[1])
         
