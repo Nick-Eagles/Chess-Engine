@@ -1,5 +1,7 @@
 import sys
 sys.path.append('./')
+import numpy as np
+from scipy.special import logit
 
 import Traversal
 import Game
@@ -17,7 +19,7 @@ net_name = 'tf_profile'
 tol = 0.00001
 
 ################################################################################
-#   Test trav.baseR: position 1
+#   Test trav.baseR: position 1 (finding the optimal sequence)
 ################################################################################
 
 #   Manually produce a particular position
@@ -81,7 +83,7 @@ trav.traverse()
 misc.expect_equal(expected_r, trav.baseR, is_float=True)
 
 ################################################################################
-#   Test trav.baseR: position 2
+#   Test trav.baseR: position 2 (finding the optimal sequence)
 ################################################################################
 
 #   Manually produce a particular position
@@ -116,5 +118,37 @@ print("Testing 'baseR' attribute of a traversal object (2)...")
 misc.expect_equal(0, trav.baseR, is_float=True)
 
 ################################################################################
-#   Test Traversal.processNode
+#   Test trav.baseR: position 3 (test inclusion of NN evals)
 ################################################################################
+
+temp = session.net.certainty
+session.net.certainty = 0.14
+
+game = Game.Game()
+
+p['depth'] = 1
+p['breadth'] = 20
+p['minCertainty'] = -0.1 # NN evals should be included
+
+#   Manually find the expected base reward from the traversal by searching for
+#   the top evaluation at all of the possible positions at depth 1
+moves = board_helper.getLegalMoves(game)
+nn_evals = np.zeros(len(moves))
+
+assert len(moves) == 20, len(moves)
+
+for i, m in enumerate(moves):
+    g = game.copy()
+    g.doMove(m)
+    nn_evals[i] = session.net(g.toNN_vecs(every=False)[0], training=False)
+
+nn_evals = session.net.certainty * p['gamma_exec'] * logit(nn_evals)
+best_eval = float(np.max(nn_evals))
+assert best_eval != 0, best_eval
+
+#   Actually perform the traversal
+trav = Traversal.Traversal(game, session.net, p)
+trav.traverse()
+
+print("Testing 'baseR' attribute of a traversal object (3)...")
+misc.expect_equal(best_eval, trav.baseR, is_float=True)
