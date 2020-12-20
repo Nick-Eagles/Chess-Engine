@@ -52,7 +52,7 @@ def interact(net):
     if game.gameResult == 2 * userStarts - 1:
         print("This is checkmate; you won.")
     elif game.gameResult == 1 - 2 * userStarts:
-        print("You fucking lost again (moron).")
+        print("You lost to a weak engine.")
     else:
         print("This is a draw. You can probably do better than that?")
             
