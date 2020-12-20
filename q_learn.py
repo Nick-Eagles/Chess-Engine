@@ -17,76 +17,26 @@ def generateExamples(net, p):
     else:
         np.random.seed()
         
-    game = Game.Game()
-    step = 0
-    rewards = [[]]  # Each element is a list representing rewards for moves during one game
-    NN_vecs = [] #  This follows 'rewards' but is flattened, and trimmed at the end of each game
-    game_results = []
+    NN_vecs, rewards = produce_raw_pairs(net, p)
 
-    #   Continue taking actions and receiving rewards (start a new game if necessary)
-    while step < p['maxSteps']:
-        while (game.gameResult == 17 and step < p['maxSteps']):
-            bestMove = policy.getBestMoveTreeEG(net, game, p)
+    #   For each game, propagate rewards backward with a decay factor of
+    #   p['gamma']
+    for i in range(len(rewards)):
+        for j in range(1, len(rewards[i])):
+            rewards[i][-1-j] += rewards[i][-j] * p['gamma']
 
-            #   Append the reward received from the best move
-            rewards[len(game_results)].append(game.getReward(bestMove, p['mateReward'], True)[0])
+    #   Flatten lists so they no longer are separated by game
+    NN_vecs_out = []
+    rewards_out = []
+    for i in range(len(rewards)):
+        rewards_out += rewards[i]
+        NN_vecs_out += NN_vecs[i]
 
-            #   Perform move
-            NN_vecs.append(game.toNN_vecs())
-            game.doMove(bestMove)
-            step += 1
-
-        #   Trim end of game (or end of state sequence, more generally)
-        halfMoveNum = (not game.whiteToMove) + 2*(game.moveNum - 1)
-        if game.gameResult == 17:
-            NN_vecs = NN_vecs[:(-1 * min(halfMoveNum, p['rDepthMin']))]
-        else:
-            NN_vecs.pop()
-
-        game_results.append(game.gameResult)
-
-        #   Begin a new game if one ended but we still have more steps to take
-        if step < p['maxSteps']:
-            game = Game.Game()
-            rewards.append([])
-
-
-    #   "Unravel" reward sequences: assign each state an expected cumulative reward value,
-    #   with minimum depth given by p['rDepth']
-    rSeqFlat = []
-
-    for i, rSeqIn in enumerate(rewards):
-        #   Determine how many states to trim at the end of the game (to not use
-        #   as training data)
-        if game_results[i] == 17:
-            trim_len = p['rDepthMin']
-        else:
-            trim_len = 1
-
-        #   If there are enough states, unravel the rewards for each usable state
-        if len(rSeqIn) > trim_len:
-            rSeqOut = np.zeros(len(rSeqIn) - trim_len)
-
-            #   Take the last reward and propagate backward through the game
-            rCum = rSeqIn[-1]
-            for j in range(1,len(rSeqIn)):
-                rCum = p['gamma'] * rCum + rSeqIn[-1 - j]
-                if j >= trim_len:
-                    rSeqOut[trim_len - 1 - j] = rCum
-
-            rSeqFlat += rSeqOut.tolist()
-
-    #   From the list of tuples "NN_vecs" and the list rSeqFlat, form training examples in
-    #   the format expected by the rest of the program (such as in main.py)
-    debug_str = "len(rewards): " + str(len(rewards)) + "\ngameNum: " + str(len(game_results)) \
-                + "\nlen(NN_vecs): " + str(len(NN_vecs)) + "\nlen(rSeqFlat): " + str(len(rSeqFlat)) \
-                + "\nstep: " + str(step) + "\nLast game result: " + str(game.gameResult) \
-                + "\nLast game moveNum: " + str(game.moveNum)
-    assert len(NN_vecs) == len(rSeqFlat), debug_str
+    assert len(rewards_out) == len(NN_vecs_out)
 
     data = [[],[],[]]
-    for i, r in enumerate(rSeqFlat):
-        num_examples = len(NN_vecs[i])
+    for i, r in enumerate(rewards_out):
+        num_examples = len(NN_vecs_out[i])
 
         #   Based on the number of examples for this particular position,
         #   assign the examples to the appropriate data buffer
@@ -101,13 +51,76 @@ def generateExamples(net, p):
                      "associated with one example: " + str(num_examples))
 
         #   Add the data to the correct buffer
-        data[buffer_index] += [(NN_vecs[i][j], index_to_label(j, r))
-                               for j in range(len(NN_vecs[i]))]
+        data[buffer_index] += [(NN_vecs_out[i][j], index_to_label(j, r))
+                               for j in range(len(NN_vecs_out[i]))]
 
     board_helper.verify_data(data, p, 3)
     
     return data
 
+#   The first component of generateExamples, returning a tuple:
+#   (list of lists of rewards received at each discrete move: one element of
+#    the outer list corresponds to one game, list of lists of lists of NN
+#    inputs: the outer two lists correspond to a particular game and position, 
+#    respectively)
+def produce_raw_pairs(net, p):
+    game = Game.Game()
+    step = 0
+
+    #   Each element is a list representing rewards for moves during one game
+    rewards = [[]]
+
+    #   This follows 'rewards'
+    NN_vecs = [[]]
+
+    #   Continue taking actions and receiving rewards (start a new game if
+    #   necessary)
+    while step < p['maxSteps']:
+        while (game.gameResult == 17 and step < p['maxSteps']):
+            NN_vecs[-1].append(game.toNN_vecs())
+            
+            bestMove = policy.getBestMoveTreeEG(net, game, p)
+
+            #   Do the move and append reward received
+            r = game.getReward(bestMove,
+                               p['mateReward'],
+                               simple=True,
+                               copy=False)[0]
+            rewards[-1].append(r)
+            
+            step += 1    
+
+        #   Trim end of game if applicable
+        if game.gameResult == 17:
+            if len(rewards[-1]) <= p['rDepthMin']:
+                #   Throw this game out, as it is too short
+                rewards.pop()
+                NN_vecs.pop()
+            else:
+                #   Discard the last p['rDepthMin'] NN_vecs for this game,
+                #   and "unravel" ending rewards until both have the same length
+                NN_vecs[-1] = NN_vecs[-1][:(-1 * p['rDepthMin'])]
+                for i in range(p['rDepthMin']):
+                    rewards[-1][-1] += p['gamma'] * rewards[-1].pop()
+
+
+        #   Begin a new game if one ended but we still have more steps to take
+        #   (Note we can't skip this even when p['maxSteps'] - step <=
+        #   p['rDepthMin'], since conceivably a checkmate can occur in under
+        #   p['rDepthMin'] halfmoves)
+        if step < p['maxSteps']:
+            game = Game.Game()
+            rewards.append([])
+            NN_vecs.append([])
+
+    #   Ensure lengths of examples match lengths of labels
+    assert len(NN_vecs) == len(rewards), \
+           str(len(NN_vecs)) + ' ' + str(len(rewards))
+    assert all([len(rewards[i]) == len(NN_vecs[i])
+                for i in range(len(rewards))]), \
+                "Unequal number of examples and labels generated"
+    
+    return (NN_vecs, rewards)
 
 #   An 'ad hoc' function: take any particular element of 'NN_vecs' as produced
 #   by 'generateExamples', and call it 'NN_vec_mirrors'. This is a list of
