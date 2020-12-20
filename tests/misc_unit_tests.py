@@ -51,3 +51,20 @@ misc.expect_equal(misc.is_unique(a), False)
 print('Testing "is_unique" (True case)...')
 a = np.array([-3.6, -2, 1.77, 0, -9])
 misc.expect_equal(misc.is_unique(a), True)
+
+################################################################################
+#   match
+################################################################################
+
+print('Testing "match" (int and numpy array 1)...')
+a = np.array([1, -1, 1.2, 3.8, 7, -4])
+misc.expect_equal(misc.match(-1, a), 1)
+
+print('Testing "match" (int and numpy array 2)...')
+a = np.array([1.2, -1, 1.2, 3.8, 7, -4])
+misc.expect_equal(misc.match(7, a), 4)
+
+print('Testing "match" (duplicated float and list)...')
+a = [1.25, -1, 3.8, 3.8, 7, -4]
+misc.expect_equal(misc.match(3.800001, a, is_float=True), 2)
+
