@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.special import expit, logit
-from multiprocessing import Pool
 import time
 
 import Game
@@ -24,7 +23,6 @@ def interact(net):
     p['epsSearch'] = 0
 
     game = Game.Game(quiet=False)
-    pool = Pool()
 
     #   Randomly select who plays white
     userStarts = bool(np.random.randint(2))
@@ -42,15 +40,14 @@ def interact(net):
             game.doMove(moves[misc.match(userChoice, moveNames)])
         else:
             print('Calculating...', end='')
-            bestMove = policy.getBestMoveTreeEG(net, game, p, pool=pool)
+            bestMove = policy.getBestMoveTreeEG(net, game, p)
             print('Chose ', bestMove.getMoveName(game.board), '.', sep='')
             game.doMove(bestMove)
 
             if p['mode'] >= 1:
-                expRew = logit(net.feedForward(game.toNN_vecs(every=False)[0]))
+                expRew = logit(net(game.toNN_vecs(every=False)[0], training=False))
                 print("Expected reward from the current position is", round(float(expRew), 4))
 
-    pool.close()
 
     if game.gameResult == 2 * userStarts - 1:
         print("This is checkmate; you won.")
