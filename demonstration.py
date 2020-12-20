@@ -14,8 +14,13 @@ import policy
 def parseInput(game, moveNames):
     cond = 'var in auxVars'
     messDef = 'Enter your move: '
-    messOnErr = 'Not a legal move; the following moves are legal:\n' + ', '.join(moveNames)
-    return input_handling.getUserInput(messDef, messOnErr, 'str', cond, auxVars=moveNames)
+    messOnErr = 'Not a legal move; the following moves are legal:\n' + \
+                ', '.join(moveNames)
+    return input_handling.getUserInput(messDef,
+                                       messOnErr,
+                                       'str',
+                                       cond,
+                                       auxVars=moveNames)
 
 def interact(net):
     p = input_handling.readConfig(1)
@@ -45,8 +50,10 @@ def interact(net):
             game.doMove(bestMove)
 
             if p['mode'] >= 1:
-                expRew = logit(net(game.toNN_vecs(every=False)[0], training=False))
-                print("Expected reward from the current position is", round(float(expRew), 4))
+                expRew = logit(net(game.toNN_vecs(every=False)[0],
+                                   training=False))
+                print("Expected reward from the current position is", 
+                      round(float(expRew), 4))
 
 
     if game.gameResult == 2 * userStarts - 1:

@@ -106,7 +106,8 @@ def trainOption(session, numEps=0):
         print("------------------")
 
         #   Randomly separate examples into training and validation buffers
-        temp = [misc.divvy(buff, p['fracValidation']) for buff in q_learn.async_q_learn(net)]
+        temp = [misc.divvy(buff, p['fracValidation'])
+                for buff in q_learn.async_q_learn(net)]
         for j in range(3):
             vBuffer[j] += temp[j][0]
             tBuffer[j] += temp[j][1]
@@ -114,10 +115,12 @@ def trainOption(session, numEps=0):
 
         #   Add checkmates from file
         tGames = file_IO.readBuffer('data/tCheckmates.pkl.gz', p)[0]
-        fracToUse = p['fracFromFile'] * numGenExamples / (len(tGames) * (1 - p['fracFromFile']))
+        fracToUse = p['fracFromFile'] * numGenExamples / \
+                    (len(tGames) * (1 - p['fracFromFile']))
         tBuffer[3] += misc.divvy(tGames, fracToUse, False)[0]
         if p['mode'] >= 2:
-            print("Adding", int(len(tGames)*p['fracFromFile']), "games to tBuffer...")
+            print("Adding", int(len(tGames)*p['fracFromFile']),
+                  "games to tBuffer...")
 
         vGames = file_IO.readBuffer('data/vCheckmates.pkl.gz', p)[0]
         fracToUse = p['fracValidation'] * fracToUse * len(tGames) / (len(vGames) * (1 - p['fracValidation']))
@@ -170,7 +173,10 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth):
     for i in range(numGroups):
         messDef = "Length of neurons in group " + str(i+1) + "? "
         cond = 'var > 0 and var < 10000'
-        layLen = input_handling.getUserInput(messDef, "Not a valid number.", 'int', cond)
+        layLen = input_handling.getUserInput(messDef,
+                                             "Not a valid number.",
+                                             'int',
+                                             cond)
 
         #   Linear projection to match block input and output lengths
         x = layers.Dense(layLen, name='linear_projection' + str(i+1))(x)
@@ -219,12 +225,18 @@ if __name__ == '__main__':
 
         #   Number of blocks in a group
         messDef = "Number of residual blocks per group? "
-        blocksPerGroup = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+        blocksPerGroup = input_handling.getUserInput(messDef,
+                                                     messOnErr,
+                                                     'int',
+                                                     cond)
 
         #   Layers per residual block
         messDef = "Number of layers in one residual block? "
         cond = 'var > 0 and var < 10'
-        blockWidth = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+        blockWidth = input_handling.getUserInput(messDef,
+                                                 messOnErr,
+                                                 'int',
+                                                 cond)
         
         net = InitializeNet(numGroups, blocksPerGroup, blockWidth)
         session = Session.Session(tBuffer, vBuffer, net)
@@ -255,7 +267,10 @@ if __name__ == '__main__':
     choice = 1
     while choice > 0 and choice <= len(options):
         session.net.summary()
-        choice = input_handling.getUserInput(messDef, messOnErr, 'int', 'var >= 0 and var <= ' + str(len(options)))
+        
+        cond = 'var >= 0 and var <= ' + str(len(options)))
+        choice = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+                                             
         print()
 
         if choice == 1:
@@ -275,7 +290,8 @@ if __name__ == '__main__':
             print("Saved. Continuing...")
         elif choice == 4:
             network_helper.net_activity(net,
-                                        collapseBuffer(session.tBuffer)+collapseBuffer(session.vBuffer))
+                                        collapseBuffer(session.tBuffer) + \
+                                        collapseBuffer(session.vBuffer))
         elif choice == 5:
             p = input_handling.readConfig(2)
             network_helper.train(session.net,
@@ -287,20 +303,26 @@ if __name__ == '__main__':
             
             messDef2 = "Add to training (t) or validation (v) position file? "
             messOnErr = "Invalid input."
-            fileChoice = input_handling.getUserInput(messDef2, messOnErr, 'str', 'var == "t" or var == "v"')
+            fileChoice = input_handling.getUserInput(messDef2,
+                                                     messOnErr,
+                                                     'str',
+                                                     'var == "t" or var == "v"')
 
             #   Find a way to not hardcode this?
             tol = 0.001
             temp = expit(p['mateReward']) - 0.5 - tol
 
-            #   Select only training or only validation buffer: this prevents writing checkmates from checkmates_t.csv to
-            #   checkmates_v.csv and vice versa.
+            #   Select only training or only validation buffer: this prevents
+            #   writing checkmates from checkmates_t.csv to checkmates_v.csv
+            #   and vice versa.
             if fileChoice == 't':
                 filename = 'data/checkmates_t.csv'
-                compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]] for g in tBuffer if abs(g[1] - 0.5) > temp]
+                compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]]
+                                for g in tBuffer if abs(g[1] - 0.5) > temp]
             else:
                 filename = 'data/checkmates_v.csv'
-                compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]] for g in vBuffer if abs(g[1] - 0.5) > temp]
+                compressedGs = [file_IO.compressNNinput(g[0]) + [g[1]]
+                                for g in vBuffer if abs(g[1] - 0.5) > temp]
                    
             novelGs = file_IO.filterByNovelty(compressedGs, filename, p)
             file_IO.writeGames(novelGs, filename)
@@ -312,11 +334,17 @@ if __name__ == '__main__':
             messDef2 = "Generate how many checkmate positions? "
             messOnErr = "Not a valid input."
             cond = 'var > 0'
-            numPos = input_handling.getUserInput(messDef2, messOnErr, 'int', cond)
+            numPos = input_handling.getUserInput(messDef2,
+                                                 messOnErr,
+                                                 'int',
+                                                 cond)
 
             messDef2 = "Add to training (t) or validation (v) position file? "
             messOnErr = "Invalid input."
-            fileChoice = input_handling.getUserInput(messDef2, messOnErr, 'str', 'var == "t" or var == "v"')
+            fileChoice = input_handling.getUserInput(messDef2,
+                                                     messOnErr,
+                                                     'str',
+                                                     'var == "t" or var == "v"')
 
             if fileChoice == 't':
                 filename = 'data/checkmates_t.csv'
