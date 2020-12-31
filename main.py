@@ -200,7 +200,7 @@ if __name__ == '__main__':
                'Run new games to generate checkmate positions',
                'Write the N least and greatest-loss positions to file',
                'Play a game against the network',
-               'Add a dataset to the current buffers']
+               'Load a dataset']
     for i, opt in enumerate(options):
         messDef += '(' + str(i+1) + ') ' + opt + '\n'
     messDef += 'Enter 0 to exit: '
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     while choice > 0 and choice <= len(options):
         session.net.summary()
         
-        cond = 'var >= 0 and var <= ' + str(len(options)))
+        cond = 'var >= 0 and var <= ' + str(len(options))
         choice = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
                                              
         print()
@@ -340,15 +340,34 @@ if __name__ == '__main__':
 
             print("Done. See 'visualization/edge_positions/'.")
         elif choice == 9:
-            demonstration.interact(net)
+            demonstration.interact(session.net)
         elif choice == 10:
             p = input_handling.readConfig()
 
+            #   Get name of dataset
             messDef2 = "Name of dataset? "
             messOnErr = "Error."
-            prefix = "data/" + input_handling.getUserInput(messDef2, messOnErr, 'str', 'True')
+            prefix = "data/" + input_handling.getUserInput(messDef2,
+                                                           messOnErr,
+                                                           'str',
+                                                           'True')
+
+            #   Ask whether to replace existing data
+            messDef2 = "Replace existing data (y/n)? "
+            messOnErr = "Only 'y' or 'n' accepted."
+            replace = input_handling.getUserInput(messDef2,
+                                                  messOnErr,
+                                                  'str',
+                                                  'var == "y" or var == "n"')
+            replace = replace == 'y'
+            
             temp_tBuffer = file_IO.readBuffer(prefix + '/tBuffer.pkl.gz', p)
             temp_vBuffer = file_IO.readBuffer(prefix + '/vBuffer.pkl.gz', p)
-            for i in range(4):
-                session.tBuffer[i] += temp_tBuffer[i]
-                session.vBuffer[i] += temp_vBuffer[i]
+
+            if replace:
+                session.tBuffer = temp_tBuffer
+                session.vBuffer = temp_vBuffer
+            else:
+                for i in range(4):
+                    session.tBuffer[i] += temp_tBuffer[i]
+                    session.vBuffer[i] += temp_vBuffer[i]
