@@ -1,5 +1,5 @@
 import Game
-import board_helper
+import buffer
 import input_handling
 import policy
 import misc
@@ -54,7 +54,7 @@ def generateExamples(net, p):
         data[buffer_index] += [(NN_vecs_out[i][j], index_to_label(j, r))
                                for j in range(len(NN_vecs_out[i]))]
 
-    board_helper.verify_data(data, p, 3)
+    buffer.verify(data, p, 3)
     
     return data
 
@@ -151,7 +151,7 @@ def async_q_learn(net):
         for j in range(3):
             data[j] += this_data[j]
 
-    board_helper.verify_data(data, p, 3)
+    buffer.verify(data, p, 3)
 
     if p['mode'] >= 2:
         elapsed = round(time.time() - start_time, 2)
