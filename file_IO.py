@@ -17,7 +17,11 @@ import buffer
 #   filepath: a string giving the filename to write the data in buff to. This
 #           should end in '.pkl.gz', since it will be a gzipped pickled
 #           representation of the data
-def writeBuffer(buff, filepath):
+def writeBuffer(buff, filepath, append=False):
+    #   Appending works by loading, combining, then writing
+    if append:
+        buff = buffer.combine(readBuffer(filepath, p), buff)
+        
     #   First restructure data to use numpy arrays instead of tf.Tensors. The
     #   idea is that numpy arrays seem to be more 'lightweight', and it should
     #   be far simpler to serialize 8 numpy arrays than thousands of tf.Tensors

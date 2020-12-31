@@ -92,3 +92,14 @@ def verify(data, p, numBuffs=4):
             assert data[i][0][1].shape == (1, 1), data[i][0][1].shape
         elif p['mode'] >= 2:
             print("Warning: buffer", i, "was empty.")
+
+
+#   Concatenate two buffers and return the result
+def combine(buff1, buff2):
+    assert len(buff1) == len(buff2), "Attempted to combine unequal buffer types"
+
+    new_buff = []
+    for i in range(len(buff1)):
+        new_buff.append(buff1[i] + buff2[i])
+
+    return new_buff
