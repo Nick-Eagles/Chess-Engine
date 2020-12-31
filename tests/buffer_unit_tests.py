@@ -1,22 +1,21 @@
-#   Unit tests for functions in main.py
+#   Unit tests for functions in buffer.py
 
 import sys
 sys.path.append('./')
 
-import main
+import buffer
 import Session
 import input_handling
-import board_helper
 import misc
 
 net_name = 'tf_profile'
 
 ################################################################################
-#   filterBuffers
+#   filter
 ################################################################################
 
 session = Session.Session([], [])
-session.Load('nets/' + net_name)
+session.Load('nets/' + net_name, data_prefix='tf_profile')
 
 p = input_handling.readConfig(2)
 p['memDecay'] = 0.095
@@ -27,7 +26,7 @@ print("Original lengths:")
 print(orig_lens_t)
 print(orig_lens_v)
 
-main.filterBuffers(session.tBuffer, session.vBuffer, p)
+buffer.filter(session.tBuffer, session.vBuffer, p)
 
 new_lens_t = [len(x) for x in session.tBuffer]
 new_lens_v = [len(x) for x in session.vBuffer]
@@ -36,8 +35,8 @@ print(new_lens_t)
 print(new_lens_v)
 
 #   Generally ensure valid structure
-board_helper.verify_data(session.tBuffer, p)
-board_helper.verify_data(session.vBuffer, p)
+buffer.verify(session.tBuffer, p)
+buffer.verify(session.vBuffer, p)
 
 #   Accept deviation up to 1% of the original buffer's sizes (due to
 #   'quantization')

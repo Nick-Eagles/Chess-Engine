@@ -9,6 +9,7 @@ import q_learn
 import demonstration
 import board_helper
 import Session
+import buffer
 
 import sys
 import os
@@ -20,65 +21,6 @@ from scipy.special import expit, logit
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-
-#   Combine buffers and reformat for compatibility with Keras
-def collapseBuffer(buff):
-    bigBuff = buff[0] + buff[1] + buff[2] + buff[3]
-
-    x = tf.stack([tf.reshape(z[0], [839]) for z in bigBuff])
-    y = tf.stack([tf.reshape(z[1], [1]) for z in bigBuff])
-
-    return (x, y)
-
-#   Function for dropping a fraction of the existing examples, without
-#   causing overrepresentation of augmented data examples in the steady-state
-def filterBuffers(tBuffer, vBuffer, p):
-    md = p['memDecay']
-    
-    #   The user intends to drop the fraction p['memDecay'] of total examples
-    #   across the first 3 buffers. In practice, we must use different decay
-    #   fractions for each buffer so that positions that generate more training
-    #   examples are not overrepresented. Compute the decay fraction for the
-    #   first buffer, which we will call 'md'.
-
-    #   The number we want to drop
-    num_to_drop = md * sum([len(x) for x in tBuffer[:3]])
-
-    #   The number we would drop naively (note this can even be greater than the
-    #   total amount, which does not present problems)
-    num_dropped = md * len(tBuffer[0]) + \
-                  md * len(tBuffer[1]) * 2 + \
-                  md * len(tBuffer[2]) * 8
-
-    #   Adjust 'md' to achieve the correct number to drop
-    md *= num_to_drop / num_dropped
-    
-    for j in range(4):
-        #   The fraction of each sub-buffer to keep. These are different
-        #   to ensure positions able to be reflected/ rotated are not
-        #   overrepresented in training
-        if j == 0:
-            frac_keep = 1 - md
-        elif j == 1:
-            frac_keep = max(1 - 2 * md, 0)
-        elif j == 2:
-            frac_keep = max(1 - 8 * md, 0)
-        else: # j = 3
-            frac_keep = 1 - p['memDecay']
-
-        if j < 3:
-            #   Recycle old validation examples for use in training buffers
-            #   (but do not put old validation checkmates in training buffer)
-            temp = misc.divvy(vBuffer[j], frac_keep)
-            vBuffer[j] = temp[0]
-            tBuffer[j] = misc.divvy(tBuffer[j], frac_keep, both=False)[0] + \
-                         temp[1]
-        else:
-            tBuffer[j] = misc.divvy(tBuffer[j], frac_keep, both=False)[0]
-            vBuffer[j] = misc.divvy(vBuffer[j], frac_keep, both=False)[0]
-
-    board_helper.verify_data(tBuffer, p)
-    board_helper.verify_data(vBuffer, p)
 
 
 #   Given a network, asks the user for training hyper-parameters,
@@ -150,17 +92,16 @@ def trainOption(session, numEps=0):
       
         #   Train on data in the buffer  
         network_helper.train(net,
-                             collapseBuffer(tBuffer),
-                             collapseBuffer(vBuffer),
+                             buffer.collapse(tBuffer),
+                             buffer.collapse(vBuffer),
                              p)
 
-        #   Adjust net's expected input mean and variances for each layer.
-        #   Then drop a fraction of the buffers
+        #   Drop a fraction of the buffers
         if i < numEps-1:
             if p['mode'] >= 2:
                 print("Filtering buffers...")
 
-            filterBuffers(tBuffer, vBuffer, p)
+            buffer.filter(tBuffer, vBuffer, p)
 
 
 def analyzeOption(network):
@@ -199,6 +140,7 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth):
     net = keras.Model(inputs=inputs, outputs=output, name="network")
     net.certainty = 0
     net.certaintyRate = 0
+    
     return net
             
     
@@ -277,7 +219,7 @@ if __name__ == '__main__':
             #   Keep a fraction of examples
             p = input_handling.readConfig(2)
             if len(session.tBuffer[0]) > 0 and len(session.vBuffer[0]) > 0:
-                filterBuffers(session.tBuffer, session.vBuffer, p)
+                buffer.filter(session.tBuffer, session.vBuffer, p)
         
             trainOption(session)
         elif choice == 2:
@@ -290,13 +232,13 @@ if __name__ == '__main__':
             print("Saved. Continuing...")
         elif choice == 4:
             network_helper.net_activity(net,
-                                        collapseBuffer(session.tBuffer) + \
-                                        collapseBuffer(session.vBuffer))
+                                        buffer.collapse(session.tBuffer) + \
+                                        buffer.collapse(session.vBuffer))
         elif choice == 5:
             p = input_handling.readConfig(2)
             network_helper.train(session.net,
-                                 collapseBuffer(session.tBuffer),
-                                 collapseBuffer(session.vBuffer),
+                                 buffer.collapse(session.tBuffer),
+                                 buffer.collapse(session.vBuffer),
                                  p)
         elif choice == 6:
             p = input_handling.readConfig(0) # get mate reward
@@ -375,7 +317,8 @@ if __name__ == '__main__':
 
             print("Computing costs and writing positions...")
 
-            allData = collapseBuffer(session.tBuffer) + collapseBuffer(session.vBuffer)
+            allData = buffer.collapse(session.tBuffer) + \
+                      buffer.collapse(session.vBuffer)
             costs = np.array([net.individualLoss([x]) for x in allData])
 
             #   Get rid of any old positions (to cover the case where the last choice

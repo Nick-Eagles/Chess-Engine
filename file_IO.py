@@ -7,7 +7,7 @@ from scipy.special import expit, logit
 import tensorflow as tf
 
 import input_handling
-import board_helper
+import buffer
 
 #   Write a buffer (the standard in-memory representation of data for this
 #   chess engine) to a compressed file
@@ -48,7 +48,7 @@ def readBuffer(filepath, p):
             buff[i].append((tf.constant(b[0][j,:], shape=[1,839], dtype=tf.float32),
                             tf.constant(b[1][j,:], shape=[1,1], dtype=tf.float32)))
 
-    board_helper.verify_data(buff, p, len(simple_buff))
+    buffer.verify(buff, p, len(simple_buff))
     
     return buff
 

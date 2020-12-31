@@ -710,18 +710,3 @@ def generate_NN_vec(game, invert, flip0, flip1, swap):
     netInput[838] = game.movesSinceAction / 25
 
     return tf.constant(netInput, shape=(1,839), dtype=tf.float32)
-
-
-def verify_data(data, p, numBuffs=4):
-    #   All buffers exist
-    assert len(data) == numBuffs, len(data)
-    for i in range(numBuffs):
-        if len(data[i]) > 0:
-            # the first example consists of an input and output
-            assert len(data[i][0]) == 2, len(data[i][0])
-
-            # the input is of proper shape
-            assert data[i][0][0].shape == (1,839), data[i][0][0].shape
-            assert data[i][0][1].shape == (1, 1), data[i][0][1].shape
-        elif p['mode'] >= 2:
-            print("Warning: buffer", i, "was empty.")
