@@ -217,7 +217,7 @@ def getLegalMoves(game):
             if (game.whiteToMove and not inCheck(newBoard)) or (not game.whiteToMove and not inCheck(invert(newBoard))):
                 moves.append(Move.Move((game.lastMove.endSq[0]-1, game.lastMove.endSq[1]),(game.lastMove.endSq[0],game.lastMove.endSq[1]+coeff),coeff))
         #   Look to the right for a white pawn
-        elif game.lastMove.endSq[0] < 7 and game.board[game.lastMove.endSq[0]+1][game.lastMove.endSq[1]] == coeff:
+        if game.lastMove.endSq[0] < 7 and game.board[game.lastMove.endSq[0]+1][game.lastMove.endSq[1]] == coeff:
             newBoard = [x.copy() for x in game.board]
             #   Move above the black pawn
             newBoard[game.lastMove.endSq[0]][game.lastMove.endSq[1]+coeff] = coeff
