@@ -18,7 +18,9 @@ import tensorflow as tf
 
 #   Combine buffers and reformat for compatibility with Keras
 def collapse(buff):
-    bigBuff = buff[0] + buff[1] + buff[2] + buff[3]
+    bigBuff = []
+    for i in range(len(buff)):
+        bigBuff += buff[i]
 
     x = tf.stack([tf.reshape(z[0], [839]) for z in bigBuff])
     y = tf.stack([tf.reshape(z[1], [1]) for z in bigBuff])
