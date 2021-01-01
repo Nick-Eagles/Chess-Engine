@@ -164,36 +164,37 @@ def async_q_learn(net):
 
     return data
 
-def getCertainty(net, data, p):
-    #   Get only the originally generated examples (do not include augmented data)
-    origData = [data[0][i] for i in range(len(data[0])) if i % 2 == 0] + \
-               [data[1][i] for i in range(len(data[1])) if i % 4 == 0] + \
-               [data[2][i] for i in range(len(data[2])) if i % 16 == 0]
+def getCertainty(net, data, p, greedy=True):
     #   Form vectors of expected and actual rewards received
-    inputs = tf.stack([tf.reshape(x[0], [839]) for x in origData], axis=0)
+    inputs = tf.stack([tf.reshape(x[0], [839]) for x in data[0]], axis=0)
     expRew = logit(net(inputs, training=False)).flatten()
-    actRew = logit(tf.stack([tf.reshape(x[1], [1]) for x in origData], axis=0)).flatten()
+    actRew = logit(tf.stack([tf.reshape(x[1], [1]) for x in data[0]], axis=0)).flatten()
 
     #   Normalized dot product of expected and actual reward vectors
     actNorm = np.linalg.norm(actRew)
     if round(float(actNorm), 5) == 0:
         certainty = 0
     else:
-        certainty = np.dot(expRew, actRew) / (np.linalg.norm(expRew) * np.linalg.norm(actRew))
+        certainty = np.dot(expRew, actRew) / \
+                    (np.linalg.norm(expRew) * actNorm)
         
-    if p['epsGreedy'] < 0.5:
+    if greedy and p['epsGreedy'] < 0.5:
         #   0.5 is an arbitrarily established cutoff to prevent catastrophic
         #   amplification of 'noise' in estimating true certainty
         certainty /= 1 - p['epsGreedy']
 
     #   Adjust certainty (an exponentially weighted moving average)
-    net.certaintyRate = net.certaintyRate * p['persist'] + (certainty - net.certainty) * (1 - p['persist'])
-    net.certainty = net.certainty * p['persist'] + certainty * (1 - p['persist'])
+    net.certaintyRate = net.certaintyRate * p['persist'] + \
+                        (certainty - net.certainty) * (1 - p['persist'])
+    net.certainty = net.certainty * p['persist'] + \
+                    certainty * (1 - p['persist'])
     
     if p['mode'] >= 1:
-        print("Certainty of network on", len(origData), "examples:", round(certainty, 5))
+        print("Certainty of network on", len(data), "examples:",
+              round(certainty, 5))
         print("Moving certainty:", round(net.certainty, 5))
-        print("Moving rate of certainty change:", round(net.certaintyRate, 5), "\n")
+        print("Moving rate of certainty change:", round(net.certaintyRate, 5),
+              "\n")
 
         if p['mode'] >= 2:
             #   Print first 2 moments of expected and actual rewards
