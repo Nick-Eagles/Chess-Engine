@@ -21,6 +21,10 @@ from scipy.special import expit, logit
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import time
+
+sys.path.append('./external/')
+import read_pgn
 
 
 #   Given a network, asks the user for training hyper-parameters,
@@ -200,7 +204,8 @@ if __name__ == '__main__':
                'Run new games to generate checkmate positions',
                'Write the N least and greatest-loss positions to file',
                'Play a game against the network',
-               'Load a dataset']
+               'Load an internal dataset',
+               'Load an external datset']
     for i, opt in enumerate(options):
         messDef += '(' + str(i+1) + ') ' + opt + '\n'
     messDef += 'Enter 0 to exit: '
@@ -371,3 +376,59 @@ if __name__ == '__main__':
                 for i in range(4):
                     session.tBuffer[i] += temp_tBuffer[i]
                     session.vBuffer[i] += temp_vBuffer[i]
+        elif choice == 11:
+            p = input_handling.readConfig(2)
+            p.update(input_handling.readConfig(3))
+
+            messDef2 = "Loop through how many games total? "
+            messOnErr = "Not a valid amount."
+            num_games = input_handling.getUserInput(messDef2,
+                                                    messOnErr,
+                                                    'int',
+                                                    'var > 0')
+
+            messDef2 = "Number of games per chunk? "
+            messOnErr = "Not a valid amount."
+            chunk_size = input_handling.getUserInput(messDef2,
+                                                     messOnErr,
+                                                     'int',
+                                                     'var > 0')
+
+            num_chunks = int(num_games / chunk_size)
+
+            #   Load validation games
+            print('Loading validation data...')
+            filename = 'external/2019_games_processed_v.txt'
+            line_nums = list(range(201))
+            session.vBuffer = read_pgn.load_games(filename,
+                                                  p,
+                                                  line_nums,
+                                                  session.net,
+                                                  certainty=False)
+            print('Loaded', len(session.vBuffer[0]), 'positions.')
+
+            filename = 'external/2019_games_processed_t.txt'
+            for i in range(num_chunks):
+                print("Processing chunk ", i+1, " of ", num_chunks, "!", sep='')
+                start_time = time.time()
+
+                line_nums = list(range(i * chunk_size, (i+1) * chunk_size))
+                
+
+                #   Read chunk into memory
+                session.tBuffer = read_pgn.load_games(filename,
+                                                      p,
+                                                      line_nums,
+                                                      session.net)
+
+                elapsed = time.time() - start_time
+                rate = round(len(session.tBuffer[0]) / elapsed, 2)
+                
+                print("Generated ", len(session.tBuffer[0]),
+                      " training examples in ", round(elapsed, 2), " seconds (",
+                      rate, "/sec)", sep="")
+
+                network_helper.train(session.net,
+                                     buffer.collapse(session.tBuffer),
+                                     buffer.collapse(session.vBuffer),
+                                     p)
