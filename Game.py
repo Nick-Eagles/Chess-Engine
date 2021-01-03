@@ -74,7 +74,8 @@ class Game:
         self.bValue = sum([vals[i] * self.bPieces[i] for i in range(6)]) + 4
 
     #   Return the (absolute reward for doing move "move" (positive means to the
-    #   benefit of white), NN input vector for the resulting position) as a tuple
+    #   benefit of white), NN input vector for the resulting position) as a
+    #   tuple
     def getReward(self, move, mateRew, simple=False, copy=True):
         if copy:
             g = self.copy()
@@ -94,11 +95,13 @@ class Game:
             NN_vecs = g.toNN_vecs(every=False)[0]
             
         if abs(g.gameResult) == 1:
-            return (g.gameResult * mateRew, NN_vecs)
+            r = g.gameResult * mateRew
         elif g.gameResult == 0:
-            return (np.log(old_b_value / old_w_value), NN_vecs)
+            r = np.log(old_b_value / old_w_value)
         else:
-            return (np.log(g.wValue * old_b_value / (old_w_value * g.bValue)), NN_vecs)
+            r = np.log(g.wValue * old_b_value / (old_w_value * g.bValue))
+
+        return (r, NN_vecs)
 
     def printBoard(self):
         print("board:  -----")
