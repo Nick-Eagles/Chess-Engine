@@ -168,7 +168,7 @@ class Move:
             for f in range(8):
                 for r in range(8):
                     p = newBoard[f][r]
-                    if p == -6*coeff:
+                    if p == -6*coeff: # if opposite color king
                         newBoard[f][r] = 0
                     elif p == piece:
                         #   We'll invert the board soon
