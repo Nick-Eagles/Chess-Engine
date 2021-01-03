@@ -21,6 +21,7 @@ from scipy.special import expit, logit
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras import regularizers
 import time
 
 sys.path.append('./external/')
@@ -111,7 +112,7 @@ def trainOption(session, numEps=0):
 def analyzeOption(network):
     return
 
-def InitializeNet(numGroups, blocksPerGroup, blockWidth):
+def InitializeNet(numGroups, blocksPerGroup, blockWidth, p):
     inputs = keras.Input(shape=(839,), name="game_position")
     x = inputs
 
@@ -129,17 +130,25 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth):
         for j in range(blocksPerGroup):
             blockInput = x
             for k in range(blockWidth-1):
-                x = layers.Dense(layLen, activation="relu")(x)
-                x = layers.BatchNormalization()(x)
-            x = layers.Dense(layLen, activation="relu")(x)
+                x = layers.Dense(layLen,
+                                 activation="relu",
+                                 kernel_regularizer=regularizers.l2(p['weightDec']))(x)
+                x = layers.BatchNormalization(momentum=p['popPersist'])(x)
+            x = layers.Dense(layLen,
+                             activation="relu",
+                             kernel_regularizer=regularizers.l2(p['weightDec']))(x)
 
             #   Residual connection, with batch norm afterward
             layer_num = str(i*blocksPerGroup + j)
             x = layers.add([x, blockInput], name='residual_conn' + layer_num)
-            x = layers.BatchNormalization(name='block_output' + layer_num)(x)
+            x = layers.BatchNormalization(name='block_output' + layer_num,
+                                          momentum=p['popPersist'])(x)
 
     #   Output layer
-    output = layers.Dense(1, activation="sigmoid", name="output")(x)
+    output = layers.Dense(1,
+                          activation="sigmoid",
+                          name="output",
+                          kernel_regularizer=regularizers.l2(p['weightDec']))(x)
 
     net = keras.Model(inputs=inputs, outputs=output, name="network")
     net.certainty = 0
@@ -156,6 +165,8 @@ if __name__ == '__main__':
     cond = "var == 'n' or var == 'l'"
     choice = input_handling.getUserInput(messDef, messOnErr, 'str', cond)
     if choice == "n":
+        p = input_handling.readConfig(2)
+        
         tBuffer = [[],[],[],[]]
         vBuffer = [[],[],[],[]]
         
@@ -184,7 +195,7 @@ if __name__ == '__main__':
                                                  'int',
                                                  cond)
         
-        net = InitializeNet(numGroups, blocksPerGroup, blockWidth)
+        net = InitializeNet(numGroups, blocksPerGroup, blockWidth, p)
         session = Session.Session(tBuffer, vBuffer, net)
         
     elif choice == "l":
@@ -412,7 +423,8 @@ if __name__ == '__main__':
                 print("Processing chunk ", i+1, " of ", num_chunks, "!", sep='')
                 start_time = time.time()
 
-                line_nums = list(range(i * chunk_size, (i+1) * chunk_size))
+                line_nums = list(range(i * chunk_size,
+                                       (i+1) * chunk_size))
                 
 
                 #   Read chunk into memory

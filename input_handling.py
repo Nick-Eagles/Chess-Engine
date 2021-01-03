@@ -237,9 +237,6 @@ def validateP(p):
                   "some positions to be overrepresented in training data.")
 
         assert p['weightDec'] >= 0, p['weightDec']
-        if p['mode'] >= 2:
-            print("Warning: weight decay is not implemented.")
-
         assert p['nu'] > 0, p['nu']
         
         assert p['mom'] >= 0 and p['mom'] <= 1, p['mom']
