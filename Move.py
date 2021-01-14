@@ -1,4 +1,5 @@
 import board_helper
+import misc
 
 #   Encapsulates information that comprises a chess move and provides a function
 #   to return the formal move name (ex. Qxe7). Does not support "+" or "#".
@@ -7,6 +8,8 @@ class Move:
         assert endPiece != 0, "Tried to create move with self-deleting piece"
         assert (startSq[0] != endSq[0] or startSq[1] != endSq[1]), \
                "Tried to create a move that does nothing"
+        assert endPiece >= -6 and endPiece <= 6, \
+               "Tried to create an invalid piece type: " + str(endPiece)
         
         #   These are tuples of integers in [0,7]x[0,7]
         self.startSq = startSq
@@ -149,59 +152,54 @@ class Move:
                 return (xHits > 1, yHits > 1)
 
         elif abs(piece) != 6:
-            #   Use the less efficient, but convenient workaround for the
-            #   remaining piece types: pretend the end square holds the
-            #   opposite king. Remove pieces of the target type until
-            #   inCheck == False, and keep track of the ranks and files of the
-            #   offending pieces.
-            newBoard = [x.copy() for x in board]
-            hits = 0
-            xHits = 0
-            yHits = 0
+            #   Describe the "one square" movements of each piece type by
+            #   (file change, rank change)
+            bishop_moves = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+            rook_moves = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+            all_moves = [bishop_moves, rook_moves, bishop_moves + rook_moves]
 
-            #   Set original square to knight because we want a solid piece
-            #   outside the set we're testing for, and unable to produce check
-            #   in the same way
-            newBoard[self.startSq[0]][self.startSq[1]] = 2*coeff
+            these_moves = all_moves[misc.match(abs(piece), [3, 4, 5])]
+
+            #   This will be a list of (file, rank) pairs for pieces of the
+            #   same type
+            key_squares = []
+
+            for motion in these_moves:
+                #   Do we know yet if the piece of interest is along the current
+                #   "line of motion"?
+                decided = False
+                i = 1
+
+                #   Move along a line until we encounter a piece. Record the
+                #   file and rank if it matches the piece type
+                while not decided and board_helper.inBounds(self.endSq, (i*motion[0], i*motion[1])):
+                    current_piece = board[self.endSq[0] + i*motion[0]][self.endSq[1] + i*motion[1]]
+                    if current_piece == piece:
+                        #   We found a piece of the same type
+                        key_squares.append((self.endSq[0] + i*motion[0],
+                                            self.endSq[1] + i*motion[1]))
+                        decided = True
+                    elif current_piece != 0:
+                        #   The first piece along the "line" is different than
+                        #   the type we are looking for
+                        decided = True
+                    else:
+                        i += 1
             
-            samePieces = []
-            for f in range(8):
-                for r in range(8):
-                    p = newBoard[f][r]
-                    if p == -6*coeff: # if opposite color king
-                        newBoard[f][r] = 0
-                    elif p == piece:
-                        #   We'll invert the board soon
-                        samePieces.append([f, r])
-                    elif p != 0:
-                        #   Make irrelevant white pieces black knights; this
-                        #   removes the possibility of irrelevant "checks" while
-                        #   preserving ability to block relevant "checks"
-                        newBoard[f][r] = -2*coeff
-
-            newBoard[self.endSq[0]][self.endSq[1]] = -6*coeff
-            
-            #   Make sure there are candidate matches
-            if len(samePieces) == 0:
-                return (False, False)
-
-            if piece > 0:
-                newBoard = board_helper.invert(newBoard)
-            while board_helper.inCheck(newBoard):
-                sq = samePieces.pop()
-                xHit = sq[0] == self.startSq[0]
-                yHit = sq[1] == self.startSq[1]
-                hits += 1
-                xHits += xHit
-                yHits += yHit
-                if piece > 0:
-                    newBoard[7-sq[0]][7-sq[1]] = 0
+            file_matches = sum([x[0] == self.startSq[0]
+                                for x in key_squares]) > 1
+            rank_matches = sum([x[1] == self.startSq[1]
+                                for x in key_squares]) > 1
+            if len(key_squares) > 1:
+                #   More than one piece can move to the same square, but these
+                #   pieces are on different files and ranks. In this case,
+                #   specify the file
+                if not file_matches and not rank_matches:
+                    return (False, True)
                 else:
-                    newBoard[sq[0]][sq[1]] = 0
-
-            if hits > 0 and xHits + yHits == 0:
-                return (False, True)
+                    return (file_matches, rank_matches)
             else:
-                return (xHits > 0, yHits > 0)
-
-        return (False, False)    # (since piece = 6 and there must be one king)
+                return (False, False)
+        else:
+            #   King moves are never ambiguous
+            return (False, False)
