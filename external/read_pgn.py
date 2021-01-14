@@ -1,5 +1,6 @@
 import sys
 sys.path.append('./')
+sys.path.append('./experimental')
 import numpy as np
 from scipy.special import logit, expit
 import tensorflow as tf
@@ -10,12 +11,13 @@ import buffer as Buffer
 import q_learn
 import Game
 import misc
+import policy_net
 
 
 #   Given a string containing one entire game, process this into data accepted
 #   by the engine, appending to an ongoing buffer.
-def process_line(buffer, game_str, p, augment):
-    raw_pairs = generate_raw_pairs(game_str, p)
+def process_line(buffer, game_str, p, augment, output_type):
+    raw_pairs = generate_raw_pairs(game_str, p, output_type)
     update_buffer(buffer, raw_pairs, p, augment)
 
 
@@ -75,6 +77,7 @@ def fix_move_name(move_name, engine_names, p, game):
     cond = len(move_name) >= 5 and \
            move_name[1] in 'abcdefgh' and \
            move_name[2] in '12345678'
+    
     #   Try removing file specification
     if cond and move_name[0] + move_name[2:] in engine_names:
         if p['mode'] >= 2:
@@ -97,10 +100,16 @@ def fix_move_name(move_name, engine_names, p, game):
     return move_name
 
 
-#   Given a string containing one entire game, return a 2-tuple where the
+#   Given a string containing one entire game ('game_str'), the hyperparameter
+#   dictionary 'p', and an 'output_type' of "value": return a 2-tuple where the
 #   first element is a list of (lists of) NN inputs, and the second element is
-#   a list of immediate rewards received for the moves performed
-def generate_raw_pairs(game_str, p):
+#   a list of immediate rewards received for the moves performed. If
+#   'output_type' is "policy_value", return a 3-tuple with the same first two
+#   elements, and the additional list of labels for the third element.
+def generate_raw_pairs(game_str, p, output_type='value'):
+    #   Basic checks on input parameters
+    assert output_type == 'value' or output_type == 'policy_value', output_type
+    
     move_names = game_str.split(' ')
     
     stated_result = move_names.pop()[:-1]
@@ -118,6 +127,7 @@ def generate_raw_pairs(game_str, p):
     game = Game.Game()
     nn_vecs = []
     rewards = []
+    out_vecs = []
     for i, move_name in enumerate(move_names):
         nn_vecs.append(game.toNN_vecs())
         
@@ -128,10 +138,17 @@ def generate_raw_pairs(game_str, p):
             move_name = fix_move_name(move_name, actual_names, p, game)
 
         move_played = moves[misc.match(move_name, actual_names)]
-        rewards.append(game.getReward(move_played,
-                                      p['mateReward'],
-                                      simple=True,
-                                      copy=False)[0])
+        if output_type == 'policy_value':
+            g = game.copy()
+
+        r = game.getReward(move_played,
+                           p['mateReward'],
+                           simple=True,
+                           copy=False)[0]
+        rewards.append(r)
+
+        if output_type == 'policy_value':
+            out_vecs.append(policy_net.ToOutputVec(g, move_played, r))
 
     ############################################################################
     #   Update final reward, considering resignation as loss and agreed draws
@@ -150,21 +167,28 @@ def generate_raw_pairs(game_str, p):
     #   Verify lengths of data generated
     assert len(rewards) == len(move_names), len(move_names)-len(rewards)
     assert len(nn_vecs) == len(move_names), len(move_names)-len(nn_vecs)
-        
-    return (nn_vecs, rewards)
+
+    if output_type == 'policy_value':
+        return (nn_vecs, rewards, out_vecs)
+    else:
+        return (nn_vecs, rewards)
 
 
 #   Given the raw pairs of data (2-tuples) for a game, update the ongoing
 #   data buffer with the processed data for that game
 def update_buffer(buffer, raw_pairs, p, augment):
-    nn_vecs, rewards = raw_pairs
+    if len(raw_pairs) == 2:
+        nn_vecs, rewards = raw_pairs
+    else:
+        nn_vecs, rewards, out_vecs = raw_pairs
 
     for i in range(1, len(rewards)):
-        assert abs(rewards[-i]) < 30, str(rewards[-i]) + ' ' + str(i)
         rewards[-1-i] += rewards[-i] * p['gamma']
-        assert abs(rewards[-1-i]) < 30, rewards[-1-i]
 
     if augment:
+        assert len(raw_pairs) == 2, \
+               "Augmentation not yet supported for policy-value networks"
+        
         for i, r in enumerate(rewards):
             num_examples = len(nn_vecs[i])
 
@@ -188,10 +212,14 @@ def update_buffer(buffer, raw_pairs, p, augment):
         Buffer.verify(buffer, p, 3)
     else:
         for i in range(len(rewards)):
-            buffer[0].append((nn_vecs[i][0],
-                              tf.constant(expit(rewards[i]),
-                                          shape=[1,1],
-                                          dtype=tf.float32)))
+            if len(raw_pairs) == 2:
+                buffer[0].append((nn_vecs[i][0],
+                                  tf.constant(expit(rewards[i]),
+                                              shape=[1,1],
+                                              dtype=tf.float32)))
+            else:
+                buffer[0].append((nn_vecs[i][0],
+                                  out_vecs[i]))
 
         Buffer.verify(buffer, p, 1)
 
@@ -206,15 +234,20 @@ def load_games(filename, p, line_nums, net, augment=False, certainty=True):
     else:
         buffer = [[]]
 
+    if 'policy_start_square' in [x.name for x in net.layers]:
+        output_type = 'policy_value'
+    else:
+        output_type = 'value'
+
     #   Load the entire file of PGN data (in text form) into memory
     with open(filename, 'r') as pgn_file:
         lines = pgn_file.readlines()
 
     #   Add the data contained in each line individually
     for i in line_nums:
-        process_line(buffer, lines[i], p, augment)
+        process_line(buffer, lines[i], p, augment, output_type)
 
-    if certainty:
-        q_learn.getCertainty(net, buffer, p, greedy=False)
+    #if certainty:
+    #    q_learn.getCertainty(net, buffer, p, greedy=False)
         
     return buffer
