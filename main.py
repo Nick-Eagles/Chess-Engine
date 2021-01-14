@@ -10,6 +10,7 @@ import demonstration
 import board_helper
 import Session
 import buffer
+import policy
 
 import sys
 import os
@@ -25,7 +26,9 @@ from tensorflow.keras import regularizers
 import time
 
 sys.path.append('./external/')
+sys.path.append('./experimental/')
 import read_pgn
+import policy_net
 
 
 #   Given a network, asks the user for training hyper-parameters,
@@ -111,51 +114,7 @@ def trainOption(session, numEps=0):
 
 def analyzeOption(network):
     return
-
-def InitializeNet(numGroups, blocksPerGroup, blockWidth, p):
-    inputs = keras.Input(shape=(839,), name="game_position")
-    x = inputs
-
-    for i in range(numGroups):
-        messDef = "Length of neurons in group " + str(i+1) + "? "
-        cond = 'var > 0 and var < 10000'
-        layLen = input_handling.getUserInput(messDef,
-                                             "Not a valid number.",
-                                             'int',
-                                             cond)
-
-        #   Linear projection to match block input and output lengths
-        x = layers.Dense(layLen, name='linear_projection' + str(i+1))(x)
-        
-        for j in range(blocksPerGroup):
-            blockInput = x
-            for k in range(blockWidth-1):
-                x = layers.Dense(layLen,
-                                 activation="relu",
-                                 kernel_regularizer=regularizers.l2(p['weightDec']))(x)
-                x = layers.BatchNormalization(momentum=p['popPersist'])(x)
-            x = layers.Dense(layLen,
-                             activation="relu",
-                             kernel_regularizer=regularizers.l2(p['weightDec']))(x)
-
-            #   Residual connection, with batch norm afterward
-            layer_num = str(i*blocksPerGroup + j)
-            x = layers.add([x, blockInput], name='residual_conn' + layer_num)
-            x = layers.BatchNormalization(name='block_output' + layer_num,
-                                          momentum=p['popPersist'])(x)
-
-    #   Output layer
-    output = layers.Dense(1,
-                          activation="sigmoid",
-                          name="output",
-                          kernel_regularizer=regularizers.l2(p['weightDec']))(x)
-
-    net = keras.Model(inputs=inputs, outputs=output, name="network")
-    net.certainty = 0
-    net.certaintyRate = 0
-    
-    return net
-            
+  
     
 #   Main -----------------------------------------------------------------------
 
@@ -173,6 +132,16 @@ if __name__ == '__main__':
         ##################################################################
         #   Define network architecture and initialize Network object
         ##################################################################
+
+        #   Policy and value network or just value network?
+        messDef = "Include policy in output (y/n)? "
+        messOnErr = '"y" or "n" accepted only.'
+        cond = 'var == "y" or var == "n"'
+        temp = input_handling.getUserInput(messDef, messOnErr, 'str', cond)
+        if temp == 'y':
+            output_type = 'policy_value'
+        else:
+            output_type = 'value'
         
         #   Number of groups of residual blocks
         messDef = "Define network architecture: how many residual groups? "
@@ -195,7 +164,11 @@ if __name__ == '__main__':
                                                  'int',
                                                  cond)
         
-        net = InitializeNet(numGroups, blocksPerGroup, blockWidth, p)
+        net = policy_net.InitializeNet(numGroups,
+                                       blocksPerGroup,
+                                       blockWidth,
+                                       p,
+                                       output_type)
         session = Session.Session(tBuffer, vBuffer, net)
         
     elif choice == "l":
