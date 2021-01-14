@@ -18,10 +18,7 @@ class Traversal:
         self.pruneCuts = 0
         self.baseR = 0
         
-        if p['policy'] == 'sampleMovesEG':
-            self.policy = policy.sampleMovesEG
-        else:
-            self.policy = policy.sampleMovesSoft
+        self.policy = getattr(policy, p['policy'])
 
         self.p = p
         #   A value not too far above the maximal number of node hops that can
