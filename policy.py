@@ -1,14 +1,18 @@
+import numpy as np
+from scipy.special import logit
+import os
+import tensorflow as tf
+import sys
+
+sys.path.append('./experimental/')
+import policy_net
+
 import Game
 import Network
 import network_helper
 import misc
 import board_helper
 import Traversal
-
-import numpy as np
-from scipy.special import logit
-import os
-import tensorflow as tf
 
 #################################################################################
 #   Functions for sampling several legal moves (subsetting search tree)
@@ -129,6 +133,29 @@ def getBestMoveEG(net, game, p):
 
         return legalMoves[np.argmax(vals)]
 
+
+def getBestMoveRawPolicy(net, game, p, num_lines=1):
+    legalMoves = board_helper.getLegalMoves(game)
+    
+    if np.random.uniform() < p['epsGreedy']:
+        return legalMoves[np.random.randint(len(legalMoves))]
+    else:
+        #   Compute a probability distribution across legal moves
+        outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
+        probs = policy_net.AdjustPolicy(outputs, legalMoves)
+
+        if num_lines == 1:
+            if game.whiteToMove:
+                bestMove = legalMoves[np.argmax(probs)]
+            else:
+                bestMove = legalMoves[np.argmin(probs)]
+
+            return bestMove
+        else:
+            indices = misc.topN(probs, num_lines)
+            return ([legalMoves[i] for i in indices],
+                    probs[indices])
+        
 def per_thread_job(trav_obj):
     trav_obj.traverse()
     return trav_obj
