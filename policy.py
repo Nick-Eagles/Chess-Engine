@@ -25,7 +25,8 @@ import Traversal
 #   "curiosity" is the coefficient to the exponential function, thus favoring
 #   highly evaluated moves more when increased.
 def sampleMovesSoft(net, game, p):
-    #   Get legal moves and NN evaluations on the positions that result from them
+    #   Get legal moves and NN evaluations on the positions that result from
+    #   them
     moves = board_helper.getLegalMoves(game)
     fullMovesLen = len(moves)
     evals = getEvals(moves, net, game, p)
@@ -34,9 +35,11 @@ def sampleMovesSoft(net, game, p):
     probs = temp / np.sum(temp) # softmax of evals
     cumProbs = np.cumsum(probs)
 
-    finalMoves = [moves[i] for i in misc.sampleCDF(cumProbs, min(breadth, len(moves)))]
+    finalMoves = [moves[i] for i in misc.sampleCDF(cumProbs,
+                                                   min(breadth, len(moves)))]
 
-    assert len(finalMoves) > 0 and len(finalMoves) <= p['breadth'], len(finalMoves)
+    assert len(finalMoves) > 0 and len(finalMoves) <= p['breadth'], \
+           len(finalMoves)
     return(finalMoves, fullMovesLen)
 
 #   An alternative to "sampleMovesSoft". This uses what is intended to be a
@@ -56,13 +59,15 @@ def sampleMovesEG(net, game, p):
     #   More efficiently handle a trivial case
     if p['epsSearch'] == 0:
         evals = getEvals(moves, net, game, p)
-        return ([moves[i] for i in misc.topN(evals, p['breadth'])], fullMovesLen)
+        return ([moves[i] for i in misc.topN(evals, p['breadth'])], \
+                fullMovesLen)
     
     #   Determine which moves should be chosen randomly
     subMovesLen = min(p['breadth'], fullMovesLen)
-    #   This is the choice of epsilon such that if [subMovesLen] moves are chosen under
-    #   an epsilon-greedy strategy, with each move constrained to be distinct, then the probability
-    #   that none of those moves have the highest NN evaluation is eps.
+    #   This is the choice of epsilon such that if [subMovesLen] moves are
+    #   chosen under an epsilon-greedy strategy, with each move constrained to
+    #   be distinct, then the probability that none of those moves have the
+    #   highest NN evaluation is eps.
     epsEffective = (fullMovesLen * p['epsSearch'] / (fullMovesLen - subMovesLen))**(1/subMovesLen)
     inds = []
     remainInds = list(range(fullMovesLen))
@@ -76,7 +81,7 @@ def sampleMovesEG(net, game, p):
         for i in range(subMovesLen - numRandom):
             temp = np.argmax(evals)
             assert min(evals) >= -2 * p['mateReward'], min(evals)
-            evals[temp] = -2 * p['mateReward'] # which should be less than any eval
+            evals[temp] = -2 * p['mateReward'] # which should be < any eval
             inds.append(temp)
             remainInds.remove(temp)
 
@@ -98,10 +103,11 @@ def sampleMovesEG(net, game, p):
 #   Functions for picking a single legal move to play
 #################################################################################
 
-#   Return a move decision, given the current game, network, and choice of epsilon.
-#   The decision is meant to be very "human" in nature: gaussian noise is added to
-#   the evaluations, matching their mean and variance, and the best combination of
-#   evaluation and noise is chosen. Epsilon scales how noisy the decision is.
+#   Return a move decision, given the current game, network, and choice of
+#   epsilon. The decision is meant to be very "human" in nature: gaussian noise
+#   is added to the evaluations, matching their mean and variance, and the best
+#   combination of evaluation and noise is chosen. Epsilon scales how noisy the
+#   decision is.
 def getBestMoveHuman(net, game, p):
     legalMoves = board_helper.getLegalMoves(game)
     eps = p['epsilon']
@@ -109,9 +115,11 @@ def getBestMoveHuman(net, game, p):
         #   Shortcut for completely random move choice
         return legalMoves[np.random.randint(len(legalMoves))]
     else:
-        #   Return the best move as the legal move maximizing the linear combination of:
+        #   Return the best move as the legal move maximizing the linear
+        #   combination of:
         #       1. The expected future reward vector
-        #       2. A noise vector matching the first 2 moments of the reward vector
+        #       2. A noise vector matching the first 2 moments of the reward
+        #          vector
         vals = getEvals(moves, net, game, p)
         noise = np.random.normal(np.mean(vals), np.std(vals), vals.shape[0])
         
@@ -119,9 +127,9 @@ def getBestMoveHuman(net, game, p):
             
         return bestMove
 
-#   Return a move decision, given the current game, network, and choice of epsilon.
-#   This is meant to be a faster alternative to getBestMoveHuman. The move is simply
-#   chosen via an epsilon-greedy strategy.
+#   Return a move decision, given the current game, network, and choice of
+#   epsilon. This is meant to be a faster alternative to getBestMoveHuman. The
+#   move is simply chosen via an epsilon-greedy strategy.
 def getBestMoveEG(net, game, p):
     legalMoves = board_helper.getLegalMoves(game)
     
@@ -165,8 +173,8 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
         legalMoves = board_helper.getLegalMoves(game)
         return legalMoves[np.random.randint(len(legalMoves))]
     else:
-        #   Traversals are started at positions resulting from testing moves from
-        #   the current position; this test constitutes a step of depth
+        #   Traversals are started at positions resulting from testing moves
+        #   from the current position; this test constitutes a step of depth
         p_copy = p.copy()
         p_copy['depth'] -= 1
         p = p_copy
@@ -225,9 +233,11 @@ def getEvals(moves, net, game, p):
             r_real[i] = r
             net_inputs.append(tf.reshape(vec, (839,)))
             
-        evals = r_real + scalar * logit(net(tf.stack(net_inputs), training=False)).flatten()
+        evals = r_real + scalar * logit(net(tf.stack(net_inputs),
+                                            training=False)).flatten()
     else:
-        evals = np.array([game.getReward(m, p['mateReward'], True)[0] for m in moves])
+        evals = np.array([game.getReward(m, p['mateReward'], True)[0]
+                          for m in moves])
 
         #   If evals are not all unique, add a tiny amount of noise to eliminate
         #   bias for moves occuring earlier in the list of legal moves
