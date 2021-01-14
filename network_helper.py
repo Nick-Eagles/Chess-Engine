@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import os
 import tensorflow as tf
@@ -11,26 +12,28 @@ import misc
 import board_helper
 import policy
 
+sys.path.append('./experimental/')
+import policy_net
+
 #################################################################################
 #   Utilities that are used by Model objects, specific to the chess engine
 #################################################################################
 
 def train(net, tData, vData, p):
+    if 'policy_start_square' in [x.name for x in net.layers]:
+        output_type = 'policy_value'
+    else:
+        output_type = 'value'
+        
     mom = p['mom']
     learn_rate = p['nu']
 
     #   Compile model using current hyperparameters
-    optim = tf.keras.optimizers.SGD(learning_rate=learn_rate, momentum=mom)
-
-    net.compile(
-        optimizer = optim,
-        loss = tf.keras.losses.BinaryCrossentropy(),
-        metrics = []
-    )
+    policy_net.CompileNet(net, p, output_type)
     
     #   Train the model
     csv_logger = CSVLogger('visualization/costs.csv', append=True)
-    
+        
     new_history = net.fit(
         tData[0],
         tData[1],
@@ -63,7 +66,7 @@ def display_evaluation(game, bestMoves, r):
               '(' + str(r[i]) + ')')
 
 
-def bestGame(net):
+def bestGame(net, policy_function=policy.getBestMoveTreeEG):
     #   Get parameters, but use a fully greedy policy
     p = input_handling.readConfig(3)
     p.update(input_handling.readConfig(1))
@@ -82,10 +85,10 @@ def bestGame(net):
 
     while (game.gameResult == 17):
         if num_lines == 1:
-            bestMove = policy.getBestMoveTreeEG(net, game, p)
+            bestMove = policy_function(net, game, p)
             game.doMove(bestMove)
         else:
-            bestMoves, r = policy.getBestMoveTreeEG(net, game, p, num_lines)
+            bestMoves, r = policy_function(net, game, p, num_lines)
             display_evaluation(game, bestMoves, r)
             game.doMove(bestMoves[0])
 
