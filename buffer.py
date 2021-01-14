@@ -23,7 +23,16 @@ def collapse(buff):
         bigBuff += buff[i]
 
     x = tf.stack([tf.reshape(z[0], [839]) for z in bigBuff])
-    y = tf.stack([tf.reshape(z[1], [1]) for z in bigBuff])
+
+    if isinstance(bigBuff[0][1], list):
+        #   Labels are for policy-value networks
+        y = [tf.stack([tf.reshape(z[1][0], [64]) for z in bigBuff]),
+             tf.stack([tf.reshape(z[1][1], [64]) for z in bigBuff]),
+             tf.stack([tf.reshape(z[1][2], [6]) for z in bigBuff]),
+             tf.stack([tf.reshape(z[1][3], [1]) for z in bigBuff])]
+    else:
+        #   Labels for value-only networks
+        y = tf.stack([tf.reshape(z[1], [1]) for z in bigBuff])
 
     return (x, y)
 
@@ -91,7 +100,18 @@ def verify(data, p, numBuffs=4):
 
             # the input is of proper shape
             assert data[i][0][0].shape == (1,839), data[i][0][0].shape
-            assert data[i][0][1].shape == (1, 1), data[i][0][1].shape
+
+            #   Check label shape(s)
+            if isinstance(data[i][0][1], list):
+                #   The policy and value outputs are of proper shape
+                assert data[i][0][1][0].shape == (1, 64), data[i][0][1][0].shape
+                assert data[i][0][1][1].shape == (1, 64), data[i][0][1][1].shape
+                assert data[i][0][1][2].shape == (1, 6), data[i][0][1][2].shape
+                assert data[i][0][1][3].shape == (1, 1), data[i][0][1][3].shape
+            else:
+                #   The value output is of proper shape
+                assert data[i][0][1].shape == (1, 1), data[i][0][1].shape
+                
         elif p['mode'] >= 2:
             print("Warning: buffer", i, "was empty.")
 
