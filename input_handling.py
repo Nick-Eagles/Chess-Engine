@@ -251,6 +251,14 @@ def validateP(p):
                p['fracFromFile']
 
         assert p['popPersist'] >= 0 and p['popPersist'] < 1, p['popPersist']
+        assert p['policyWeight'] >= 0 and p['policyWeight'] <= 1, \
+               p['policyWeight']
+        if p['policyWeight'] == 0 and p['mode'] >= 1:
+            print("Warning: policy will not be optimized if using a policy-" + \
+                  "value network (policyWeight = 0).")
+        elif p['policyWeight'] == 1 and p['mode'] >= 1:
+            print("Warning: value will not be optimized if using a policy-" + \
+                  "value network (policyWeight = 1).")
 
     #   Q learning
     if 'maxSteps' in p:
