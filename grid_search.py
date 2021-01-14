@@ -101,7 +101,7 @@ mom_diff = mom_range[1] - mom_range[0]
 
 print('Loading network and data...')
 net, tBuffer, vBuffer = Network.load('nets/' + net_name + '.pkl')
-p = input_handling.readConfig(2)
+p = input_handling.readConfig()
 
 #   Ensure there is enough validation data to compute loss at the largest batch
 #   size; limit number of examples in tData to maximal amount specified

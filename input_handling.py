@@ -56,39 +56,26 @@ def getUserInput(messDef, messOnErr, inType, cond, explan='', auxVars=()):
     return finalIn
 
 #   Read a config file where sections are delimited with "#", and each line
-#   of content is a string of the form "[variableName] [value]". Fed to eval(), so
-#   assumes the config file is legitimate and properly specified.
-def readConfig(mode=0, fName="config.txt"):
-    #   Read in entire file as list of strings, and record lines that
-    #   begin with "#"; these are section markers
-    lineList = []
-    sectDivs = []
-    f = open(fName,"r")
-    i = 0
-    for line in f:
-        if line[0] == "#":
-            sectDivs.append(i)
-        lineList.append(line)
-        i += 1
-    sectDivs.append(i)  # the file end
-    f.close()
+#   of content is a string of the form "[variableName] [value]". Assumes the
+#   config file is legitimate and properly specified.
+def readConfig(f_name='config.txt'):
+    #   Read the entire file into memory
+    with open(f_name, 'r') as f:
+        line_list = f.readlines()
 
-    #   Each line contains the variable name and its value; store the lines
-    #   from the correct section (and general section) in a dictionary and return
+    #   Filter out lines to be treated as comments
+    line_list = [x for x in line_list if "#" not in x]
+
+    #   Add each key-value pair to a dictionary
     p = {}
-    if mode == 0:
-        linesToRead = lineList[1:sectDivs[1]]
-    else:
-        linesToRead = lineList[1:sectDivs[1]] + lineList[sectDivs[mode]+1:sectDivs[mode+1]]
-    for i in linesToRead:
-        var = i[:i.index(" ")]
-        val = i[i.index(" ")+1:]
+    for x in line_list:
+        key, val = x.split(' ')
         if '"' in val:
-            p[var] = val[1:-2]
+            p[key] = val[1:-2]
         elif "." in val:
-            p[var] = float(val)
+            p[key] = float(val)
         else:
-            p[var] = int(val)
+            p[key] = int(val)
 
     validateP(p)
     

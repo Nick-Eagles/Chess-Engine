@@ -137,8 +137,7 @@ def index_to_label(i, r):
 
 
 def async_q_learn(net):
-    p = input_handling.readConfig(1)
-    p.update(input_handling.readConfig(3))
+    p = input_handling.readConfig()
 
     print("Performing Q-learning (" + str(p['baseBreadth']) + " tasks)...")
     if p['mode'] >= 2:

@@ -17,7 +17,7 @@ net_name = 'tf_profile'
 session = Session.Session([], [])
 session.Load('nets/' + net_name, data_prefix='tf_profile')
 
-p = input_handling.readConfig(2)
+p = input_handling.readConfig()
 p['memDecay'] = 0.095
 
 orig_lens_t = [len(x) for x in session.tBuffer]

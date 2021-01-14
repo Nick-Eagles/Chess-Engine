@@ -43,9 +43,7 @@ os.environ["OMP_NUM_THREADS"] = "4"
 def do_train(session):
     #   Given a network, asks the user for training hyper-parameters,
     #   trains the network, and asks what to do next.
-    p = input_handling.readConfig(1)
-    for i in range(2, 4):
-        p.update(input_handling.readConfig(i))
+    p = input_handling.readConfig()
 
     if p['mode'] >= 3:
         random.seed(0)
@@ -64,9 +62,7 @@ def do_generate_examples(arg_list):
         
 
 
-p = input_handling.readConfig(1)
-for i in range(2, 4):
-    p.update(input_handling.readConfig(i))
+p = input_handling.readConfig()
     
 #   print relevant information about parameters that affect
 #   computational time

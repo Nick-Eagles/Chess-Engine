@@ -107,7 +107,7 @@ net, tBuffer, vBuffer = Network.load('nets/res2')
 data = main.collapseBuffer(tBuffer) + main.collapseBuffer(vBuffer)
 
 print('Using', len(data), 'examples.')
-p = input_handling.readConfig(2)
+p = input_handling.readConfig()
 min_lr = 0.000001
 max_lr = 10
 

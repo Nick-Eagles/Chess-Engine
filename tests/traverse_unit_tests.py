@@ -42,8 +42,7 @@ game.canB_Q_Castle = False
 game.updateValues()
 
 #   Load configuration and fix important values
-p = input_handling.readConfig(3)
-p.update(input_handling.readConfig(1))
+p = input_handling.readConfig()
 p['depth'] = 3
 p['breadth'] = 15
 p['gamma_exec'] = 0.9

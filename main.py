@@ -34,7 +34,7 @@ import policy_net
 #   Given a network, asks the user for training hyper-parameters,
 #   trains the network, and asks what to do next.
 def trainOption(session, numEps=0): 
-    p = input_handling.readConfig(2)
+    p = input_handling.readConfig()
 
     net = session.net
     tBuffer = session.tBuffer
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     cond = "var == 'n' or var == 'l'"
     choice = input_handling.getUserInput(messDef, messOnErr, 'str', cond)
     if choice == "n":
-        p = input_handling.readConfig(2)
+        p = input_handling.readConfig()
         
         tBuffer = [[],[],[],[]]
         vBuffer = [[],[],[],[]]
@@ -206,13 +206,13 @@ if __name__ == '__main__':
 
         if choice == 1:
             #   Keep a fraction of examples
-            p = input_handling.readConfig(2)
+            p = input_handling.readConfig()
             if len(session.tBuffer[0]) > 0 and len(session.vBuffer[0]) > 0:
                 buffer.filter(session.tBuffer, session.vBuffer, p)
         
             trainOption(session)
         elif choice == 2:
-            p = input_handling.readConfig(2)
+            p = input_handling.readConfig()
             print("Generating the current network's 'best' game...")
             network_helper.bestGame(session.net)
         elif choice == 3:
@@ -224,13 +224,13 @@ if __name__ == '__main__':
                                         buffer.collapse(session.tBuffer) + \
                                         buffer.collapse(session.vBuffer))
         elif choice == 5:
-            p = input_handling.readConfig(2)
+            p = input_handling.readConfig()
             network_helper.train(session.net,
                                  buffer.collapse(session.tBuffer),
                                  buffer.collapse(session.vBuffer),
                                  p)
         elif choice == 6:
-            p = input_handling.readConfig(0) # get mate reward
+            p = input_handling.readConfig()
             
             messDef2 = "Add to training (t) or validation (v) position file? "
             messOnErr = "Invalid input."
@@ -260,7 +260,7 @@ if __name__ == '__main__':
             print("Wrote", len(novelGs), "positions to file.")
             
         elif choice == 7:
-            p = input_handling.readConfig(0) # get mate reward
+            p = input_handling.readConfig() # get mate reward
             
             messDef2 = "Generate how many checkmate positions? "
             messOnErr = "Not a valid input."
@@ -361,8 +361,7 @@ if __name__ == '__main__':
                     session.tBuffer[i] += temp_tBuffer[i]
                     session.vBuffer[i] += temp_vBuffer[i]
         elif choice == 11:
-            p = input_handling.readConfig(2)
-            p.update(input_handling.readConfig(3))
+            p = input_handling.readConfig()
 
             messDef2 = "Loop through how many games total? "
             messOnErr = "Not a valid amount."
