@@ -8,8 +8,11 @@ visualization/alpha_tests.txt
 visualization/test_losses.csv
 data/*Checkmates.pkl.gz
 data/*/*Buffer*.pkl.gz
+external/*.txt
+external/*.pgn
 __pycache__
 config.txt
 nets/*
 logs/*
 *.pyc
+.Rhistory
