@@ -6,19 +6,20 @@ mateReward 3
 gamma 0.95
 #	Tree traversal
 gamma_exec 0.9
-breadth 10
+breadth 15
 depth 3
 curiosity 5
 epsSearch 0.01
 minCertainty 0.1
-policy "sampleMovesEG"
+policyFun "sampleMovesEG"
+evalFun "getEvalsPolicy"
 #	Network/ training-related
 memDecay 0.01
 weightDec 0.0001
-nu 0.1
+nu 0.03
 mom 0.9
 batchSize 200
-epochs 2
+epochs 1
 fracValidation 0.1
 fracFromFile 0.01
 popPersist 0.9

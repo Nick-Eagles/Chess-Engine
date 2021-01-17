@@ -24,12 +24,12 @@ import Traversal
 #   NN evaluations, constraining each move to be distinct (w/o replacement).
 #   "curiosity" is the coefficient to the exponential function, thus favoring
 #   highly evaluated moves more when increased.
-def sampleMovesSoft(net, game, p):
+def sampleMovesSoft(net, game, p): 
     #   Get legal moves and NN evaluations on the positions that result from
     #   them
     moves = board_helper.getLegalMoves(game)
     fullMovesLen = len(moves)
-    evals = getEvals(moves, net, game, p)
+    evals = p['evalFun'](moves, net, game, p)
 
     temp = np.exp(p['curiosity'] * evals)
     probs = temp / np.sum(temp) # softmax of evals
@@ -58,7 +58,7 @@ def sampleMovesEG(net, game, p):
 
     #   More efficiently handle a trivial case
     if p['epsSearch'] == 0:
-        evals = getEvals(moves, net, game, p)
+        evals = p['evalFun'](moves, net, game, p)
         return ([moves[i] for i in misc.topN(evals, p['breadth'])], \
                 fullMovesLen)
     
@@ -75,7 +75,7 @@ def sampleMovesEG(net, game, p):
     
     #   If all moves are to be chosen randomly, don't even compute their evals
     if numRandom < subMovesLen:
-        evals = getEvals(moves, net, game, p)
+        evals = p['evalFun'](moves, net, game, p)
 
         #   The moves to be chosen by best evaluation
         for i in range(subMovesLen - numRandom):
@@ -222,7 +222,7 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
 #   if net.certainty is positive, in which case net.certainty is the scalar to
 #   the NN-evaluation. Note that evals are flipped: larger values match to
 #   better moves for the current player!
-def getEvals(moves, net, game, p):
+def getEvalsValue(moves, net, game, p):
     #   Compute NN evaluations on each move if certainty is positive
     if net.certainty > p['minCertainty']:
         scalar = p['gamma_exec'] * net.certainty
@@ -232,9 +232,14 @@ def getEvals(moves, net, game, p):
             r, vec = game.getReward(m, p['mateReward'])
             r_real[i] = r
             net_inputs.append(tf.reshape(vec, (839,)))
-            
-        evals = r_real + scalar * logit(net(tf.stack(net_inputs),
-                                            training=False)).flatten()
+
+        #   Get the value output from the network, regardless of whether net is
+        #   of type "policy-value" or "value"
+        value = logit(net(tf.stack(net_inputs), training=False)).flatten()
+        if isinstance(value, list):
+            value = value[-1]
+        
+        evals = r_real + scalar * value
     else:
         evals = np.array([game.getReward(m, p['mateReward'], True)[0]
                           for m in moves])
@@ -249,4 +254,12 @@ def getEvals(moves, net, game, p):
         evals = -1 * evals
 
     assert evals.shape == (len(moves),), evals.shape
+    return evals
+
+
+def getEvalsPolicy(moves, net, game, p):
+    #   Compute a probability distribution across legal moves
+    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
+    evals = policy_net.AdjustPolicy(outputs, moves)
+    
     return evals

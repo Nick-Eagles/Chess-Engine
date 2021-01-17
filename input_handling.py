@@ -1,3 +1,5 @@
+import policy
+
 # ---------------------------------------------------------------------
 #
 #   Manages user input in a smarter way, preventing the program from
@@ -78,6 +80,7 @@ def readConfig(f_name='config.txt'):
             p[key] = int(val)
 
     validateP(p)
+    p['evalFun'] = getattr(policy, p['evalFun'])
     
     return p
 
@@ -213,8 +216,8 @@ def validateP(p):
         if p['minCertainty'] < 0 and p['mode'] >= 1:
             print("Warning: 'minCertainty' is negative- is this intended?")
             
-        assert p['policy'] == "sampleMovesEG" \
-               or p['policy'] == "sampleMovesSoft", p['policy']
+        assert p['policyFun'] == "sampleMovesEG" \
+               or p['policyFun'] == "sampleMovesSoft", p['policyFun']
         
     #   Network/ training
     if 'memDecay' in p:

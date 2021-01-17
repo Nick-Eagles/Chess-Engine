@@ -18,7 +18,7 @@ class Traversal:
         self.pruneCuts = 0
         self.baseR = 0
         
-        self.policy = getattr(policy, p['policy'])
+        self.policy = getattr(policy, p['policyFun'])
 
         self.p = p
         #   A value not too far above the maximal number of node hops that can
