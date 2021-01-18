@@ -163,39 +163,116 @@ def async_q_learn(net):
 
     return data
 
-def getCertainty(net, data, p, greedy=True):
-    #   Form vectors of expected and actual rewards received
-    inputs = tf.stack([tf.reshape(x[0], [839]) for x in data[0]], axis=0)
-    expRew = logit(net(inputs, training=False)).flatten()
-    actRew = logit(tf.stack([tf.reshape(x[1], [1]) for x in data[0]], axis=0)).flatten()
+#   "outputs" and "labels" are numpy arrays of shape (n,), where n is the number
+#   of training examples present.
+def valueCertainty(outputs, labels, p):
+    out_norm = np.linalg.norm(outputs)
 
-    #   Normalized dot product of expected and actual reward vectors
-    actNorm = np.linalg.norm(actRew)
-    if round(float(actNorm), 5) == 0:
+    if round(float(out_norm), 5) == 0:
+        print("Warning: norm of output values is too small; setting " + \
+              "certainty to 0.")
         certainty = 0
     else:
-        certainty = np.dot(expRew, actRew) / \
-                    (np.linalg.norm(expRew) * actNorm)
+        certainty = np.dot(outputs, labels) / \
+                    (np.linalg.norm(labels) * out_norm)
+
+    if p['mode'] >= 2:
+        #   Print first 2 moments of expected and actual rewards
+        print("Mean and var of expected reward: ", round(np.mean(labels), 4),
+              "; ", round(np.var(labels), 4), sep="")
+        print("Mean and var of actual reward: ", round(np.mean(outputs), 4),
+              "; ", round(np.var(outputs), 4), sep="")
+
+    assert certainty >= -1 and certainty <= 1, certainty
+    return certainty
+
+
+#   "outputs" is a list of Tensors of shape [n, 64], [n, 64], and [n, 6],
+#   respectively; "labels" is of the same format
+def policyCertainty(outputs, labels, p):
+    #   Confirm shape of arguments
+    num_examples = outputs[0].shape[0]
+    assert outputs[0].shape == (num_examples, 64), outputs[0].shape
+    assert outputs[1].shape == (num_examples, 64), outputs[1].shape
+    assert outputs[2].shape == (num_examples, 6), outputs[2].shape
+    assert labels[0].shape == (num_examples, 64), labels[0].shape
+    assert labels[1].shape == (num_examples, 64), labels[1].shape
+    assert labels[2].shape == (num_examples, 6), labels[2].shape
+    
+    #   For each example and output type (start square, etc), take the dot
+    #   product of the output and label. Then compute the mean of this metric
+    #   across examples, and finally across output type.
+    c = tf.reduce_mean(tf.reduce_sum(outputs[0] * labels[0], axis=1))
+    c += tf.reduce_mean(tf.reduce_sum(outputs[1] * labels[1], axis=1))
+    c += tf.reduce_mean(tf.reduce_sum(outputs[2] * labels[2], axis=1))
+    c = float(c/3)
+    
+    assert c >= -1 and c <= 1, c
+    return c
+
+
+def getCertainty(net, data, p, greedy=True):
+    #   Inference
+    inputs = tf.stack([tf.reshape(x[0], [839]) for x in data[0]], axis=0)
+    outputs = net(inputs, training=False)
+
+    ############################################################################
+    #   Get certainty
+    ############################################################################
+    
+    if isinstance(outputs, list):
+        #   Get value-associated certainty
+        labels = logit(tf.stack([tf.reshape(x[1][-1], [1])
+                                 for x in data[0]], axis=0)).flatten()
+
+        value_c = valueCertainty(logit(outputs[-1]).flatten(),
+                                 labels,
+                                 p)
+        if p['mode'] >= 1:
+            print('"Value" certainty:', round(value_c, 5))
+
+        #   Get policy-associated certainty
+        labels = []
+        labels.append(tf.stack([tf.reshape(x[1][0], [64])
+                               for x in data[0]], axis=0))
+        labels.append(tf.stack([tf.reshape(x[1][1], [64])
+                               for x in data[0]], axis=0))
+        labels.append(tf.stack([tf.reshape(x[1][2], [6])
+                               for x in data[0]], axis=0))
         
+        policy_c = policyCertainty(outputs[:3], labels, p)
+
+        if p['mode'] >= 1:
+            print('"Policy" certainty:', round(policy_c, 5))
+
+        certainty = (1 - p['policyWeight']) * value_c + \
+                    p['policyWeight'] * policy_c
+    else:
+        labels = logit(tf.stack([tf.reshape(x[1], [1])
+                                 for x in data[0]], axis=0)).flatten()
+        certainty = valueCertainty(logit(outputs), labels, p)
+
+    ############################################################################
+    #   Scale certainty if policy used was not entirely greedy
+    ############################################################################
+    
     if greedy and p['epsGreedy'] < 0.5:
         #   0.5 is an arbitrarily established cutoff to prevent catastrophic
         #   amplification of 'noise' in estimating true certainty
         certainty /= 1 - p['epsGreedy']
 
-    #   Adjust certainty (an exponentially weighted moving average)
+    ############################################################################
+    #   Set model attributes (an exponentially weighted moving average)
+    ############################################################################
+    
     net.certaintyRate = net.certaintyRate * p['persist'] + \
                         (certainty - net.certainty) * (1 - p['persist'])
     net.certainty = net.certainty * p['persist'] + \
                     certainty * (1 - p['persist'])
     
     if p['mode'] >= 1:
-        print("Certainty of network on", len(data), "examples:",
+        print("Certainty of network on", len(data[0]), "examples:",
               round(certainty, 5))
         print("Moving certainty:", round(net.certainty, 5))
         print("Moving rate of certainty change:", round(net.certaintyRate, 5),
               "\n")
-
-        if p['mode'] >= 2:
-            #   Print first 2 moments of expected and actual rewards
-            print("Mean and var of expected reward: ", round(np.mean(expRew), 4), "; ", round(np.var(expRew), 4), sep="")
-            print("Mean and var of actual reward: ", round(np.mean(actRew), 4), "; ", round(np.var(actRew), 4), sep="")
