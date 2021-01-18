@@ -1,9 +1,8 @@
 #	Process a series of newline-seperated games in PGN format into single-line
 #	games that are easy to read and process by the engine.
 #
-#	50,201 games are present in the original data, but some will be filtered
-#	out, depending on the explanation for the game result. The possible
-#	explanations include:
+#	Some games in the original data will be filtered out, depending on the
+#	explanation for the game result. The possible explanations include:
 #
 #	For wins/losses:
 #		1. [Color] checkmated
@@ -22,25 +21,26 @@
 #		5. Game drawn by stalemate
 #		6. Game drawn by the 50 move rule
 #		7. Neither player has mating material
+#		8. Game drawn due to length
 #
-#	1 and 2 will be filtered out.
-file_in=2019_games_raw.pgn
-file_out_t=2019_games_processed_t.txt
-file_out_v=2019_games_processed_v.txt
-num_t=43700
-num_v=212
+#	1, 2, and 8 will be filtered out.
+file_in=2020_games_raw.pgn
+file_out_t=2020_games_processed_t.txt
+file_out_v=2020_games_processed_v.txt
+num_t=38500
+num_v=124
 
 #	Take only the move sequences from the pgn;
 #	remove notation which my engine does not use (i.e. "#" or "+" for checks;
 #	comments about the result of the game);
 #	remove move numbers, which are redundant information
 grep "^1." $file_in \
-	| grep -Ev 'time|disconnection|adjudication' \
+	| grep -Ev 'length|time|disconnection|adjudication' \
 	| sed -r 's/[+#]| \{.*\}|[0-9]*\. //g' \
 	| head -n $num_t > $file_out_t
 	
 grep "^1." $file_in \
-	| grep -Ev 'time|disconnection|adjudication' \
+	| grep -Ev 'length|time|disconnection|adjudication' \
 	| sed -r 's/[+#]| \{.*\}|[0-9]*\. //g' \
 	| tail -n $num_v > $file_out_v
 	
