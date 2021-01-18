@@ -218,8 +218,13 @@ def update_buffer(buffer, raw_pairs, p, augment):
                                               shape=[1,1],
                                               dtype=tf.float32)))
             else:
+                #   Use the cumulative reward propagated backward with gamma,
+                #   not the immediate reward contained in out_vecs[i][3]
+                this_r = tf.constant(expit(rewards[i]),
+                                     shape=[1, 1],
+                                     dtype=tf.float32)
                 buffer[0].append((nn_vecs[i][0],
-                                  out_vecs[i]))
+                                  out_vecs[i][:3] + [this_r]))
 
         Buffer.verify(buffer, p, 1)
 
@@ -247,7 +252,7 @@ def load_games(filename, p, line_nums, net, augment=False, certainty=True):
     for i in line_nums:
         process_line(buffer, lines[i], p, augment, output_type)
 
-    #if certainty:
-    #    q_learn.getCertainty(net, buffer, p, greedy=False)
+    if certainty:
+        q_learn.getCertainty(net, buffer, p, greedy=False)
         
     return buffer
