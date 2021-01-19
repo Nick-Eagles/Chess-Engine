@@ -363,6 +363,13 @@ if __name__ == '__main__':
         elif choice == 11:
             p = input_handling.readConfig()
 
+            messDef2 = "Filename for the training data? "
+            messOnErr = "Not a valid filename."
+            t_filename = 'external/' + input_handling.getUserInput(messDef2,
+                                                                   messOnErr,
+                                                                   'str',
+                                                                   'True')
+
             messDef2 = "Loop through how many games total? "
             messOnErr = "Not a valid amount."
             num_games = input_handling.getUserInput(messDef2,
@@ -390,7 +397,6 @@ if __name__ == '__main__':
                                                   certainty=False)
             print('Loaded', len(session.vBuffer[0]), 'positions.')
 
-            filename = 'external/2019_games_processed_t.txt'
             for i in range(num_chunks):
                 print("Processing chunk ", i+1, " of ", num_chunks, "!", sep='')
                 start_time = time.time()
@@ -400,7 +406,7 @@ if __name__ == '__main__':
                 
 
                 #   Read chunk into memory
-                session.tBuffer = read_pgn.load_games(filename,
+                session.tBuffer = read_pgn.load_games(t_filename,
                                                       p,
                                                       line_nums,
                                                       session.net)
