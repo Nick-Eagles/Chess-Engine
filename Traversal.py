@@ -116,16 +116,28 @@ def processNode(stack, trav, p):
     indices = [i for i in range(len(node[6])) if node[6][i] is not None]
     if len(indices) > 1:
         nn_vecs = tf.stack([tf.reshape(node[6][i], [839]) for i in indices])
+        nn_out = trav.net(nn_vecs, training=False)
+        #   For policy-value networks, take only the value
+        if isinstance(nn_out, list):
+            nn_out = nn_out[-1]
+        
         nn_evals = p['gamma_exec'] * \
                    trav.net.certainty * \
-                   logit(trav.net(nn_vecs, training=False))
+                   logit(nn_out)
+            
         for i in range(nn_evals.shape[0]):
             node[1][indices[i]] += float(nn_evals[i])
 
     elif len(indices) == 1:
+        nn_out = trav.net(node[6][indices[0]], training=False)
+        #   For policy-value networks, take only the value
+        if isinstance(nn_out, list):
+            nn_out = nn_out[-1]
+        
         nn_eval = p['gamma_exec'] * \
                    trav.net.certainty * \
-                   float(logit(trav.net(node[6][indices[0]], training=False)))
+                   float(logit(nn_out))
+        
         node[1][indices[0]] += nn_eval
 
     #   Pass reward down or set trav.baseR (whichever is applicable);
