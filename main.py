@@ -214,7 +214,7 @@ if __name__ == '__main__':
         elif choice == 2:
             p = input_handling.readConfig()
             print("Generating the current network's 'best' game...")
-            network_helper.bestGame(session.net)
+            network_helper.bestGame(session.net, policy.getBestMoveTreeEG)
         elif choice == 3:
             dirname = 'nets/' + input("Name a file to save the network to: ")
             session.Save(dirname)

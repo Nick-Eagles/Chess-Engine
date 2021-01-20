@@ -66,7 +66,7 @@ def display_evaluation(game, bestMoves, r):
               '(' + str(r[i]) + ')')
 
 
-def bestGame(net, policy_function=policy.getBestMoveTreeEG):
+def bestGame(net, policy_function):
     #   Get parameters, but use a fully greedy policy
     p = input_handling.readConfig()
     p['epsGreedy'] = 0
