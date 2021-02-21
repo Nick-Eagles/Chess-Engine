@@ -3,6 +3,7 @@ sys.path.append('./')
 import numpy as np
 from scipy.special import logit
 
+import policy
 import Traversal
 import Game
 import board_helper
@@ -11,6 +12,7 @@ import Session
 import Move
 import file_IO
 import misc
+
 
 #   Test Traversal.traverse(); in particular, for a Traversal 'trav':
 #       1. trav.baseR holds the correct value
@@ -48,6 +50,8 @@ p['breadth'] = 15
 p['gamma_exec'] = 0.9
 p['mateReward'] = 3
 p['minCertainty'] = 0.02
+p['policyFun'] = "sampleMovesEG"
+p['evalFun'] = policy.getEvalsValue
 
 session = Session.Session([], [])
 session.Load('nets/' + net_name, lazy=True)
