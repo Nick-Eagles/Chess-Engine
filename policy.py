@@ -263,3 +263,25 @@ def getEvalsPolicy(moves, net, game, p):
     evals = policy_net.AdjustPolicy(outputs, moves)
     
     return evals
+
+
+def getEvalsHybrid(moves, net, game, p):
+    #   Compute a probability distribution across legal moves
+    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
+    probs = policy_net.AdjustPolicy(outputs, moves)
+
+    #   Get "empirical" rewards resulting from each move
+    rewards = np.array([game.getReward(m, p['mateReward'], simple=True)[0]
+                        for m in moves])
+    if not game.whiteToMove:
+        rewards *= -1
+
+    #   Compute a scalar in [0, 1], which is 0 if the most empirically
+    #   rewarding move is as rewarding as checkmate, and 1 when all rewards
+    #   are 0.
+    scalar = max((p['mateReward'] - np.max(np.abs(rewards))) / \
+                  p['mateReward'], 0) * net.certainty
+    assert scalar >= 0 and scalar <= 1, scalar
+
+    evals = scalar * probs + (1 - scalar) * rewards
+    return evals
