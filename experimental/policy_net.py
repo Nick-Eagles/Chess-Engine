@@ -79,7 +79,7 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth, p, output_type):
 
 
 #   output_type can be 'policy_value' or 'value'
-def CompileNet(net, p, output_type='value'):
+def CompileNet(net, p, optim, output_type='value'):
     #   Basic checks on input parameters
     assert output_type == 'value' or output_type == 'policy_value', output_type
 
@@ -87,9 +87,7 @@ def CompileNet(net, p, output_type='value'):
         w = p['policyWeight']
         loss_weights = [w/3, w/3, w/3, 1 - w]
     
-    #   Compile model using current hyperparameters
-    optim = tf.keras.optimizers.SGD(learning_rate=p['nu'], momentum=p['mom'])
-
+    #   Compile model
     if output_type == 'value':
         loss = tf.keras.losses.BinaryCrossentropy()
 

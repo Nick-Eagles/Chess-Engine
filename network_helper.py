@@ -28,8 +28,11 @@ def train(net, tData, vData, p):
     mom = p['mom']
     learn_rate = p['nu']
 
-    #   Compile model using current hyperparameters
-    policy_net.CompileNet(net, p, output_type)
+    #   Compile model using current hyperparameters; for now, hardcode use
+    #   of SGD with momentum as the optimizer
+    optim = tf.keras.optimizers.SGD(learning_rate=p['nu'], momentum=p['mom'])
+    
+    policy_net.CompileNet(net, p, optim, output_type)
     
     #   Train the model
     csv_logger = CSVLogger('visualization/costs.csv', append=True)
