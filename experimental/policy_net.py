@@ -94,7 +94,7 @@ def CompileNet(net, p, optim, output_type='value'):
         net.compile(
             optimizer = optim,
             loss = loss,
-            metrics = []
+            metrics = [tf.keras.metrics.KLDivergence()]
         )
     else:
         loss = [tf.keras.losses.CategoricalCrossentropy(), # policy: start sq
@@ -106,7 +106,7 @@ def CompileNet(net, p, optim, output_type='value'):
             optimizer = optim,
             loss = loss,
             loss_weights = loss_weights,
-            metrics = []
+            metrics = [tf.keras.metrics.CategoricalAccuracy()]
         )
 
 #   Given a Game, a Move to perform from the position described in the Game, and
