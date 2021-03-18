@@ -1,21 +1,25 @@
 library(ggplot2)
+library(reshape2)
 
-setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/Chess_Engine/visualization")
-#setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/MNIST_chess/visualization")
-costData = read.csv(file="costs.csv")
-costData$isStart = as.logical(costData$isStart)
+net = 'tf_ex'
 
-costData = tail(costData, 400)
+setwd("C:/Users/Nick/Appdata/Local/Programs/Python/Python37/Scripts/Chess_Engine")
+costData = read.csv(file=file.path('nets', net, 'costs.csv'))
+
+costData$is_start = costData$epoch == 0
+costData$epoch = 1:nrow(costData)
+
+costData = melt(costData, c('epoch', 'is_start'))
+costData$is_validation = sapply(costData$variable, function(x) substr(x, 1, 3) == 'val')
 #costData = costData[costData$costType == 'v_cost',]
 #costData = costData[5:nrow(costData),]
 ggplot(costData) +
-  geom_point(mapping = aes(x=epochNum, y=cost, color=costType, shape=isStart)) +
-  labs(title="Cost on data vs. epoch", color="loss type", shape="starting loss?", x="epoch number") +
-  scale_color_manual(labels=c("training", "validation"), values=c("#EE1111","#11CCEE")) +
-  scale_shape_manual(labels=c("False", "True"), values=c(16, 2)) +
-  geom_smooth(data = costData[costData$costType == 'v_cost' & costData$isStart == 0,],
-              mapping = aes(x=epochNum, y=cost),
-              method='lm')
+  geom_point(mapping = aes(x=epoch, y=value, color=is_validation, shape=variable)) +
+  labs(title="Loss on data vs. epoch", 
+       color="Is validation?", 
+       shape="Loss type", 
+       x="epoch number") +
+  scale_shape_manual(values=3 * c(1:5, 1:5))
 
 #############################################################
 #   Some stats you can perform, optionally, on the data
