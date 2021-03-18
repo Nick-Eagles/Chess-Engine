@@ -6,10 +6,13 @@ visualization/rewards.csv
 visualization/edge_positions/*
 visualization/alpha_tests.txt
 visualization/test_losses.csv
+visualization/external_*_costs.csv
+visualization/misc_tests
 data/*Checkmates.pkl.gz
 data/*/*Buffer*.pkl.gz
 external/*.txt
 external/*.pgn
+external/2019_games_tensor_*.pkl.gz
 __pycache__
 config.txt
 nets/*
