@@ -23,7 +23,7 @@ def parseInput(game, moveNames):
                                        auxVars=moveNames)
 
 def interact(net):
-    p = input_handling.readConfig(1)
+    p = input_handling.readConfig()
     p['epsGreedy'] = 0
     p['epsSearch'] = 0
 
@@ -51,7 +51,7 @@ def interact(net):
 
             if p['mode'] >= 1:
                 expRew = logit(net(game.toNN_vecs(every=False)[0],
-                                   training=False))
+                                   training=False)[-1])
                 print("Expected reward from the current position is", 
                       round(float(expRew), 4))
 
