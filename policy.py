@@ -285,3 +285,19 @@ def getEvalsHybrid(moves, net, game, p):
 
     evals = scalar * probs + (1 - scalar) * rewards
     return evals
+
+def getEvalsEmpirical(moves, net, game, p):
+    #   Compute a probability distribution across legal moves
+    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
+    probs = policy_net.AdjustPolicy(outputs, moves)
+
+    #   Get "empirical" rewards resulting from each move
+    rewards = np.array([game.getReward(m, p['mateReward'], simple=True)[0]
+                        for m in moves])
+    if not game.whiteToMove:
+        rewards *= -1
+
+    VAR_RATIO = 2.727
+
+    evals = net.certainty * probs + VAR_RATIO * (1 - net.certainty) * rewards
+    return evals
