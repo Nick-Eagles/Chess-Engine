@@ -4,6 +4,8 @@ sys.path.append('./experimental')
 import numpy as np
 from scipy.special import logit, expit
 import tensorflow as tf
+import random
+import _pickle as pickle
 
 import board_helper
 import input_handling
@@ -256,3 +258,33 @@ def load_games(filename, p, line_nums, net, augment=False, certainty=True):
         q_learn.getCertainty(net, buffer, p, greedy=False)
         
     return buffer
+
+
+class RawDataGen(tf.keras.utils.Sequence):
+    def __init__(self, batch_size, base_dir, n, shuffle = True):
+        self.batch_size = batch_size
+        self.base_dir = base_dir
+        self.shuffle = shuffle
+        self.n = n
+
+        self.indices = list(range(n))
+        if shuffle:
+            random.shuffle(self.indices)
+
+    def on_epoch_end(self):
+        if self.shuffle:
+            random.shuffle(self.indices)
+
+    def __getitem__(self, index):
+        buffer = [[]]
+        first_index = index * self.batch_size
+        for i in range(self.batch_size):
+            filename = self.base_dir + '/' + \
+                       str(self.indices[first_index + i]) + '.pkl'
+            with open(filename, 'rb') as f:
+                buffer[0].append(pickle.load(f))
+
+        return Buffer.collapse(buffer)
+
+    def __len__(self):
+        return self.n // self.batch_size
