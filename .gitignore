@@ -13,6 +13,7 @@ data/*/*Buffer*.pkl.gz
 external/*.txt
 external/*.pgn
 external/2019_games_tensor_*.pkl.gz
+external/2019_games_t
 __pycache__
 config.txt
 nets/*
