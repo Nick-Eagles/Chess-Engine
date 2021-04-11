@@ -1,9 +1,10 @@
 TODO:
 
+-allow choice of common optimizers via the config
+
 TODO (maybe):
 
 -explore covariance (or other metrics) between observed and expected rewards to see if the network is learning this (even when network.certainty ~= 0)
--maybe implement "autosaving" on some interval to avoid multiprocessing getting stuck
 -consider programming in a resignation threshold to speed up training
 -add estimated time remaining when training/generating data
 -More visualizations to better understand network progress:
@@ -17,7 +18,14 @@ TODO (maybe):
 
 Misc thoughts/worries:
 
--there are two functions for showing the current game for a Network, and the current one is a network_helper function when it should be a Network method probably
+-while the architecture related to the policy output is efficient in terms of using a low number of learnable parameters, information about the true probability distribution over legal moves is lossily compressed in a way which may be problematic, especially in particular positions. In reality, certain start sqaures are associated only with particular end squares and particular end pieces. However, these associations are totally lost (they are computed independently) with the current architecture
+
+Verification:
+
+-verify that choice of hyperparameters (excluding network arhcitecture) is reasonable to minimize loss on tf-starter datasets
+-sample tf-starter datasets randomly and observe by eye that examples look reasonable
+-(overall approach and program integrity) verify that a network can learn from an external chess dataset
+-buffer.combine has no unit test
 
 Eventually:
 
