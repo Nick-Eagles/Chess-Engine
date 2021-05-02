@@ -28,9 +28,13 @@ class Session:
         self.net.save(dirname + '/model')
 
         net_attributes = {
-            'certainty': self.net.certainty,
+            'value_certainty': self.net.value_certainty,
             'certaintyRate': self.net.certaintyRate
         }
+
+        if hasattr(self.net, 'policy_certainty'):
+            net_attributes['policy_certainty'] = self.net.policy_certainty
+            
         with open(dirname + '/net_attributes.pkl', 'wb') as f:
             pickle.dump(net_attributes, f)
 
@@ -106,8 +110,10 @@ class Session:
         with open(dirname + '/net_attributes.pkl', 'rb') as f:
             net_attributes = pickle.load(f)
 
-        self.net.certainty = net_attributes['certainty']
+        self.net.value_certainty = net_attributes['value_certainty']
         self.net.certaintyRate = net_attributes['certaintyRate']
+        if 'policy_certainty' in net_attributes:
+            self.net.policy_certainty = net_attributes['policy_certainty']
 
         if lazy:
             self.tBuffer = [[],[],[],[]]

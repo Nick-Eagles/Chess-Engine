@@ -219,17 +219,19 @@ def getCertainty(net, data, p, greedy=True):
     ############################################################################
     #   Get certainty
     ############################################################################
+
+    has_policy = isinstance(outputs, list)
     
-    if isinstance(outputs, list):
+    if has_policy:
         #   Get value-associated certainty
         labels = logit(tf.stack([tf.reshape(x[1][-1], [1])
                                  for x in data[0]], axis=0)).flatten()
 
-        value_c = valueCertainty(logit(outputs[-1]).flatten(),
-                                 labels,
-                                 p)
+        value_certainty = valueCertainty(logit(outputs[-1]).flatten(),
+                                         labels,
+                                         p)
         if p['mode'] >= 1:
-            print('"Value" certainty:', round(value_c, 5))
+            print('"Value" certainty:', round(value_certainty, 5))
 
         #   Get policy-associated certainty
         labels = []
@@ -240,17 +242,22 @@ def getCertainty(net, data, p, greedy=True):
         labels.append(tf.stack([tf.reshape(x[1][2], [6])
                                for x in data[0]], axis=0))
         
-        policy_c = policyCertainty(outputs[:3], labels, p)
+        policy_certainty = policyCertainty(outputs[:3], labels, p)
 
         if p['mode'] >= 1:
-            print('"Policy" certainty:', round(policy_c, 5))
+            print('"Policy" certainty:', round(policy_certainty, 5))
 
-        certainty = (1 - p['policyWeight']) * value_c + \
-                    p['policyWeight'] * policy_c
+        #   Compute a combined metric, based on weighted importance
+        certainty = (1 - p['policyWeight']) * value_certainty + \
+                    p['policyWeight'] * policy_certainty
+        last_certainty = (1 - p['policyWeight']) * net.value_certainty + \
+                         p['policyWeight'] * net.policy_certainty
     else:
         labels = logit(tf.stack([tf.reshape(x[1], [1])
                                  for x in data[0]], axis=0)).flatten()
-        certainty = valueCertainty(logit(outputs), labels, p)
+        value_certainty = valueCertainty(logit(outputs), labels, p)
+        certainty = value_certainty
+        last_certainty = net.value_certainty
 
     ############################################################################
     #   Scale certainty if policy used was not entirely greedy
@@ -260,19 +267,27 @@ def getCertainty(net, data, p, greedy=True):
         #   0.5 is an arbitrarily established cutoff to prevent catastrophic
         #   amplification of 'noise' in estimating true certainty
         certainty /= 1 - p['epsGreedy']
+        value_certainty /= 1 - p['epsGreedy']
+        if has_policy:
+            policy_certainty /= 1 - p['epsGreedy']
 
     ############################################################################
     #   Set model attributes (an exponentially weighted moving average)
     ############################################################################
     
     net.certaintyRate = net.certaintyRate * p['persist'] + \
-                        (certainty - net.certainty) * (1 - p['persist'])
-    net.certainty = net.certainty * p['persist'] + \
-                    certainty * (1 - p['persist'])
+                        (certainty - last_certainty) * (1 - p['persist'])
+    net.value_certainty = net.value_certainty * p['persist'] + \
+                          value_certainty * (1 - p['persist'])
+    if has_policy:
+        net.policy_certainty = net.policy_certainty * p['persist'] + \
+                               policy_certainty * (1 - p['persist'])
     
     if p['mode'] >= 1:
         print("Certainty of network on", len(data[0]), "examples:",
               round(certainty, 5))
-        print("Moving certainty:", round(net.certainty, 5))
+        print("Moving value certainty:", round(net.value_certainty, 5))
+        if has_policy:
+            print("Moving policy certainty:", round(net.policy_certainty, 5))
         print("Moving rate of certainty change:", round(net.certaintyRate, 5),
               "\n")

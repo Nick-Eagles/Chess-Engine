@@ -63,6 +63,8 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth, p, output_type):
                                    policy_end_piece,
                                    value],
                           name="network")
+
+        net.policy_certainty = 0
     else:
         #   Output layer
         output = layers.Dense(1,
@@ -72,7 +74,7 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth, p, output_type):
 
         net = keras.Model(inputs=inputs, outputs=output, name="network")
         
-    net.certainty = 0
+    net.value_certainty = 0
     net.certaintyRate = 0
     
     return net

@@ -110,13 +110,13 @@ game.canB_Q_Castle = False
 game.updateValues()
 
 #   Do not incorporate NN evaluations in traversals
-temp = session.net.certainty
-session.net.certainty = 0
+temp = session.net.value_certainty
+session.net.value_certainty = 0
 
 trav = Traversal.Traversal(game, session.net, p)
 trav.traverse()
 
-session.net.certainty = temp
+session.net.value_certainty = temp
 
 print("Testing 'baseR' attribute of a traversal object (2)...")
 misc.expect_equal(0, trav.baseR, is_float=True)
@@ -125,8 +125,8 @@ misc.expect_equal(0, trav.baseR, is_float=True)
 #   Test trav.baseR: position 3 (test inclusion of NN evals)
 ################################################################################
 
-temp = session.net.certainty
-session.net.certainty = 0.14
+temp = session.net.value_certainty
+session.net.value_certainty = 0.14
 
 game = Game.Game()
 
@@ -146,14 +146,14 @@ for i, m in enumerate(moves):
     g.doMove(m)
     nn_evals[i] = session.net(g.toNN_vecs(every=False)[0], training=False)
 
-nn_evals = session.net.certainty * p['gamma_exec'] * logit(nn_evals)
+nn_evals = session.net.value_certainty * p['gamma_exec'] * logit(nn_evals)
 best_eval = float(np.max(nn_evals))
 assert best_eval != 0, best_eval
 
 #   Actually perform the traversal
 trav = Traversal.Traversal(game, session.net, p)
 trav.traverse()
-session.net.certainty = temp
+session.net.value_certainty = temp
 
 print("Testing 'baseR' attribute of a traversal object (3)...")
 misc.expect_equal(best_eval, trav.baseR, is_float=True)
@@ -182,8 +182,8 @@ game.canB_K_Castle = False
 game.canB_Q_Castle = False
 game.updateValues()
 
-temp = session.net.certainty
-session.net.certainty = 0.14
+temp = session.net.value_certainty
+session.net.value_certainty = 0.14
 
 p['depth'] = 3
 p['breadth'] = 21
@@ -215,12 +215,12 @@ assert m.getMoveName(g.board) == 'Bxg5'
 r, vec = g.getReward(m, p['mateReward'])
 
 expected_r = p['gamma_exec']**2 * r + \
-             p['gamma_exec']**3 * session.net.certainty * float(logit(session.net(vec, training=False)))
+             p['gamma_exec']**3 * session.net.value_certainty * float(logit(session.net(vec, training=False)))
 
 #   Confirm the traversal yields the same baseR
 trav = Traversal.Traversal(game, session.net, p)
 trav.traverse()
-session.net.certainty = temp
+session.net.value_certainty = temp
 
 print("Testing 'baseR' attribute of a traversal object (4)...")
 misc.expect_equal(expected_r, trav.baseR, is_float=True)

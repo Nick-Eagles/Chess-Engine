@@ -224,8 +224,8 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
 #   better moves for the current player!
 def getEvalsValue(moves, net, game, p):
     #   Compute NN evaluations on each move if certainty is positive
-    if net.certainty > p['minCertainty']:
-        scalar = p['gamma_exec'] * net.certainty
+    if net.value_certainty > p['minCertainty']:
+        scalar = p['gamma_exec'] * net.value_certainty
         r_real = np.zeros(len(moves))
         net_inputs = []
         for i, m in enumerate(moves):
@@ -280,7 +280,7 @@ def getEvalsHybrid(moves, net, game, p):
     #   rewarding move is as rewarding as checkmate, and 1 when all rewards
     #   are 0.
     scalar = max((p['mateReward'] - np.max(np.abs(rewards))) / \
-                  p['mateReward'], 0) * net.certainty
+                  p['mateReward'], 0) * net.policy_certainty
     assert scalar >= 0 and scalar <= 1, scalar
 
     evals = scalar * probs + (1 - scalar) * rewards
@@ -297,7 +297,8 @@ def getEvalsEmpirical(moves, net, game, p):
     if not game.whiteToMove:
         rewards *= -1
 
-    VAR_RATIO = 2.727
+    VAR_RATIO = 2.414 # 2.727 'tf_ex_compare'; 2.418 'tf_ex_gen_deep'
 
-    evals = net.certainty * probs + VAR_RATIO * (1 - net.certainty) * rewards
+    evals = net.policy_certainty * probs + \
+            VAR_RATIO * (1 - net.policy_certainty) * rewards
     return evals
