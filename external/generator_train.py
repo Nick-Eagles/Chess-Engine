@@ -22,11 +22,12 @@ v_x_path = 'external/2019_games_tensor_v_x.pkl.gz'
 v_y_path = 'external/2019_games_tensor_v_y.pkl.gz'
 loss_path = 'visualization/external_generator_costs.csv'
 hyper_path = 'external/gen_hyperparams.csv'
-net_dir = 'nets/tf_ex_gen_deep'
+net_dir = 'nets/tf_ex_gen'
+make_new_net = False
 num_groups = 2
-blocks_per_group = 2
+blocks_per_group = 1
 block_width = 2
-n = 776000
+n = 944800
 
 def load_data(path):
     with gzip.open(path, 'rb') as f:
@@ -35,11 +36,17 @@ def load_data(path):
     return data
 
 p = input_handling.readConfig()
-net = policy_net.InitializeNet(num_groups,
-                               blocks_per_group,
-                               block_width,
-                               p,
-                               'policy_value')
+
+if make_new_net:
+    net = policy_net.InitializeNet(num_groups,
+                                   blocks_per_group,
+                                   block_width,
+                                   p,
+                                   'policy_value')
+else:
+    session = Session.Session([[]], [[]])
+    session.Load(net_dir, lazy=True)
+    net = session.net
 
 print('Loading validation data...')
 v_data = (load_data(v_x_path), load_data(v_y_path))
@@ -49,7 +56,7 @@ optim = tf.keras.optimizers.Adam(learning_rate=p['nu'])
 policy_net.CompileNet(net, p, optim, 'policy_value')
 
 print('Fitting model...')
-csv_logger = CSVLogger(loss_path, append=False)
+csv_logger = CSVLogger(loss_path, append = not make_new_net)
 
 train_generator = read_pgn.RawDataGen(p['batchSize'], t_dir, n)
 
