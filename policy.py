@@ -164,9 +164,6 @@ def getBestMoveRawPolicy(net, game, p, num_lines=1):
             return ([legalMoves[i] for i in indices],
                     probs[indices])
         
-def per_thread_job(trav_obj):
-    trav_obj.traverse()
-    return trav_obj
 
 def getBestMoveTreeEG(net, game, p, num_lines=1):
     if np.random.uniform() < p['epsGreedy']:
