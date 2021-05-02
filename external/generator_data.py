@@ -13,7 +13,8 @@ in_file = 'external/2019_games_processed_t.txt'
 num_groups = 1
 blocks_per_group = 1
 block_width = 2
-total_lines = 4000
+total_lines = 2000
+start_line = 10000
 net_type = 'policy_value'
 
 p = input_handling.readConfig()
@@ -28,15 +29,20 @@ net = policy_net.InitializeNet(num_groups,
 with open(in_file, 'r') as pgn_file:
     all_lines = pgn_file.readlines()
 
-data_index = 0
-
-os.mkdir(out_dir)
+if start_line == 0:
+    first_index = 0
+    os.mkdir(out_dir)
+else:
+    with open(out_dir + '/num_examples.txt', 'r') as f:
+        first_index = int(f.readlines()[0])
+        
+data_index = first_index
 
 #   Write each training example individually in order
 print('Converting training examples...')
-for i in range(total_lines):
-    if i % 100 == 99:
-        print('On line ' + str(i) + '...')
+for i in range(start_line, start_line + total_lines):
+    if i % 100 == 0:
+        print('On line ' + str(i+1) + '...')
         
     buffer = [[]]
 
@@ -50,24 +56,7 @@ for i in range(total_lines):
 
         data_index += 1
 
-print('Converted ' + str(data_index + 1) + ' examples.')
+print('Converted ' + str(data_index + 1 - first_index) + ' examples.')
 
-#   "Shuffle" examples (file names) on disk
-#print('Shuffling data on disk...')
-#indices = list(range(data_index))
-#random.shuffle(indices)
-
-#new_file = out_dir + '/temp.pkl'
-#orig_file = out_dir + '/' + str(indices[0]) + '.pkl'
-#os.system('mv ' + orig_file + ' ' + new_file)
-
-#for i in range(1, len(indices)):
-#    new_file = out_dir + '/' + str(indices[i - 1]) + '.pkl'
-#    orig_file = out_dir + '/' + str(indices[i]) + '.pkl'
-#    os.system('mv ' + orig_file + ' ' + new_file)
-
-#new_file = out_dir + '/' + str(indices[-1]) + '.pkl'
-#orig_file = out_dir + '/temp.pkl'
-#os.system('mv ' + orig_file + ' ' + new_file)
-
-#print('Done.')
+with open(out_dir + '/num_examples.txt', 'w') as f:
+    f.write(str(data_index))
