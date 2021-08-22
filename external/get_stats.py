@@ -13,8 +13,8 @@ import Session
 import board_helper
 
 GAME_PATH = 'external/2019_games_processed_t.txt'
-NUM_GAMES = 1400
-NET_PATH = 'nets/tf_ex_compare'
+NUM_GAMES = 1000 # 1400
+NET_PATH = 'nets/tf_ex_gen'
 
 def process_line(game_str, obs_var, prob_var, p, net):
     move_names = game_str.split(' ')
@@ -94,5 +94,8 @@ assert len(obs_var) == len(prob_var)
 print("Considered", len(obs_var), "positions.")
 
 print("Computing means...")
-print("Across move rewards:", np.mean(np.array(obs_var)))
-print("Across probabilities:", np.mean(np.array(prob_var)))
+r_val = np.mean(np.array(obs_var))
+p_val = np.mean(np.array(prob_var))
+print("Across move rewards:", r_val)
+print("Across probabilities:", p_val)
+print("Value for stat used in 'policy':", np.sqrt(p_val / r_val))
