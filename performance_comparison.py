@@ -7,7 +7,20 @@ import Game
 import policy
 
 import time
+import sys
+import getopt
 
+#   Read in network name from command-line
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'n:', ['net='])
+except getopt.GetoptError:
+    print('performance_comparison.py -n <network name>')
+    sys.exit(2)
+
+for opt, arg in opts:
+    assert opt in ('-n', '--net='), opt
+    net_name = arg
+    
 #   Return a 2-tuple of integers: first, the relative score from
 #   playing n games with a particular model, using two different parameter sets
 #   p1 and p2; second, the ratio of total elapsed times for each parameter set
@@ -57,7 +70,7 @@ def compare_p(model, p1, p2, n, move_limit=100, verbose=False):
 
 print('Loading model...')
 session = Session.Session([], [])
-session.Load('nets/tf_ex_compare')
+session.Load('nets/' + net_name, lazy=True)
 
 print('Loading configuration...')      
 p1 = input_handling.readConfig()
