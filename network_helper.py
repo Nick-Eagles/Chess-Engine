@@ -51,7 +51,7 @@ def net_activity(net, tData):
     #   TODO
     return
 
-def display_evaluation(game, bestMoves, r):
+def display_evaluation(game, bestMoves, r, bestLine):
     if game.whiteToMove:
         print(str(game.moveNum) + '.')
         
@@ -62,6 +62,8 @@ def display_evaluation(game, bestMoves, r):
         print('    Black to move; playing ' + \
               bestMoves[0].getMoveName(game.board) + \
               '.')
+
+    print('Considered ' + ' '.join(bestLine))
 
     for i in range(len(bestMoves)):
         print('        ' + str(i+1) + '.',
@@ -90,8 +92,8 @@ def bestGame(net, policy_function):
             bestMove = policy_function(net, game, p)
             game.doMove(bestMove)
         else:
-            bestMoves, r = policy_function(net, game, p, num_lines)
-            display_evaluation(game, bestMoves, r)
+            bestMoves, r, bestLine = policy_function(net, game, p, num_lines)
+            display_evaluation(game, bestMoves, r, bestLine)
             game.doMove(bestMoves[0])
 
     if p['mode'] < 2:

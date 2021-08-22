@@ -16,6 +16,8 @@ class Traversal:
         self.net = net         
         self.nodeHops = 0
         self.pruneCuts = 0
+
+        self.bestLine = []
         self.baseR = 0
         
         self.policy = getattr(policy, p['policyFun'])
@@ -51,8 +53,8 @@ class Traversal:
 
         #   One element (node) on the stack is composed of the following:
         #   [moves, rewards, Game, reward up to this, alpha, beta, list of
-        #    NN inputs]
-        stack = [[moves, [], self.game, 0, -1 * MAX_R, MAX_R, []]]
+        #    NN inputs, move names]
+        stack = [[moves, [], self.game, 0, -1 * MAX_R, MAX_R, [], []]]
         while len(stack) > 0:
             assert len(stack) <= p['depth'] + 1, "Tried to explore too far"
             assert self.nodeHops < self.limit, \
@@ -66,11 +68,14 @@ class Traversal:
                 else:
                     #   Pop the first move and do it
                     g = stack[-1][2].copy()
-                    r = g.getReward(stack[-1][0].pop(0),
+                    m = stack[-1][0].pop(0)
+                    stack[-1][7].append([m.getMoveName(g.board)])
+                    r = g.getReward(m,
                                     p['mateReward'],
                                     simple=True,
                                     copy=False)[0]
                     stack[-1][1].append(r)
+                    
 
                     #   If we aren't at the leaves, compute the next set of
                     #   moves/probs and add to the stack
@@ -83,6 +88,7 @@ class Traversal:
                                           stack[-1][3] + p['gamma_exec'] * r,
                                           stack[-1][4],
                                           stack[-1][5],
+                                          [],
                                           []])
                             self.nodeHops += 1
                         elif g.gameResult == 0:
@@ -143,7 +149,9 @@ def processNode(stack, trav, p):
     #   Pass reward down or set trav.baseR (whichever is applicable);
     #   update alpha or beta if applicable
     if node[2].whiteToMove:
-        r = p['gamma_exec'] * max(node[1])
+        index = np.argmax(node[1])
+        r = p['gamma_exec'] * node[1][index]
+        this_line = node[7][index]
         
         #   Update beta if necessary
         if len(stack) > 0:
@@ -151,16 +159,22 @@ def processNode(stack, trav, p):
 
         
     else:
-        r = p['gamma_exec'] * min(node[1])
+        index = np.argmin(node[1])
+        r = p['gamma_exec'] * node[1][index]
+        this_line = node[7][index]
 
         #   Update alpha if necessary
         if len(stack) > 0:
             stack[-1][4] = max(stack[-1][4], stack[-1][3] + r)
 
-    #   Pass reward down if applicable
+    #   Pass reward and best move name down if applicable
+    assert len(this_line) >= 1, len(this_line)
     if len(stack) > 0:
         stack[-1][1][-1] += r
+        stack[-1][7][-1] += this_line
     else:
         trav.baseR = r / p['gamma_exec']
+        trav.bestLine = this_line
 
     trav.nodeHops += 1
+    

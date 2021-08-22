@@ -179,7 +179,8 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
         moves, fullMovesLen = sampleMovesEG(net, game, p)
         
         rTemp = np.zeros(len(moves))
-        baseRs = np.zeros(len(moves))        
+        baseRs = np.zeros(len(moves))
+        bestLines = []
 
         for i, m in enumerate(moves):
             g = game.copy()
@@ -192,6 +193,13 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
             t = Traversal.Traversal(g, net, p)
             t.traverse()
             baseRs[i] = t.baseR
+
+            #   This is sloppy! We really want to check if the user is showing
+            #   the network's "best game" here
+            if num_lines > 1:
+                #   Add a list of move names for the top line explored that
+                #   started with this particular move "m"
+                bestLines.append([m.getMoveName(game.board)] + t.bestLine)
 
         rTemp += p['gamma_exec'] * baseRs
 
@@ -209,7 +217,7 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
                 indices = misc.topN(-1 * rTemp, num_lines)
                 
             return ([moves[i] for i in indices],
-                    rTemp[indices])
+                    rTemp[indices], bestLines[indices[0]])
 
 
 #   A helper function to compute depth-1 evaluations of a list of moves. Returns
