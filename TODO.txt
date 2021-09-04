@@ -1,6 +1,13 @@
 TODO:
 
 -allow choice of common optimizers via the config
+-make network initialization more flexible: select initialization function via config. Right now, there is no way to build a standard MLP, for example.
+-add "variance_ratio" attribute to policy_value networks, to not hardcode the value used in getEvalsEmpirical
+-fix inconsistent return type and arguments among "getBestMove*" functions in policy.py; note that while network_helper (currently line 95) in theory keeps the policy function configurable, it is hardcoded in main.py (currently line 217)
+-reformat code (spacing) to use more conventional formatting rules
+-make the management/computation of "best_line" in Traverse optional (it likely is a performance hit to compute move names, and we only need the "best_line" when interactively showing a game)
+-fix the "sloppy" code noted in the comment in policy.py
+-create a "non_tf" branch where master is currently, then merge "tf" into master. Afterwards create GitHub issues
 
 TODO (maybe):
 
@@ -19,6 +26,7 @@ TODO (maybe):
 Misc thoughts/worries:
 
 -while the architecture related to the policy output is efficient in terms of using a low number of learnable parameters, information about the true probability distribution over legal moves is lossily compressed in a way which may be problematic, especially in particular positions. In reality, certain start sqaures are associated only with particular end squares and particular end pieces. However, these associations are totally lost (they are computed independently) with the current architecture
+-I've seen the engine select bad moves that appeared good simply because of limited search depth (e.g. the final move/ edge in the search tree is a rewarding capture which would then be recaptured with equal or greater reward were the tree to cover that far). Setting "gamme_exec" high exacerbates this problem, yet setting it low leads to reckless material grabbing. Note that this problem goes completely away in the limit that the network's value output becomes perfectly accurate, regardless of "gamma_exec". However, the problem is highly noticeable when "gamma_exec"=1 even when value certainty ~= 0.5.
 
 Verification:
 
