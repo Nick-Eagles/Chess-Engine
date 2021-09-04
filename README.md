@@ -22,14 +22,19 @@ The config `config.txt` is broken into sections beginning with a comment descrip
 #### Tree traversal ####
 
 `gamma_exec`: float in [0, 1]. The decay in reward anticipated for all subsequent actions, relative to the first action from a state. This parameter exists to allow the network to learn a different reward-decay-rate than it acts with (see 'mathematical choices' section).  
-`epsilon`: float in [0,1]. This is used in intializing games (from which root nodes are chosen). The initialized games are constructed by the agent playing itself with an epsilon-greedy strategy, which this parameter specifies.  
 `breadth`: positive integer. The number of branches for any non-leaf node in the tree search. In this case, the number of moves searched from any (non-leaf) position in the tree search.  
 `depth`: integer >= 1. The number of subsequent half-moves considered for a tree search performed from a given state (board position). A depth of at least 2 is recommended due to overhead in parallelizing the search, which occurs at all depths.  
 `curiosity`: non-negative float. When policy "sampleMovesSoft" is used, the probability of each legal move being selected is the softmax of the reward for that move plus the expected reward from the resulting position. `curiosity` is the inverse "temperature" for that softmax function. Thus a value of 0 makes all moves equally probable; large values approach a purely greedy policy.  
 `epsSearch`: float in [0,1]. The probability that all moves from a given node are selected randomly, when performing the tree search (note that the decision to either randomly or informatively choose is made per potential move). This does not impact which move sequence is ultimately chosen from the completed tree search; the parameter `epsGreedy` exists for this purpose.  
-`policy`: a string determining the function the agent uses to select a particular move from the ones legally available. Currently two choices are available:  
+`policyFun`: a string determining the function in `policy.py` that the agent uses to select a particular subset of moves from the ones legally available, when performing a tree search to ultimately determine the best move. Currently two choices are available:  
 - "sampleMovesSoft": take the softmax of the expected cumulative rewards for each move, with exponential coefficient `curiosity`  
-- "sampleMovesEG": with moves ranked by their expected cumulative rewards, select one move by an epsilon-greedy policy. Epsilon is `epsGreedy` in the "General variabes" section.
+- "sampleMovesEG": with moves ranked by their expected cumulative rewards, select one move by an epsilon-greedy policy. Epsilon is `epsGreedy` in the "General variabes" section.  
+
+`evalFun`: a string determining the function in `policy.py` that the agent uses to numerically score a set of potential moves (immediate branches) from a node in a tree search (`policyFun` determines which moves to choose given a set of move evaluations). There are currently four possible choices:  
+- "getEvalsValue": [TODO]
+- "getEvalsPolicy": [TODO]
+- "getEvalsHybrid": [TODO]
+- "getEvalsEmpirical": [TODO]
 
 #### Network/ training-related ####
 
@@ -42,8 +47,7 @@ The config `config.txt` is broken into sections beginning with a comment descrip
 `fracValidation`: float in [0,1). The decimal fraction of generated data to use as held-out test examples. Note that old test examples are recycled for use as training data (but of course not vice versa).  
 `fracFromFile`: float in [0,1). The decimal fraction of all data which comes from a *.csv* file of checkmate positions (each episode). A fairly small value is recommended, especially because no check is performed to ensure a given checkmate position will not be placed in the training/validation buffers more than once.  
 `popPersist`: float in [0,1). The scalar to the previous population statistics (mean and variance) when computing the next values from the previous and most recent values. Statistics are updated using an exponential moving average (see 'mathematical choices' section).  
-`costLimit`: integer in [`batchSize`, \infty). The number of examples used when estimating average loss across the entire buffer (for computational speed).  
-`batchNormScale`: float scalar to the partial derivates of loss with respect to gamma and beta (after multiplying by learning rate as usual). An experimental parameter originally motiviated by the idea that optimizing normally for beta and gamma could cause 'overfitting'/optimization difficulties.  
+`policyWeight`: float in [0, 1]. For policy-value networks, when producing a total loss function as a sum of constituent policy and value loss terms, this is the weight given to the policy-associated loss during optimization.  
 
 #### Q-learning related ####
 
