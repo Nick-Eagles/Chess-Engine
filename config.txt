@@ -3,20 +3,20 @@ mode 2
 baseBreadth 15
 epsGreedy 0.15
 mateReward 3
-gamma 0.95
+gamma 0.9
 #	Tree traversal
-gamma_exec 0.9
-breadth 15
-depth 3
+gamma_exec 0.95
+breadth 12
+depth 4
 curiosity 5
 epsSearch 0.01
 minCertainty 0.1
 policyFun "sampleMovesEG"
-evalFun "getEvalsPolicy"
+evalFun "getEvalsEmpirical"
 #	Network/ training-related
 memDecay 0.01
-weightDec 0.0001
-nu 0.03
+weightDec 0.00001
+nu 0.001
 mom 0.9
 batchSize 200
 epochs 1
