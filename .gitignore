@@ -10,10 +10,12 @@ visualization/external_*_costs.csv
 visualization/misc_tests
 data/*Checkmates.pkl.gz
 data/*/*Buffer*.pkl.gz
+data/*/*.csv
 external/*.txt
 external/*.pgn
 external/2019_games_tensor_*.pkl.gz
 external/2019_games_t
+external/gen_hyperparams.csv
 __pycache__
 config.txt
 nets/*
