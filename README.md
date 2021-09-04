@@ -13,6 +13,7 @@ The config `config.txt` is broken into sections beginning with a comment descrip
 - 0: (Quiet) Print only the most significant output. Least verbose and highest performance  
 - 1: (Normal) Print significant output and some additional info  
 - 2: (Verbose/ Debug) Print all information about the program's execution, including debug info, and perform any tasks helpful for debugging.  
+
 `baseBreadth`: positive integer dependent on the training mode. For deep Q-learning, this is the number of data generation tasks, run asynchronously in parallel on the available CPUs. Each task involves the agent playing itself in chess for a total of "maxSteps" moves. For tree-search data generation, this is the number of root nodes from which the search begins (also performed asynchronously in parallel).  
 `epsGreedy`: float in [0,1]. For deep Q-learning mode with "policy" set to "sampleMovesEG", this is the choice of epsilon as the agent performs moves under an epsilon-greedy policy. This also applies for tree-search mode within the tree search itself, but not in deciding the root nodes.  
 `mateReward`: positive float (or integer). See "definition of 'reward'" for advice on choosing a particular value. This is the reward received by an agent for performing a checkmate. A value of 3-5 is probably a reasonable choice given the rewards of various captures- for reference, capturing a pawn as the first capture of the game has a reward of just above 0.02.  
