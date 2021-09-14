@@ -1,14 +1,3 @@
-TODO:
-
--allow choice of common optimizers via the config
--make network initialization more flexible: select initialization function via config. Right now, there is no way to build a standard MLP, for example.
--add "variance_ratio" attribute to policy_value networks, to not hardcode the value used in getEvalsEmpirical
--fix inconsistent return type and arguments among "getBestMove*" functions in policy.py; note that while network_helper (currently line 95) in theory keeps the policy function configurable, it is hardcoded in main.py (currently line 217)
--reformat code (spacing) to use more conventional formatting rules
--make the management/computation of "best_line" in Traverse optional (it likely is a performance hit to compute move names, and we only need the "best_line" when interactively showing a game)
--fix the "sloppy" code noted in the comment in policy.py
--create a "non_tf" branch where master is currently, then merge "tf" into master. Afterwards create GitHub issues
-
 TODO (maybe):
 
 -explore covariance (or other metrics) between observed and expected rewards to see if the network is learning this (even when network.certainty ~= 0)
