@@ -65,8 +65,8 @@ def readConfig(f_name='config.txt'):
     with open(f_name, 'r') as f:
         line_list = f.readlines()
 
-    #   Filter out lines to be treated as comments
-    line_list = [x for x in line_list if "#" not in x]
+    #   Filter out empty lines and lines to be treated as comments
+    line_list = [x for x in line_list if ("#" not in x) and (x != "\n")]
 
     #   Add each key-value pair to a dictionary
     p = {}
