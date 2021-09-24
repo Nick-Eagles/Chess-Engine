@@ -176,8 +176,10 @@ class Move:
                     current_piece = board[self.endSq[0] + i*motion[0]][self.endSq[1] + i*motion[1]]
                     if current_piece == piece:
                         #   We found a piece of the same type
-                        key_squares.append((self.endSq[0] + i*motion[0],
-                                            self.endSq[1] + i*motion[1]))
+                        key_squares.append(
+                            (self.endSq[0] + i*motion[0],
+                             self.endSq[1] + i*motion[1])
+                        )
                         decided = True
                     elif current_piece != 0:
                         #   The first piece along the "line" is different than

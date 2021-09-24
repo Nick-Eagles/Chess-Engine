@@ -25,52 +25,57 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth, p, output_type):
         for j in range(blocksPerGroup):
             blockInput = x
             for k in range(blockWidth-1):
-                x = layers.Dense(layLen,
-                                 activation="relu",
-                                 kernel_regularizer=regularizers.l2(p['weightDec']))(x)
+                x = layers.Dense(
+                    layLen,
+                    activation="relu",
+                    kernel_regularizer=regularizers.l2(p['weightDec'])
+                )(x)
                 x = layers.BatchNormalization(momentum=p['popPersist'])(x)
-            x = layers.Dense(layLen,
-                             activation="relu",
-                             kernel_regularizer=regularizers.l2(p['weightDec']))(x)
+            x = layers.Dense(
+                layLen,
+                activation="relu",
+                kernel_regularizer=regularizers.l2(p['weightDec'])
+            )(x)
 
             #   Residual connection, with batch norm afterward
             layer_num = str(i*blocksPerGroup + j)
             x = layers.add([x, blockInput], name='residual_conn' + layer_num)
-            x = layers.BatchNormalization(name='block_output' + layer_num,
-                                          momentum=p['popPersist'])(x)
+            x = layers.BatchNormalization(
+                name='block_output' + layer_num,
+                momentum=p['popPersist']
+            )(x)
 
     if output_type == 'policy_value':
         #   Output layer (3 pieces of a policy vector and a scalar value)
-        policy_start_sq = layers.Dense(64,
-                                       activation="softmax",
-                                       name="policy_start_square")(x)
-        policy_end_sq = layers.Dense(64,
-                                     activation="softmax",
-                                     name="policy_end_square")(x)
-        policy_end_piece = layers.Dense(6,
-                                        activation="softmax",
-                                        name="policy_end_piece")(x)
+        policy_start_sq = layers.Dense(
+            64, activation="softmax", name="policy_start_square"
+        )(x)
+        policy_end_sq = layers.Dense(
+            64, activation="softmax", name="policy_end_square"
+        )(x)
+        policy_end_piece = layers.Dense(
+            6, activation="softmax", name="policy_end_piece"
+        )(x)
 
 
-        value = layers.Dense(1,
-                             activation="sigmoid",
-                             name="output",
-                             kernel_regularizer=regularizers.l2(p['weightDec']))(x)
+        value = layers.Dense(
+            1, activation="sigmoid", name="output",
+            kernel_regularizer=regularizers.l2(p['weightDec'])
+        )(x)
 
-        net = keras.Model(inputs=inputs,
-                          outputs=[policy_start_sq,
-                                   policy_end_sq,
-                                   policy_end_piece,
-                                   value],
-                          name="network")
+        net = keras.Model(
+            inputs=inputs,
+            outputs=[policy_start_sq, policy_end_sq, policy_end_piece, value],
+            name="network"
+        )
 
         net.policy_certainty = 0
     else:
         #   Output layer
-        output = layers.Dense(1,
-                              activation="sigmoid",
-                              name="output",
-                              kernel_regularizer=regularizers.l2(p['weightDec']))(x)
+        output = layers.Dense(
+            1, activation="sigmoid", name="output",
+            kernel_regularizer=regularizers.l2(p['weightDec'])
+        )(x)
 
         net = keras.Model(inputs=inputs, outputs=output, name="network")
         
@@ -99,10 +104,12 @@ def CompileNet(net, p, optim, output_type='value'):
             metrics = [tf.keras.metrics.KLDivergence()]
         )
     else:
-        loss = [tf.keras.losses.CategoricalCrossentropy(), # policy: start sq
-                tf.keras.losses.CategoricalCrossentropy(), # policy: end sq
-                tf.keras.losses.CategoricalCrossentropy(), # policy: end piece
-                tf.keras.losses.BinaryCrossentropy()]      # value
+        loss = [
+            tf.keras.losses.CategoricalCrossentropy(), # policy: start sq
+            tf.keras.losses.CategoricalCrossentropy(), # policy: end sq
+            tf.keras.losses.CategoricalCrossentropy(), # policy: end piece
+            tf.keras.losses.BinaryCrossentropy()       # value
+        ]
 
         net.compile(
             optimizer = optim,
@@ -115,10 +122,12 @@ def CompileNet(net, p, optim, output_type='value'):
 #   a raw (cumulative) reward observed given that move and future moves (before
 #   calling expit/sigmoid), return the associated "label"
 def ToOutputVec(game, move, r):
-    out_vecs = [np.zeros(64),
-                np.zeros(64),
-                np.zeros(6),
-                tf.constant(expit(r), shape=[1, 1], dtype=tf.float32)]
+    out_vecs = [
+        np.zeros(64),
+        np.zeros(64),
+        np.zeros(6),
+        tf.constant(expit(r), shape=[1, 1], dtype=tf.float32)
+    ]
 
     ############################################################################
     #   Encode the policy vector (the first 133 indices of 'out_vec')
@@ -162,9 +171,11 @@ def AdjustPolicy(outputs, legal_moves):
     #   end piece that are legal
     new_policy = np.zeros(len(legal_moves))
     for i, m in enumerate(legal_moves):
-        new_policy[i] = raw_policy[m.startSq[0] * 8 + m.startSq[1],
-                                   m.endSq[0] * 8 + m.endSq[1],
-                                   abs(m.endPiece) - 1]
+        new_policy[i] = raw_policy[
+            m.startSq[0] * 8 + m.startSq[1],
+            m.endSq[0] * 8 + m.endSq[1],
+            abs(m.endPiece) - 1
+        ]
 
     #   Normalize, since probabilities for illegal combinations will have a
     #   nonzero sum

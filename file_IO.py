@@ -49,8 +49,10 @@ def readBuffer(filepath, p):
     buff = [[] for i in range(len(simple_buff))]
     for i, b in enumerate(simple_buff):
         for j in range(b[0].shape[0]):
-            buff[i].append((tf.constant(b[0][j,:], shape=[1,839], dtype=tf.float32),
-                            tf.constant(b[1][j,:], shape=[1,1], dtype=tf.float32)))
+            buff[i].append(
+                (tf.constant(b[0][j,:], shape=[1,839], dtype=tf.float32),
+                tf.constant(b[1][j,:], shape=[1,1], dtype=tf.float32))
+            )
 
     buffer.verify(buff, p, len(simple_buff))
     
@@ -162,8 +164,8 @@ def toFEN(NN_vec, filename, verbose=True):
     #   Moves since action/ halfmove counter
     game_str += str(int(outList[70] * 25)) + ' '
 
-    #   Full move counter, fabricated since my move representations lose this info,
-    #   and this info is unimportant for my purposes
+    #   Full move counter, fabricated since my move representations lose this
+    #   info, and this info is unimportant for my purposes
     game_str += str(int(25 * outList[70] / 2) + 10)
 
     ###########################################################

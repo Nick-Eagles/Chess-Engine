@@ -70,10 +70,9 @@ class Traversal:
                     g = stack[-1][2].copy()
                     m = stack[-1][0].pop(0)
                     stack[-1][7].append([m.getMoveName(g.board)])
-                    r = g.getReward(m,
-                                    p['mateReward'],
-                                    simple=True,
-                                    copy=False)[0]
+                    r = g.getReward(
+                        m, p['mateReward'], simple=True, copy=False
+                    )[0]
                     stack[-1][1].append(r)
                     
 
@@ -82,14 +81,18 @@ class Traversal:
                     if len(stack) < p['depth']:
                         if g.gameResult == 17:  
                             moves, fullMovesLen = self.policy(self.net, g, p)
-                            stack.append([moves,
-                                          [],
-                                          g,
-                                          stack[-1][3] + p['gamma_exec'] * r,
-                                          stack[-1][4],
-                                          stack[-1][5],
-                                          [],
-                                          []])
+                            stack.append(
+                                [
+                                    moves,
+                                    [],
+                                    g,
+                                    stack[-1][3] + p['gamma_exec'] * r,
+                                    stack[-1][4],
+                                    stack[-1][5],
+                                    [],
+                                    []
+                                ]
+                            )
                             self.nodeHops += 1
                         elif g.gameResult == 0:
                             self.nodeHops += 2
@@ -127,9 +130,7 @@ def processNode(stack, trav, p):
         if isinstance(nn_out, list):
             nn_out = nn_out[-1]
         
-        nn_evals = p['gamma_exec'] * \
-                   trav.net.value_certainty * \
-                   logit(nn_out)
+        nn_evals = p['gamma_exec'] * trav.net.value_certainty * logit(nn_out)
             
         for i in range(nn_evals.shape[0]):
             node[1][indices[i]] += float(nn_evals[i])

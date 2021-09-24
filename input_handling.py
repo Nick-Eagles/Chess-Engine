@@ -142,7 +142,9 @@ def getP(mode):
                  + "specifies how many traversals occur before the first network is overwritten by the 2nd."
         cond = 'var > 0'
         messOnErr = "Not a valid input."
-        p['updatePeriod'] = getUserInput(messDef, messOnErr, 'int', cond, explan)
+        p['updatePeriod'] = getUserInput(
+            messDef, messOnErr, 'int', cond, explan
+        )
 
         #   fracValidation
         messDef = "Enter the decimal fraction of examples to use as validation data: "

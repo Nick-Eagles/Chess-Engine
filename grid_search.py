@@ -7,7 +7,6 @@
 #   Each iteration, the range of the search space decays by "decay", with the
 #   new range centered at the previously best parameter value.
 
-import Network
 import input_handling
 import main
 import board_helper

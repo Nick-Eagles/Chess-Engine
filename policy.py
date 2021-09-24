@@ -8,7 +8,6 @@ sys.path.append('./experimental/')
 import policy_net
 
 import Game
-import Network
 import network_helper
 import misc
 import board_helper
@@ -35,12 +34,13 @@ def sampleMovesSoft(net, game, p):
     probs = temp / np.sum(temp) # softmax of evals
     cumProbs = np.cumsum(probs)
 
-    finalMoves = [moves[i] for i in misc.sampleCDF(cumProbs,
-                                                   min(breadth, len(moves)))]
+    finalMoves = [
+        moves[i] for i in misc.sampleCDF(cumProbs, min(breadth, len(moves)))
+    ]
 
     assert len(finalMoves) > 0 and len(finalMoves) <= p['breadth'], \
            len(finalMoves)
-    return(finalMoves, fullMovesLen)
+    return (finalMoves, fullMovesLen)
 
 #   An alternative to "sampleMovesSoft". This uses what is intended to be a
 #   multiple-move analogue of an epsilon-greedy decision policy: N distinct
@@ -115,9 +115,11 @@ def returnBestMove(moves, vals, game, num_lines, interactive, best_lines=None, i
         else:
             best_line = best_lines[indices[0]]
         
-        return ([moves[i] for i in indices],
-                vals[indices],
-                best_line)
+        return (
+            [moves[i] for i in indices],
+            vals[indices],
+            best_line
+        )
     else:
         if game.whiteToMove or not invert:
             bestMove = moves[np.argmax(vals)]
@@ -147,7 +149,9 @@ def getBestMoveHuman(net, game, p, interactive=False, num_lines=1):
 
         vals = (1 - eps) * vals + eps * noise
 
-        return returnBestMove(moves, vals, game, num_lines, interactive, None, True)
+        return returnBestMove(
+            moves, vals, game, num_lines, interactive, None, True
+        )
 
 
 #   Return a move decision, given the current game, network, and choice of
@@ -162,7 +166,9 @@ def getBestMoveEG(net, game, p, interactive=False, num_lines=1):
     else:
         vals = getEvals(moves, net, game, p)
 
-        return returnBestMove(moves, vals, game, num_lines, interactive, None, True)
+        return returnBestMove(
+            moves, vals, game, num_lines, interactive, None, True
+        )
 
 
 def getBestMoveRawPolicy(net, game, p, interactive=False, num_lines=1):
@@ -175,7 +181,9 @@ def getBestMoveRawPolicy(net, game, p, interactive=False, num_lines=1):
         outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
         probs = policy_net.AdjustPolicy(outputs, legalMoves)
 
-        return returnBestMove(moves, probs, game, num_lines, interactive, None, False)
+        return returnBestMove(
+            moves, probs, game, num_lines, interactive, None, False
+        )
         
 
 def getBestMoveTreeEG(net, game, p, interactive=False, num_lines=1):
@@ -203,10 +211,9 @@ def getBestMoveTreeEG(net, game, p, interactive=False, num_lines=1):
             g = game.copy()
             g.quiet = True
                 
-            rTemp[i] = g.getReward(m,
-                                   p['mateReward'],
-                                   simple=True,
-                                   copy=False)[0]
+            rTemp[i] = g.getReward(
+                m, p['mateReward'], simple=True, copy=False
+            )[0]
             t = Traversal.Traversal(g, net, p)
             t.traverse()
             baseRs[i] = t.baseR
@@ -218,7 +225,9 @@ def getBestMoveTreeEG(net, game, p, interactive=False, num_lines=1):
 
         rTemp += p['gamma_exec'] * baseRs
 
-        return returnBestMove(moves, rTemp, game, num_lines, interactive, bestLines, True)
+        return returnBestMove(
+            moves, rTemp, game, num_lines, interactive, bestLines, True
+        )
 
 
 #   A helper function to compute depth-1 evaluations of a list of moves. Returns
@@ -247,8 +256,9 @@ def getEvalsValue(moves, net, game, p):
         
         evals = r_real + scalar * value
     else:
-        evals = np.array([game.getReward(m, p['mateReward'], True)[0]
-                          for m in moves])
+        evals = np.array(
+            [game.getReward(m, p['mateReward'], True)[0] for m in moves]
+        )
 
         #   If evals are not all unique, add a tiny amount of noise to eliminate
         #   bias for moves occuring earlier in the list of legal moves
@@ -277,8 +287,9 @@ def getEvalsHybrid(moves, net, game, p):
     probs = policy_net.AdjustPolicy(outputs, moves)
 
     #   Get "empirical" rewards resulting from each move
-    rewards = np.array([game.getReward(m, p['mateReward'], simple=True)[0]
-                        for m in moves])
+    rewards = np.array(
+        [game.getReward(m, p['mateReward'], simple=True)[0] for m in moves]
+    )
     if not game.whiteToMove:
         rewards *= -1
 
@@ -298,8 +309,9 @@ def getEvalsEmpirical(moves, net, game, p):
     probs = policy_net.AdjustPolicy(outputs, moves)
 
     #   Get "empirical" rewards resulting from each move
-    rewards = np.array([game.getReward(m, p['mateReward'], simple=True)[0]
-                        for m in moves])
+    rewards = np.array(
+        [game.getReward(m, p['mateReward'], simple=True)[0] for m in moves]
+    )
     if not game.whiteToMove:
         rewards *= -1
 

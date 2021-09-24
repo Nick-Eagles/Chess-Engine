@@ -49,10 +49,9 @@ class Session:
         if self.loadedNet is not None and self.loadedNet != dirname:
             print('Reading in losses from "' + self.loadedNet + '"...')
             with open(self.loadedNet + '/costs.csv', 'r') as f:
-                reader = csv.reader(f,
-                                    delimiter=',',
-                                    quotechar=',',
-                                    quoting=csv.QUOTE_MINIMAL)
+                reader = csv.reader(
+                    f, delimiter=',', quotechar=',', quoting=csv.QUOTE_MINIMAL
+                )
 
                 for line in reader:
                     temp_losses.append(line)
@@ -63,10 +62,9 @@ class Session:
         #   particular network
         print('Reading in temporary losses...')
         with open('visualization/costs.csv', 'r') as f:
-            reader = csv.reader(f,
-                                delimiter=',',
-                                quotechar=',',
-                                quoting=csv.QUOTE_MINIMAL)
+            reader = csv.reader(
+                f, delimiter=',', quotechar=',', quoting=csv.QUOTE_MINIMAL
+            )
 
             for line in reader:
                 temp_losses.append(line)

@@ -6,14 +6,18 @@ import board_helper
 
 class Game:
     def __init__(self, quiet=True):
-        self.board = [[4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2], \
-                     [3, 1, 0, 0, 0, 0, -1, -3], [5, 1, 0, 0, 0, 0, -1, -5], \
-                     [6, 1, 0, 0, 0, 0, -1, -6], [3, 1, 0, 0, 0, 0, -1, -3], \
-                     [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]]
-        self.invBoard = [[4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2], \
-                     [3, 1, 0, 0, 0, 0, -1, -3], [6, 1, 0, 0, 0, 0, -1, -6], \
-                     [5, 1, 0, 0, 0, 0, -1, -5], [3, 1, 0, 0, 0, 0, -1, -3], \
-                     [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]]
+        self.board = [
+            [4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2],
+            [3, 1, 0, 0, 0, 0, -1, -3], [5, 1, 0, 0, 0, 0, -1, -5],
+            [6, 1, 0, 0, 0, 0, -1, -6], [3, 1, 0, 0, 0, 0, -1, -3],
+            [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]
+        ]
+        self.invBoard = [
+            [4, 1, 0, 0, 0, 0, -1, -4], [2, 1, 0, 0, 0, 0, -1, -2],
+            [3, 1, 0, 0, 0, 0, -1, -3], [6, 1, 0, 0, 0, 0, -1, -6],
+            [5, 1, 0, 0, 0, 0, -1, -5], [3, 1, 0, 0, 0, 0, -1, -3],
+            [2, 1, 0, 0, 0, 0, -1, -2], [4, 1, 0, 0, 0, 0, -1, -4]
+        ]
         
         #   Amount of the pieces on the board: P, N, light B, dark B, R, Q
         self.wPieces = [8, 2, 1, 1, 2, 1]
@@ -128,34 +132,94 @@ class Game:
     #   one numpy array is returned.
     def toNN_vecs(self, every=True):
         #   The original position as-is
-        all_vecs = [board_helper.generate_NN_vec(self, False, False, False, False)]
+        all_vecs = [
+            board_helper.generate_NN_vec(self, False, False, False, False)
+        ]
 
         if every:
             #   The position inverted by rank and color
-            all_vecs.append(board_helper.generate_NN_vec(self, True, False, True, False))
+            all_vecs.append(
+                board_helper.generate_NN_vec(self, True, False, True, False)
+            )
 
             #   If castling is impossible, the board can be reflected by file
             if not any([self.canW_K_Castle, self.canW_Q_Castle, self.canB_K_Castle, self.canB_Q_Castle]):
                 #   The positions we've appended so far but inverted by file
-                all_vecs.append(board_helper.generate_NN_vec(self, False, True, False, False))
-                all_vecs.append(board_helper.generate_NN_vec(self, True, True, True, False))
+                all_vecs.append(
+                    board_helper.generate_NN_vec(
+                        self, False, True, False, False
+                    )
+                )
+                all_vecs.append(
+                    board_helper.generate_NN_vec(
+                        self, True, True, True, False
+                    )
+                )
 
                 #   If there are no pawns on the board, it can also be rotated arbitrarily
                 if self.wPieces[0] + self.bPieces[0] == 0:
                     #   All other unique permutations involving reflections and rotations
                     #   of the board- to make 16 total
-                    all_vecs.append(board_helper.generate_NN_vec(self, False, False, False, True))
-                    all_vecs.append(board_helper.generate_NN_vec(self, False, False, True, False))
-                    all_vecs.append(board_helper.generate_NN_vec(self, False, False, True, True))
-                    all_vecs.append(board_helper.generate_NN_vec(self, False, True, False, True))
-                    all_vecs.append(board_helper.generate_NN_vec(self, False, True, True, False))
-                    all_vecs.append(board_helper.generate_NN_vec(self, False, True, True, True))
-                    all_vecs.append(board_helper.generate_NN_vec(self, True, False, False, False))
-                    all_vecs.append(board_helper.generate_NN_vec(self, True, False, False, True))
-                    all_vecs.append(board_helper.generate_NN_vec(self, True, False, True, True))
-                    all_vecs.append(board_helper.generate_NN_vec(self, True, True, False, False))
-                    all_vecs.append(board_helper.generate_NN_vec(self, True, True, False, True))
-                    all_vecs.append(board_helper.generate_NN_vec(self, True, True, True, True))
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, False, False, False, True
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, False, False, True, False
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, False, False, True, True
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, False, True, False, True
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, False, True, True, False
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, False, True, True, True
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, True, False, False, False
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, True, False, False, True
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, True, False, True, True
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, True, True, False, False
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, True, True, False, True
+                        )
+                    )
+                    all_vecs.append(
+                        board_helper.generate_NN_vec(
+                            self, True, True, True, True
+                        )
+                    )
 
         return all_vecs
                 
@@ -356,8 +420,9 @@ class Game:
         self.gameResult, self.gameResultStr = self.updateResult()
         
 
-    #   For debugging; prints info about the current game and returns the empty string,
-    #   so that assert statements can easily include a call to this function
+    #   For debugging; prints info about the current game and returns the empty
+    #   string, so that assert statements can easily include a call to this
+    #   function
     def verbosePrint(self):
         coeff = 2 * self.whiteToMove - 1
         if self.whiteToMove:
@@ -375,14 +440,20 @@ class Game:
         print("self.enPassant: ", self.enPassant)
         print("self.movesSinceAction: ", self.movesSinceAction)
         print("self.moveNum: ", self.moveNum)
-        print("self.gameResult (will be 17 if game isn't done): ", self.gameResult)
+        print(
+            "self.gameResult (will be 17 if game isn't done): ",
+            self.gameResult
+        )
         print("self.wValue:", self.wValue)
         print("self.bValue:", self.bValue)
         print("self.annotation: ", self.annotation)
         
         check = (self.whiteToMove and not board_helper.inCheck(self.board)) or \
                 (not self.whiteToMove and not board_helper.inCheck(board_helper.invert(self.board)))
-        print("It is " + agent + " to move and " + agent + " is" + (check * " not") + " in check.")
+        print(
+            "It is " + agent + " to move and " + agent + " is" +
+            (check * " not") + " in check."
+        )
         self.printBoard()
 
         return ""
@@ -397,10 +468,10 @@ class Game:
         else:
             result = '1-0'
             
-        txt = '[Event "Engine self-play"]\n[Site "Internal"]\n[Date ' + dateStr + ']\n' \
-              + '[Round "1"]\n[White "Sculps Engine"]\n[Black "Sculps Engine"]\n' \
-              + '[Result "' + result + '"]\n\n'
-        txt = txt + self.annotation + result
+        txt = '[Event "Engine self-play"]\n[Site "Internal"]\n[Date ' + \
+            dateStr + ']\n' + \
+            '[Round "1"]\n[White "Sculps Engine"]\n[Black "Sculps Engine"]\n' +\
+            '[Result "' + result + '"]\n\n' + self.annotation + result
 
         with open(filename, 'w') as pgn_file:
             pgn_file.write(txt)

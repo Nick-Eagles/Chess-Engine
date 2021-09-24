@@ -1,4 +1,3 @@
-import Network
 import network_helper
 import file_IO
 import input_handling
@@ -31,8 +30,8 @@ import read_pgn
 import policy_net
 
 
-#   Given a network, asks the user for training hyper-parameters,
-#   trains the network, and asks what to do next.
+#   Given a network, asks the user for training hyper-parameters, trains the
+#   network, and asks what to do next.
 def trainOption(session, numEps=0): 
     p = input_handling.readConfig()
 
@@ -99,10 +98,9 @@ def trainOption(session, numEps=0):
             print("Mean magnitude:", np.round_(np.mean(mags), 5), "\n")
       
         #   Train on data in the buffer  
-        network_helper.train(net,
-                             buffer.collapse(tBuffer),
-                             buffer.collapse(vBuffer),
-                             p)
+        network_helper.train(
+            net, buffer.collapse(tBuffer), buffer.collapse(vBuffer), p
+        )
 
         #   Drop a fraction of the buffers
         if i < numEps-1:
@@ -151,24 +149,20 @@ if __name__ == '__main__':
 
         #   Number of blocks in a group
         messDef = "Number of residual blocks per group? "
-        blocksPerGroup = input_handling.getUserInput(messDef,
-                                                     messOnErr,
-                                                     'int',
-                                                     cond)
+        blocksPerGroup = input_handling.getUserInput(
+            messDef, messOnErr, 'int', cond
+        )
 
         #   Layers per residual block
         messDef = "Number of layers in one residual block? "
         cond = 'var > 0 and var < 10'
-        blockWidth = input_handling.getUserInput(messDef,
-                                                 messOnErr,
-                                                 'int',
-                                                 cond)
+        blockWidth = input_handling.getUserInput(
+            messDef, messOnErr, 'int', cond
+        )
         
-        net = policy_net.InitializeNet(numGroups,
-                                       blocksPerGroup,
-                                       blockWidth,
-                                       p,
-                                       output_type)
+        net = policy_net.InitializeNet(
+            numGroups, blocksPerGroup, blockWidth, p, output_type
+        )
         session = Session.Session(tBuffer, vBuffer, net)
         
     elif choice == "l":
@@ -179,17 +173,19 @@ if __name__ == '__main__':
         print("Loaded successfully.")
 
     messDef = 'Which of the following would you like to do:\n'
-    options = ['Train the current network including new data',
-               'Show a sample game for the current network',
-               'Save the current network',
-               'Check neuron activations using current data',
-               'Train the network from previous data only',
-               'Write existing novel checkmates to file',
-               'Run new games to generate checkmate positions',
-               'Write the N least and greatest-loss positions to file',
-               'Play a game against the network',
-               'Load an internal dataset',
-               'Load an external datset']
+    options = [
+        'Train the current network including new data',
+        'Show a sample game for the current network',
+        'Save the current network',
+        'Check neuron activations using current data',
+        'Train the network from previous data only',
+        'Write existing novel checkmates to file',
+        'Run new games to generate checkmate positions',
+        'Write the N least and greatest-loss positions to file',
+        'Play a game against the network',
+        'Load an internal dataset',
+        'Load an external datset'
+    ]
     for i, opt in enumerate(options):
         messDef += '(' + str(i+1) + ') ' + opt + '\n'
     messDef += 'Enter 0 to exit: '
@@ -220,24 +216,27 @@ if __name__ == '__main__':
             session.Save(dirname)
             print("Saved. Continuing...")
         elif choice == 4:
-            network_helper.net_activity(net,
-                                        buffer.collapse(session.tBuffer) + \
-                                        buffer.collapse(session.vBuffer))
+            network_helper.net_activity(
+                net,
+                buffer.collapse(session.tBuffer) + \
+                    buffer.collapse(session.vBuffer)
+            )
         elif choice == 5:
             p = input_handling.readConfig()
-            network_helper.train(session.net,
-                                 buffer.collapse(session.tBuffer),
-                                 buffer.collapse(session.vBuffer),
-                                 p)
+            network_helper.train(
+                session.net,
+                buffer.collapse(session.tBuffer),
+                buffer.collapse(session.vBuffer),
+                p
+            )
         elif choice == 6:
             p = input_handling.readConfig()
             
             messDef2 = "Add to training (t) or validation (v) position file? "
             messOnErr = "Invalid input."
-            fileChoice = input_handling.getUserInput(messDef2,
-                                                     messOnErr,
-                                                     'str',
-                                                     'var == "t" or var == "v"')
+            fileChoice = input_handling.getUserInput(
+                messDef2, messOnErr, 'str', 'var == "t" or var == "v"'
+            )
 
             #   Find a way to not hardcode this?
             tol = 0.001
@@ -265,17 +264,15 @@ if __name__ == '__main__':
             messDef2 = "Generate how many checkmate positions? "
             messOnErr = "Not a valid input."
             cond = 'var > 0'
-            numPos = input_handling.getUserInput(messDef2,
-                                                 messOnErr,
-                                                 'int',
-                                                 cond)
+            numPos = input_handling.getUserInput(
+                messDef2, messOnErr, 'int', cond
+            )
 
             messDef2 = "Add to training (t) or validation (v) position file? "
             messOnErr = "Invalid input."
-            fileChoice = input_handling.getUserInput(messDef2,
-                                                     messOnErr,
-                                                     'str',
-                                                     'var == "t" or var == "v"')
+            fileChoice = input_handling.getUserInput(
+                messDef2, messOnErr, 'str', 'var == "t" or var == "v"'
+            )
 
             if fileChoice == 't':
                 filename = 'data/checkmates_t.csv'
@@ -292,8 +289,12 @@ if __name__ == '__main__':
                 g.doMove(bestMoves[-1]) # to produce the proper result
                 r = g.gameResult * p['mateReward']
                 assert abs(g.gameResult) == 1, g.gameResult
-                examples.append(file_IO.compressNNinput(temp[0]) + [expit(r)])
-                examples.append(file_IO.compressNNinput(temp[1]) + [expit(-1 * r)])
+                examples.append(
+                    file_IO.compressNNinput(temp[0]) + [expit(r)]
+                )
+                examples.append(
+                    file_IO.compressNNinput(temp[1]) + [expit(-1 * r)]
+                )
             novelGames = file_IO.filterByNovelty(examples, filename, p)
             file_IO.writeGames(novelGames, filename)
         elif choice == 8:
@@ -310,8 +311,8 @@ if __name__ == '__main__':
                       buffer.collapse(session.vBuffer)
             costs = np.array([net.individualLoss([x]) for x in allData])
 
-            #   Get rid of any old positions (to cover the case where the last choice
-            #   of N is larger than the current choice)
+            #   Get rid of any old positions (to cover the case where the last
+            #   choice of N is larger than the current choice)
             shutil.rmtree('visualization/edge_positions')
             os.makedirs('visualization/edge_positions')
 
@@ -336,18 +337,16 @@ if __name__ == '__main__':
             #   Get name of dataset
             messDef2 = "Name of dataset? "
             messOnErr = "Error."
-            prefix = "data/" + input_handling.getUserInput(messDef2,
-                                                           messOnErr,
-                                                           'str',
-                                                           'True')
+            prefix = "data/" + input_handling.getUserInput(
+                messDef2, messOnErr, 'str', 'True'
+            )
 
             #   Ask whether to replace existing data
             messDef2 = "Replace existing data (y/n)? "
             messOnErr = "Only 'y' or 'n' accepted."
-            replace = input_handling.getUserInput(messDef2,
-                                                  messOnErr,
-                                                  'str',
-                                                  'var == "y" or var == "n"')
+            replace = input_handling.getUserInput(
+                messDef2, messOnErr, 'str', 'var == "y" or var == "n"'
+            )
             replace = replace == 'y'
             
             temp_tBuffer = file_IO.readBuffer(prefix + '/tBuffer.pkl.gz', p)
@@ -365,24 +364,21 @@ if __name__ == '__main__':
 
             messDef2 = "Filename for the training data? "
             messOnErr = "Not a valid filename."
-            t_filename = 'external/' + input_handling.getUserInput(messDef2,
-                                                                   messOnErr,
-                                                                   'str',
-                                                                   'True')
+            t_filename = 'external/' + input_handling.getUserInput(
+                messDef2, messOnErr, 'str', 'True'
+            )
 
             messDef2 = "Loop through how many games total? "
             messOnErr = "Not a valid amount."
-            num_games = input_handling.getUserInput(messDef2,
-                                                    messOnErr,
-                                                    'int',
-                                                    'var > 0')
+            num_games = input_handling.getUserInput(
+                messDef2, messOnErr, 'int', 'var > 0'
+            )
 
             messDef2 = "Number of games per chunk? "
             messOnErr = "Not a valid amount."
-            chunk_size = input_handling.getUserInput(messDef2,
-                                                     messOnErr,
-                                                     'int',
-                                                     'var > 0')
+            chunk_size = input_handling.getUserInput(
+                messDef2, messOnErr, 'int', 'var > 0'
+            )
 
             num_chunks = int(num_games / chunk_size)
 
@@ -390,35 +386,35 @@ if __name__ == '__main__':
             print('Loading validation data...')
             filename = 'external/2019_games_processed_v.txt'
             line_nums = list(range(201))
-            session.vBuffer = read_pgn.load_games(filename,
-                                                  p,
-                                                  line_nums,
-                                                  session.net,
-                                                  certainty=False)
+            session.vBuffer = read_pgn.load_games(
+                filename, p, line_nums, session.net, certainty=False
+            )
             print('Loaded', len(session.vBuffer[0]), 'positions.')
 
             for i in range(num_chunks):
                 print("Processing chunk ", i+1, " of ", num_chunks, "!", sep='')
                 start_time = time.time()
 
-                line_nums = list(range(i * chunk_size,
-                                       (i+1) * chunk_size))
+                line_nums = list(range(i * chunk_size, (i+1) * chunk_size))
                 
 
                 #   Read chunk into memory
-                session.tBuffer = read_pgn.load_games(t_filename,
-                                                      p,
-                                                      line_nums,
-                                                      session.net)
+                session.tBuffer = read_pgn.load_games(
+                    t_filename, p, line_nums, session.net
+                )
 
                 elapsed = time.time() - start_time
                 rate = round(len(session.tBuffer[0]) / elapsed, 2)
                 
-                print("Generated ", len(session.tBuffer[0]),
-                      " training examples in ", round(elapsed, 2), " seconds (",
-                      rate, "/sec)", sep="")
+                print(
+                    "Generated ", len(session.tBuffer[0]),
+                    " training examples in ", round(elapsed, 2), " seconds (",
+                    rate, "/sec)", sep=""
+                )
 
-                network_helper.train(session.net,
-                                     buffer.collapse(session.tBuffer),
-                                     buffer.collapse(session.vBuffer),
-                                     p)
+                network_helper.train(
+                    session.net,
+                    buffer.collapse(session.tBuffer),
+                    buffer.collapse(session.vBuffer),
+                    p
+                )

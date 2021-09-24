@@ -47,8 +47,10 @@ def generateExamples(net, p):
         elif num_examples == 16:
             buffer_index = 2
         else:
-            sys.exit("Received an invalid number of augmented positions" + \
-                     "associated with one example: " + str(num_examples))
+            sys.exit(
+                "Received an invalid number of augmented positions" + \
+                "associated with one example: " + str(num_examples)
+            )
 
         #   Add the data to the correct buffer
         data[buffer_index] += [(NN_vecs_out[i][j], index_to_label(j, r))
@@ -82,10 +84,9 @@ def produce_raw_pairs(net, p):
             bestMove = policy.getBestMoveTreeEG(net, game, p)
 
             #   Do the move and append reward received
-            r = game.getReward(bestMove,
-                               p['mateReward'],
-                               simple=True,
-                               copy=False)[0]
+            r = game.getReward(
+                bestMove, p['mateReward'], simple=True, copy=False
+            )[0]
             rewards[-1].append(r)
             
             step += 1    
@@ -116,9 +117,9 @@ def produce_raw_pairs(net, p):
     #   Ensure lengths of examples match lengths of labels
     assert len(NN_vecs) == len(rewards), \
            str(len(NN_vecs)) + ' ' + str(len(rewards))
-    assert all([len(rewards[i]) == len(NN_vecs[i])
-                for i in range(len(rewards))]), \
-                "Unequal number of examples and labels generated"
+    assert all(
+        [len(rewards[i]) == len(NN_vecs[i]) for i in range(len(rewards))]
+    ), "Unequal number of examples and labels generated"
     
     return (NN_vecs, rewards)
 
@@ -154,9 +155,15 @@ def async_q_learn(net):
 
     if p['mode'] >= 2:
         elapsed = round(time.time() - start_time, 2)
-        print("Done in", elapsed, "seconds. Generated " + str(sum([len(x) for x in data])) + " training examples.\n")
+        print(
+            "Done in", elapsed, "seconds. Generated " + \
+            str(sum([len(x) for x in data])) + " training examples.\n"
+        )
     else:
-        print("Done. Generated " + str(sum([len(x) for x in data])) + " training examples.\n")
+        print(
+            "Done. Generated " + str(sum([len(x) for x in data])) + \
+            " training examples.\n"
+        )
 
     print("Determining certainty of network on the generated examples...")
     getCertainty(net, data, p)
@@ -169,8 +176,10 @@ def valueCertainty(outputs, labels, p):
     out_norm = np.linalg.norm(outputs)
 
     if round(float(out_norm), 5) == 0:
-        print("Warning: norm of output values is too small; setting " + \
-              "certainty to 0.")
+        print(
+            "Warning: norm of output values is too small; setting " + \
+            "certainty to 0."
+        )
         certainty = 0
     else:
         certainty = np.dot(outputs, labels) / \
@@ -178,10 +187,14 @@ def valueCertainty(outputs, labels, p):
 
     if p['mode'] >= 2:
         #   Print first 2 moments of expected and actual rewards
-        print("Mean and var of expected reward: ", round(np.mean(labels), 4),
-              "; ", round(np.var(labels), 4), sep="")
-        print("Mean and var of actual reward: ", round(np.mean(outputs), 4),
-              "; ", round(np.var(outputs), 4), sep="")
+        print(
+            "Mean and var of expected reward: ", round(np.mean(labels), 4),
+            "; ", round(np.var(labels), 4), sep=""
+        )
+        print(
+            "Mean and var of actual reward: ", round(np.mean(outputs), 4),
+            "; ", round(np.var(outputs), 4), sep=""
+        )
 
     assert certainty >= -1 and certainty <= 1, certainty
     return certainty
@@ -224,23 +237,36 @@ def getCertainty(net, data, p, greedy=True):
     
     if has_policy:
         #   Get value-associated certainty
-        labels = logit(tf.stack([tf.reshape(x[1][-1], [1])
-                                 for x in data[0]], axis=0)).flatten()
+        labels = logit(
+            tf.stack(
+                [tf.reshape(x[1][-1], [1]) for x in data[0]],
+                axis=0
+            )
+        ).flatten()
 
-        value_certainty = valueCertainty(logit(outputs[-1]).flatten(),
-                                         labels,
-                                         p)
+        value_certainty = valueCertainty(
+            logit(outputs[-1]).flatten(), labels, p
+        )
         if p['mode'] >= 1:
             print('"Value" certainty:', round(value_certainty, 5))
 
         #   Get policy-associated certainty
         labels = []
-        labels.append(tf.stack([tf.reshape(x[1][0], [64])
-                               for x in data[0]], axis=0))
-        labels.append(tf.stack([tf.reshape(x[1][1], [64])
-                               for x in data[0]], axis=0))
-        labels.append(tf.stack([tf.reshape(x[1][2], [6])
-                               for x in data[0]], axis=0))
+        labels.append(
+            tf.stack(
+                [tf.reshape(x[1][0], [64]) for x in data[0]], axis=0
+            )
+        )
+        labels.append(
+            tf.stack(
+                [tf.reshape(x[1][1], [64]) for x in data[0]], axis=0
+            )
+        )
+        labels.append(
+            tf.stack(
+                [tf.reshape(x[1][2], [6]) for x in data[0]], axis=0
+            )
+        )
         
         policy_certainty = policyCertainty(outputs[:3], labels, p)
 
@@ -253,8 +279,11 @@ def getCertainty(net, data, p, greedy=True):
         last_certainty = (1 - p['policyWeight']) * net.value_certainty + \
                          p['policyWeight'] * net.policy_certainty
     else:
-        labels = logit(tf.stack([tf.reshape(x[1], [1])
-                                 for x in data[0]], axis=0)).flatten()
+        labels = logit(
+            tf.stack(
+                [tf.reshape(x[1], [1]) for x in data[0]], axis=0
+            )
+        ).flatten()
         value_certainty = valueCertainty(logit(outputs), labels, p)
         certainty = value_certainty
         last_certainty = net.value_certainty
@@ -284,10 +313,14 @@ def getCertainty(net, data, p, greedy=True):
                                policy_certainty * (1 - p['persist'])
     
     if p['mode'] >= 1:
-        print("Certainty of network on", len(data[0]), "examples:",
-              round(certainty, 5))
+        print(
+            "Certainty of network on", len(data[0]), "examples:",
+            round(certainty, 5)
+        )
         print("Moving value certainty:", round(net.value_certainty, 5))
         if has_policy:
             print("Moving policy certainty:", round(net.policy_certainty, 5))
-        print("Moving rate of certainty change:", round(net.certaintyRate, 5),
-              "\n")
+        print(
+            "Moving rate of certainty change:", round(net.certaintyRate, 5),
+            "\n"
+        )

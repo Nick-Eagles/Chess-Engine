@@ -27,10 +27,12 @@ generate_option = True
 generate_times = 1
 
 '''
-config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=4,
-                        inter_op_parallelism_threads=2,
-                        allow_soft_placement=True,
-                        device_count = {'CPU': 4})
+config = tf.compat.v1.ConfigProto(
+    intra_op_parallelism_threads=4,
+    inter_op_parallelism_threads=2,
+    allow_soft_placement=True,
+    device_count = {'CPU': 4}
+)
 session = tf.compat.v1.Session(config=config)
 
 
@@ -61,13 +63,14 @@ def do_generate_examples(arg_list):
         data = q_learn.generateExamples(session.net, p)
         
 
-
 p = input_handling.readConfig()
     
 #   print relevant information about parameters that affect
 #   computational time
-param_names = ['epochs', 'baseBreadth', 'maxSteps', 'breadth', 'depth',
-               'epsGreedy', 'epsSearch', 'batchSize', 'mode']
+param_names = [
+    'epochs', 'baseBreadth', 'maxSteps', 'breadth', 'depth', 'epsGreedy',
+    'epsSearch', 'batchSize', 'mode'
+]
 for x in param_names:
     print(x + ': ', p[x])
         
@@ -76,8 +79,10 @@ if train_option:
     session.Load('nets/' + net_name, data_prefix='tf_profile')
 
     session.net.summary()
-    print('tBuffer and vBuffer sizes: ', sum([len(x) for x in session.tBuffer]), ',',
-          sum([len(x) for x in session.vBuffer]))
+    print(
+        'tBuffer and vBuffer sizes: ', sum([len(x) for x in session.tBuffer]),
+        ',', sum([len(x) for x in session.vBuffer])
+    )
     print('\n-----------------------')
     print('  main.trainOption')
     print('-----------------------\n')

@@ -55,21 +55,24 @@ def display_evaluation(game, bestMoves, r, bestLine):
     if game.whiteToMove:
         print(str(game.moveNum) + '.')
         
-        print('    White to move; playing ' + \
-              bestMoves[0].getMoveName(game.board) + \
-              '.')
+        print(
+            '    White to move; playing ' + \
+            bestMoves[0].getMoveName(game.board) + '.'
+        )
     else:
-        print('    Black to move; playing ' + \
-              bestMoves[0].getMoveName(game.board) + \
-              '.')
+        print(
+            '    Black to move; playing ' + \
+            bestMoves[0].getMoveName(game.board) + '.'
+        )
 
     if not(bestLine is None):
         print('Considered ' + ' '.join(bestLine))
 
     for i in range(len(bestMoves)):
-        print('        ' + str(i+1) + '.',
-              bestMoves[i].getMoveName(game.board),
-              '(' + str(r[i]) + ')')
+        print(
+            '        ' + str(i+1) + '.', bestMoves[i].getMoveName(game.board),
+            '(' + str(r[i]) + ')'
+        )
 
 
 def bestGame(net, policy_function):
@@ -79,10 +82,12 @@ def bestGame(net, policy_function):
     p['epsSearch'] = 0
 
     if p['mode'] >= 2:
-        num_lines = input_handling.getUserInput("Display how many lines? ",
-                                                "Not a valid number.",
-                                                "int",
-                                                "var >= 2 and var < 50")
+        num_lines = input_handling.getUserInput(
+            "Display how many lines? ",
+            "Not a valid number.",
+            "int",
+            "var >= 2 and var < 50"
+        )
     else:
         num_lines = 1
 
