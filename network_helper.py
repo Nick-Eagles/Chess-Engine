@@ -63,7 +63,8 @@ def display_evaluation(game, bestMoves, r, bestLine):
               bestMoves[0].getMoveName(game.board) + \
               '.')
 
-    print('Considered ' + ' '.join(bestLine))
+    if not(bestLine is None):
+        print('Considered ' + ' '.join(bestLine))
 
     for i in range(len(bestMoves)):
         print('        ' + str(i+1) + '.',
@@ -92,7 +93,9 @@ def bestGame(net, policy_function):
             bestMove = policy_function(net, game, p)
             game.doMove(bestMove)
         else:
-            bestMoves, r, bestLine = policy_function(net, game, p, num_lines)
+            bestMoves, r, bestLine = policy_function(
+                net, game, p, True, num_lines
+            )
             display_evaluation(game, bestMoves, r, bestLine)
             game.doMove(bestMoves[0])
 

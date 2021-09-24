@@ -103,17 +103,39 @@ def sampleMovesEG(net, game, p):
 #   Functions for picking a single legal move to play
 #################################################################################
 
+def returnBestMove(moves, vals, game, num_lines, interactive, best_lines=None, invert=True):
+    if interactive:
+        if game.whiteToMove or not invert:
+            indices = misc.topN(vals, num_lines)
+        else:
+            indices = misc.topN(-1 * vals, num_lines)
+
+        if best_lines is None:
+            best_line = None
+        else:
+            best_line = best_lines[indices[0]]
+        
+        return ([moves[i] for i in indices],
+                vals[indices],
+                best_line)
+    else:
+        if game.whiteToMove or not invert:
+            bestMove = moves[np.argmax(vals)]
+        else:
+            bestMove = moves[np.argmin(vals)]
+
+        return bestMove
+
 #   Return a move decision, given the current game, network, and choice of
 #   epsilon. The decision is meant to be very "human" in nature: gaussian noise
 #   is added to the evaluations, matching their mean and variance, and the best
 #   combination of evaluation and noise is chosen. Epsilon scales how noisy the
 #   decision is.
-def getBestMoveHuman(net, game, p):
-    legalMoves = board_helper.getLegalMoves(game)
-    eps = p['epsilon']
-    if eps == 1:
+def getBestMoveHuman(net, game, p, interactive=False, num_lines=1):
+    moves = board_helper.getLegalMoves(game)
+    if p['epsGreedy'] == 1 or np.random.uniform() < p['epsGreedy']:
         #   Shortcut for completely random move choice
-        return legalMoves[np.random.randint(len(legalMoves))]
+        return moves[np.random.randint(len(moves))]
     else:
         #   Return the best move as the legal move maximizing the linear
         #   combination of:
@@ -122,27 +144,28 @@ def getBestMoveHuman(net, game, p):
         #          vector
         vals = getEvals(moves, net, game, p)
         noise = np.random.normal(np.mean(vals), np.std(vals), vals.shape[0])
-        
-        bestMove = legalMoves[np.argmax((1 - eps) * vals + eps * noise)]
-            
-        return bestMove
+
+        vals = (1 - eps) * vals + eps * noise
+
+        return returnBestMove(moves, vals, game, num_lines, interactive, None, True)
+
 
 #   Return a move decision, given the current game, network, and choice of
 #   epsilon. This is meant to be a faster alternative to getBestMoveHuman. The
 #   move is simply chosen via an epsilon-greedy strategy.
-def getBestMoveEG(net, game, p):
-    legalMoves = board_helper.getLegalMoves(game)
+def getBestMoveEG(net, game, p, interactive=False, num_lines=1):
+    moves = board_helper.getLegalMoves(game)
     
     if p['epsGreedy'] == 1 or np.random.uniform() < p['epsGreedy']:
         #   Shortcut for completely random move choice
-        return legalMoves[np.random.randint(len(legalMoves))]
+        return moves[np.random.randint(len(moves))]
     else:
         vals = getEvals(moves, net, game, p)
 
-        return legalMoves[np.argmax(vals)]
+        return returnBestMove(moves, vals, game, num_lines, interactive, None, True)
 
 
-def getBestMoveRawPolicy(net, game, p, num_lines=1):
+def getBestMoveRawPolicy(net, game, p, interactive=False, num_lines=1):
     legalMoves = board_helper.getLegalMoves(game)
     
     if np.random.uniform() < p['epsGreedy']:
@@ -152,20 +175,10 @@ def getBestMoveRawPolicy(net, game, p, num_lines=1):
         outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
         probs = policy_net.AdjustPolicy(outputs, legalMoves)
 
-        if num_lines == 1:
-            if game.whiteToMove:
-                bestMove = legalMoves[np.argmax(probs)]
-            else:
-                bestMove = legalMoves[np.argmin(probs)]
-
-            return bestMove
-        else:
-            indices = misc.topN(probs, num_lines)
-            return ([legalMoves[i] for i in indices],
-                    probs[indices])
+        return returnBestMove(moves, probs, game, num_lines, interactive, None, False)
         
 
-def getBestMoveTreeEG(net, game, p, num_lines=1):
+def getBestMoveTreeEG(net, game, p, interactive=False, num_lines=1):
     if np.random.uniform() < p['epsGreedy']:
         legalMoves = board_helper.getLegalMoves(game)
         return legalMoves[np.random.randint(len(legalMoves))]
@@ -180,7 +193,11 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
         
         rTemp = np.zeros(len(moves))
         baseRs = np.zeros(len(moves))
-        bestLines = []
+
+        if interactive:
+            bestLines = []
+        else:
+            bestLines = None
 
         for i, m in enumerate(moves):
             g = game.copy()
@@ -194,30 +211,14 @@ def getBestMoveTreeEG(net, game, p, num_lines=1):
             t.traverse()
             baseRs[i] = t.baseR
 
-            #   This is sloppy! We really want to check if the user is showing
-            #   the network's "best game" here
-            if num_lines > 1:
+            if interactive:
                 #   Add a list of move names for the top line explored that
                 #   started with this particular move "m"
                 bestLines.append([m.getMoveName(game.board)] + t.bestLine)
 
         rTemp += p['gamma_exec'] * baseRs
 
-        if num_lines == 1:
-            if game.whiteToMove:
-                bestMove = moves[np.argmax(rTemp)]
-            else:
-                bestMove = moves[np.argmin(rTemp)]
-
-            return bestMove
-        else:
-            if game.whiteToMove:
-                indices = misc.topN(rTemp, num_lines)
-            else:
-                indices = misc.topN(-1 * rTemp, num_lines)
-                
-            return ([moves[i] for i in indices],
-                    rTemp[indices], bestLines[indices[0]])
+        return returnBestMove(moves, rTemp, game, num_lines, interactive, bestLines, True)
 
 
 #   A helper function to compute depth-1 evaluations of a list of moves. Returns
