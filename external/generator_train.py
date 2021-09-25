@@ -39,7 +39,7 @@ p = input_handling.readConfig()
 
 if make_new_net:
     net = policy_net.InitializeNet(
-        num_groups, blocks_per_group, block_width, p, 'policy_value'
+        p, 'policy_value', num_groups, blocks_per_group, block_width
     )
 else:
     session = Session.Session([[]], [[]])

@@ -141,28 +141,7 @@ if __name__ == '__main__':
         else:
             output_type = 'value'
         
-        #   Number of groups of residual blocks
-        messDef = "Define network architecture: how many residual groups? "
-        messOnErr = "Not a valid number."
-        cond = 'var >= 0 and var < 50'
-        numGroups = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
-
-        #   Number of blocks in a group
-        messDef = "Number of residual blocks per group? "
-        blocksPerGroup = input_handling.getUserInput(
-            messDef, messOnErr, 'int', cond
-        )
-
-        #   Layers per residual block
-        messDef = "Number of layers in one residual block? "
-        cond = 'var > 0 and var < 10'
-        blockWidth = input_handling.getUserInput(
-            messDef, messOnErr, 'int', cond
-        )
-        
-        net = policy_net.InitializeNet(
-            numGroups, blocksPerGroup, blockWidth, p, output_type
-        )
+        net = policy_net.InitializeNet(p, output_type)
         session = Session.Session(tBuffer, vBuffer, net)
         
     elif choice == "l":

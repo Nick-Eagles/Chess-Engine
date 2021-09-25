@@ -28,7 +28,7 @@ def save_tensor(tensor, filename):
 #   Initialize dummy parameters and a dummy network
 print('Reading config and net...')
 p = input_handling.readConfig()
-net = policy_net.InitializeNet(1, 1, 2, p, 'policy_value')
+net = policy_net.InitializeNet(p, 'policy_value', 1, 1, 2)
 
 p['gamma'] = 0.9
 

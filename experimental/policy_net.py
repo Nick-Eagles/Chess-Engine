@@ -7,7 +7,29 @@ from tensorflow.keras import regularizers
 
 import input_handling
 
-def InitializeNet(numGroups, blocksPerGroup, blockWidth, p, output_type):
+def InitializeNet(p, output_type, numGroups=None, blocksPerGroup=None, blockWidth=None):
+    if blocksPerGroup is None:
+        #   Number of groups of residual blocks
+        messDef = "Define network architecture: how many residual groups? "
+        messOnErr = "Not a valid number."
+        cond = 'var >= 0 and var < 50'
+        numGroups = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
+
+    if blocksPerGroup is None:
+        #   Number of blocks in a group
+        messDef = "Number of residual blocks per group? "
+        blocksPerGroup = input_handling.getUserInput(
+            messDef, messOnErr, 'int', cond
+        )
+
+    if blockWidth is None:
+        #   Layers per residual block
+        messDef = "Number of layers in one residual block? "
+        cond = 'var > 0 and var < 10'
+        blockWidth = input_handling.getUserInput(
+            messDef, messOnErr, 'int', cond
+        )
+        
     inputs = keras.Input(shape=(839,), name="game_position")
     x = inputs
 

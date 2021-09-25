@@ -10,9 +10,6 @@ import policy_net
 
 out_dir = 'external/2019_games_t'
 in_file = 'external/2019_games_processed_t.txt'
-num_groups = 1
-blocks_per_group = 1
-block_width = 2
 total_lines = 2000
 start_line = 10000
 net_type = 'policy_value'
@@ -20,9 +17,7 @@ net_type = 'policy_value'
 p = input_handling.readConfig()
 
 buffer = [[]]
-net = policy_net.InitializeNet(
-    num_groups, blocks_per_group, block_width, p, net_type
-)
+net = policy_net.InitializeNet(p, net_type)
 
 with open(in_file, 'r') as pgn_file:
     all_lines = pgn_file.readlines()

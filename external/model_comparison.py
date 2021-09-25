@@ -102,7 +102,7 @@ p = input_handling.readConfig()
 
 #   Initialize 3 identical models
 print("Initializing models...")
-net2 = policy_net.InitializeNet(1, 2, 2, p, 'policy_value')
+net2 = policy_net.InitializeNet(p, 'policy_value')
 #net2 = simple_model(4, [200, 200, 100, 100])
 #net2 = copy_model(net)
 #net3 = copy_model(net)
