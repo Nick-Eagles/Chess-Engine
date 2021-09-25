@@ -14,10 +14,9 @@ def InitializeNet(numGroups, blocksPerGroup, blockWidth, p, output_type):
     for i in range(numGroups):
         messDef = "Length of neurons in group " + str(i+1) + "? "
         cond = 'var > 0 and var < 10000'
-        layLen = input_handling.getUserInput(messDef,
-                                             "Not a valid number.",
-                                             'int',
-                                             cond)
+        layLen = input_handling.getUserInput(
+            messDef, "Not a valid number.", 'int', cond
+        )
 
         #   Linear projection to match block input and output lengths
         x = layers.Dense(layLen, name='linear_projection' + str(i+1))(x)
