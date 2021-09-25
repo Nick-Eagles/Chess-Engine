@@ -34,11 +34,9 @@ p['gamma'] = 0.9
 
 #   Read validation games into a buffer
 print('Reading validation games...')
-v_games = read_pgn.load_games(v_filename,
-                              p,
-                              list(range(num_v_games)),
-                              net,
-                              certainty=False)
+v_games = read_pgn.load_games(
+    v_filename, p, list(range(num_v_games)), net, certainty=False
+)
 v_games = [v_games[0][:max_v_positions]]
 print(len(v_games[0]), 'positions loaded.')
 
@@ -50,11 +48,9 @@ save_tensor(y, v_file_base_out + 'y.pkl.gz')
 
 #   Read training games into a buffer
 print('Reading training games...')
-t_games = read_pgn.load_games(t_filename,
-                              p,
-                              list(range(num_t_games)),
-                              net,
-                              certainty=False)
+t_games = read_pgn.load_games(
+    t_filename, p, list(range(num_t_games)), net, certainty=False
+)
 t_games = [t_games[0][:max_t_positions]]
 print(len(t_games[0]), 'positions loaded.')
 

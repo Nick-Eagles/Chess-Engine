@@ -65,8 +65,9 @@ def fix_move_name(move_name, engine_names, p, game):
                                    temp_engine_names[i][2:]
             if move_name == temp_engine_names[i]:
                 if p['mode'] >= 2:
-                    print("Changing move name", move_name, "to", \
-                          orig_name + '.')
+                    print(
+                        "Changing move name", move_name, "to", orig_name + '.'
+                    )
                 move_name = orig_name
                             
             temp_engine_names[i] = orig_name
@@ -83,14 +84,18 @@ def fix_move_name(move_name, engine_names, p, game):
     #   Try removing file specification
     if cond and move_name[0] + move_name[2:] in engine_names:
         if p['mode'] >= 2:
-            print("Changing move name", move_name, "to", \
-                  move_name[0] + move_name[2:] + '.')
+            print(
+                "Changing move name", move_name, "to", \
+                move_name[0] + move_name[2:] + '.'
+            )
         move_name = move_name[0] + move_name[2:]
     #   Try removing rank specification
     elif cond and move_name[:2] + move_name[3:] in engine_names:
         if p['mode'] >= 2:
-            print("Changing move name", move_name, "to", \
-                  move_name[:2] + move_name[2:] + '.')
+            print(
+                "Changing move name", move_name, "to", \
+                move_name[:2] + move_name[2:] + '.'
+            )
         move_name = move_name[:2] + move_name[3:]    
 
     #   Other mismatches should not occur
@@ -143,10 +148,9 @@ def generate_raw_pairs(game_str, p, output_type='value'):
         if output_type == 'policy_value':
             g = game.copy()
 
-        r = game.getReward(move_played,
-                           p['mateReward'],
-                           simple=True,
-                           copy=False)[0]
+        r = game.getReward(
+            move_played, p['mateReward'], simple=True, copy=False
+        )[0]
         rewards.append(r)
 
         if output_type == 'policy_value':
@@ -203,30 +207,38 @@ def update_buffer(buffer, raw_pairs, p, augment):
             elif num_examples == 16:
                 buffer_index = 2
             else:
-                sys.exit("Received an invalid number of augmented positions" + \
-                         "associated with one example: " + str(num_examples))
+                sys.exit(
+                    "Received an invalid number of augmented positions" + \
+                    "associated with one example: " + str(num_examples)
+                )
 
             #   Add the data to the correct buffer
-            buffer[buffer_index] += [(nn_vecs[i][j],
-                                      q_learn.index_to_label(j, r))
-                                     for j in range(len(nn_vecs[i]))]
+            buffer[buffer_index] += [
+                (nn_vecs[i][j], q_learn.index_to_label(j, r))
+                    for j in range(len(nn_vecs[i]))
+            ]
 
         Buffer.verify(buffer, p, 3)
     else:
         for i in range(len(rewards)):
             if len(raw_pairs) == 2:
-                buffer[0].append((nn_vecs[i][0],
-                                  tf.constant(expit(rewards[i]),
-                                              shape=[1,1],
-                                              dtype=tf.float32)))
+                buffer[0].append(
+                    (
+                        nn_vecs[i][0],
+                        tf.constant(
+                            expit(rewards[i]), shape=[1,1], dtype=tf.float32
+                        )
+                    )
+                )
             else:
                 #   Use the cumulative reward propagated backward with gamma,
                 #   not the immediate reward contained in out_vecs[i][3]
-                this_r = tf.constant(expit(rewards[i]),
-                                     shape=[1, 1],
-                                     dtype=tf.float32)
-                buffer[0].append((nn_vecs[i][0],
-                                  out_vecs[i][:3] + [this_r]))
+                this_r = tf.constant(
+                    expit(rewards[i]), shape=[1, 1], dtype=tf.float32
+                )
+                buffer[0].append(
+                    (nn_vecs[i][0], out_vecs[i][:3] + [this_r])
+                )
 
         Buffer.verify(buffer, p, 1)
 
