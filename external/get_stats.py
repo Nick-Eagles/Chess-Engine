@@ -49,8 +49,9 @@ def process_line(game_str, obs_var, prob_var, p, net):
         in_vecs.append(game.toNN_vecs(every=False)[0])
 
         #   Compute variance across "empirical" rewards resulting from each move
-        rewards = np.array([game.getReward(m, p['mateReward'], simple=True)[0]
-                            for m in moves])
+        rewards = np.array(
+            [game.getReward(m, p['mateReward'], simple=True)[0] for m in moves]
+        )
         obs_var.append(np.var(rewards))
         
         #   Do the move specified in the PGN

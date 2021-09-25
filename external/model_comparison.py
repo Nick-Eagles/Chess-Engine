@@ -53,34 +53,36 @@ def simple_model(num_layers, lens):
 
     #   Hidden layers
     for i in range(num_layers):
-        x = layers.Dense(lens[i],
-                         activation="relu",
-                         kernel_regularizer=regularizers.l2(p['weightDec']))(x)
+        x = layers.Dense(
+            lens[i],
+            activation="relu",
+            kernel_regularizer=regularizers.l2(p['weightDec'])
+        )(x)
         x = layers.BatchNormalization(momentum=p['popPersist'])(x)
 
     #   Output layer (3 pieces of a policy vector and a scalar value)
-    policy_start_sq = layers.Dense(64,
-                                   activation="softmax",
-                                   name="policy_start_square")(x)
-    policy_end_sq = layers.Dense(64,
-                                 activation="softmax",
-                                 name="policy_end_square")(x)
-    policy_end_piece = layers.Dense(6,
-                                    activation="softmax",
-                                    name="policy_end_piece")(x)
+    policy_start_sq = layers.Dense(
+        64, activation="softmax", name="policy_start_square"
+    )(x)
+    policy_end_sq = layers.Dense(
+        64, activation="softmax", name="policy_end_square"
+    )(x)
+    policy_end_piece = layers.Dense(
+        6, activation="softmax", name="policy_end_piece"
+    )(x)
 
+    value = layers.Dense(
+        1,
+        activation="sigmoid",
+        name="output",
+        kernel_regularizer=regularizers.l2(p['weightDec'])
+    )(x)
 
-    value = layers.Dense(1,
-                         activation="sigmoid",
-                         name="output",
-                         kernel_regularizer=regularizers.l2(p['weightDec']))(x)
-
-    net = keras.Model(inputs=inputs,
-                      outputs=[policy_start_sq,
-                               policy_end_sq,
-                               policy_end_piece,
-                               value],
-                      name="network")
+    net = keras.Model(
+        inputs=inputs,
+        outputs=[policy_start_sq, policy_end_sq, policy_end_piece, value],
+        name="network"
+    )
 
     return net
 

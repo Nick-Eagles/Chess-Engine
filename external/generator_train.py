@@ -38,11 +38,9 @@ def load_data(path):
 p = input_handling.readConfig()
 
 if make_new_net:
-    net = policy_net.InitializeNet(num_groups,
-                                   blocks_per_group,
-                                   block_width,
-                                   p,
-                                   'policy_value')
+    net = policy_net.InitializeNet(
+        num_groups, blocks_per_group, block_width, p, 'policy_value'
+    )
 else:
     session = Session.Session([[]], [[]])
     session.Load(net_dir, lazy=True)
@@ -74,10 +72,12 @@ buffer = [[]]
 for i in range(v_data[0].shape[0]):
     #   Get this particular example as a tuple (input, label)
     x = tf.reshape(v_data[0][i, :], [1, 839])
-    y = [tf.reshape(v_data[1][0][i, :], [1, 64]),
-         tf.reshape(v_data[1][1][i, :], [1, 64]),
-         tf.reshape(v_data[1][2][i, :], [1, 6]),
-         tf.reshape(v_data[1][3][i, :], [1, 1])]
+    y = [
+        tf.reshape(v_data[1][0][i, :], [1, 64]),
+        tf.reshape(v_data[1][1][i, :], [1, 64]),
+        tf.reshape(v_data[1][2][i, :], [1, 6]),
+        tf.reshape(v_data[1][3][i, :], [1, 1])
+    ]
     
     buffer[0].append((x, y))
 
@@ -101,18 +101,23 @@ lay_indices = [1 + (2 + 2 * blocks_per_group * block_width) * i
 lay_lens = [net.layers[i].output_shape[-1] for i in lay_indices]
 lay_lens_str = ','.join([str(x) for x in lay_lens])
 
-last_acc = round(new_history.history['val_policy_end_square_categorical_accuracy'][-1],
-                 4)
+last_acc = round(
+    new_history.history['val_policy_end_square_categorical_accuracy'][-1], 4
+)
 
-hyperparams = [[num_groups,
-               blocks_per_group,
-               block_width,
-               lay_lens_str,
-               p['nu'],
-               p['batchSize'],
-               p['weightDec'],
-               p['epochs'],
-               last_acc]]
+hyperparams = [
+    [
+        num_groups,
+        blocks_per_group,
+        block_width,
+        lay_lens_str,
+        p['nu'],
+        p['batchSize'],
+        p['weightDec'],
+        p['epochs'],
+        last_acc
+    ]
+]
 
 with open(hyper_path, 'a') as f:
     writer = csv.writer(f)

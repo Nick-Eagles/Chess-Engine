@@ -20,11 +20,9 @@ net_type = 'policy_value'
 p = input_handling.readConfig()
 
 buffer = [[]]
-net = policy_net.InitializeNet(num_groups,
-                               blocks_per_group,
-                               block_width,
-                               p,
-                               net_type)
+net = policy_net.InitializeNet(
+    num_groups, blocks_per_group, block_width, p, net_type
+)
 
 with open(in_file, 'r') as pgn_file:
     all_lines = pgn_file.readlines()
