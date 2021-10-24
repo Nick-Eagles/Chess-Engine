@@ -8,7 +8,7 @@ from tensorflow.keras import regularizers
 import input_handling
 
 def InitializeNet(p, output_type, numGroups=None, blocksPerGroup=None, blockWidth=None):
-    if blocksPerGroup is None:
+    if numGroups is None:
         #   Number of groups of residual blocks
         messDef = "Define network architecture: how many residual groups? "
         messOnErr = "Not a valid number."
