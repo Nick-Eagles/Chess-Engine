@@ -16,6 +16,7 @@ external/*.pgn
 external/2019_games_tensor_*.pkl.gz
 external/2019_games_t
 external/gen_hyperparams.csv
+installation/chess_env
 __pycache__
 config.txt
 nets/*
