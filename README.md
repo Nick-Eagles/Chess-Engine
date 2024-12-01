@@ -25,7 +25,7 @@ f(s) := {
 
 In practice, `s*` is not known (the model isn't typically training on games with optimal play), and the true labels `V(s)` for each `s` may only be estimated. We approximate V(s~i~) in terms of a series of "rewards":
 
-(2) V(s~i~) ~= R(s~i+1~ | s~i~) + `gamma` \* R(s~i+2~ | s~i+1~) + ... + `gamma`^n-i-1^ \* R(s~n~ | s~n-1*)
+(2) V(s,<sub>i</sub>) ~= R(s~i+1~ | s~i~) + `gamma` \* R(s~i+2~ | s~i+1~) + ... + `gamma`^n-i-1^ \* R(s~n~ | s~n-1*)
 
 Here R(s~i+1~ | s~i~) can be read as "the reward from moving from state s~i~ to state s~i+1~", and is defined:
 
