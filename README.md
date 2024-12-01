@@ -23,13 +23,15 @@ f(s) := {
 
 ### Approximation of the value function using "rewards"
 
-In practice, `s*` is not known (the model isn't typically training on games with optimal play), and the true labels `V(s)` for each `s` may only be estimated. We approximate V(s~i~) in terms of a series of "rewards":
+In practice, `s*` is not known (the model isn't typically training on games with
+optimal play), and the true labels `V(s)` for each `s` may only be estimated. We
+approximate V(s<sub>i</sub>) in terms of a series of "rewards":
 
-(2) V(s,<sub>i</sub>) ~= R(s~i+1~ | s~i~) + `gamma` \* R(s~i+2~ | s~i+1~) + ... + `gamma`^n-i-1^ \* R(s~n~ | s~n-1*)
+(2) V(s<sub>i</sub>) ~= R(s<sub>i+1</sub> | s<sub>i</sub>) + `gamma` \* R(s<sub>i+2</sub> | s<sub>i+1</sub>) + ... + `gamma`<sup>n-i-1</sup> \* R(s<sub>n</sub> | s<sub>n-1</sub>*)
 
-Here R(s~i+1~ | s~i~) can be read as "the reward from moving from state s~i~ to state s~i+1~", and is defined:
+Here R(s<sub>i+1</sub> | s<sub>i</sub>) can be read as "the reward from moving from state s<sub>i</sub> to state s<sub>i+1</sub>", and is defined:
 
-(3) R(s~i+1~ | s~i~) := f(s~i+1~) - f(s~i~)
+(3) R(s<sub>i+1</sub> | s<sub>i</sub>) := f(s<sub>i+1</sub>) - f(s<sub>i</sub>)
 
 Note that based on this definition, the equality `(2)` holds exactly (for optimal play) when `gamma = 1`, rather than holding approximately. Intuitively, equation `(2)` says that the value of a game state is equal to the discounted sum of rewards for each move made until the terminal state; after each move, the reward decays by a factor of `gamma`, representing the uncertainty that the move was optimal. Much of the code in this project refers to "rewards" rather than ever directly referring to `V(s)` or value functions.
 
