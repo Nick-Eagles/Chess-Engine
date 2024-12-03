@@ -4,9 +4,7 @@ import os
 import tensorflow as tf
 import sys
 
-sys.path.append('./experimental/')
 import policy_net
-
 import Game
 import network_helper
 import misc

@@ -10,6 +10,7 @@ import board_helper
 import Session
 import buffer
 import policy
+import policy_net
 
 import sys
 import os
@@ -27,7 +28,6 @@ import time
 sys.path.append('./external/')
 sys.path.append('./experimental/')
 import read_pgn
-import policy_net
 
 
 #   Given a network, asks the user for training hyper-parameters, trains the

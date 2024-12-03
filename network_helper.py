@@ -11,8 +11,6 @@ import Game
 import misc
 import board_helper
 import policy
-
-sys.path.append('./experimental/')
 import policy_net
 
 #################################################################################
