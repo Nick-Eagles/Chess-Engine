@@ -1,3 +1,9 @@
+#   I believe the idea I was starting to explore here was whether a
+#   convolutional-like network would be a more-suitable architecture
+#   for parsing a chess board. The convolutional filter would cover,
+#   for a given starting square, all squares that can be reached in
+#   one move by any piece. No code here is used in the project right now.
+
 #   The number of squares occupying:
 #       1. one rank and file (15)
 #       2. both "complete" diagonals (14)
