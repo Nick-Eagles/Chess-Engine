@@ -93,25 +93,18 @@ class Move:
         #   End square
         move += chr(self.endSq[0]+97) + str(self.endSq[1]+1)
 
-        #   Special pawn stuff
-        if piece == 1:
-            #   End sqaure is empty, meaning an en passant occurred
-            if self.startSq[0] != self.endSq[0] and board[self.endSq[0]][self.endSq[1]] == 0:
-                move = chr(self.startSq[0]+97) + 'x' + chr(self.endSq[0]+97) + \
-                       str(self.endSq[1]+1) + ' e.p.'
-                
-            #   Handles promotion
-            elif self.endSq[1] == 0 or self.endSq[1] == 7:
-                assert abs(self.endPiece) >= 2 and abs(self.endPiece) <= 5, \
-                       "Tried to promote to piece " + str(self.endPiece)
-                if abs(self.endPiece) == 2:
-                    move += '=N'
-                elif abs(self.endPiece) == 3:
-                    move += '=B'
-                elif abs(self.endPiece) == 4:
-                    move += '=R'
-                else:
-                    move += '=Q'
+        #   Handles promotion
+        if piece == 1 and self.endSq[1] == 0 or self.endSq[1] == 7:
+            assert abs(self.endPiece) >= 2 and abs(self.endPiece) <= 5, \
+                    "Tried to promote to piece " + str(self.endPiece)
+            if abs(self.endPiece) == 2:
+                move += '=N'
+            elif abs(self.endPiece) == 3:
+                move += '=B'
+            elif abs(self.endPiece) == 4:
+                move += '=R'
+            else:
+                move += '=Q'
 
         return move
 
