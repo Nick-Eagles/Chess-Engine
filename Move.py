@@ -4,13 +4,16 @@ import misc
 #   Encapsulates information that comprises a chess move and provides a function
 #   to return the formal move name (ex. Qxe7). Does not support "+" or "#".
 class Move:
-    def __init__(self, startSq, endSq, endPiece):
-        assert endPiece != 0, "Tried to create move with self-deleting piece"
-        assert (startSq[0] != endSq[0] or startSq[1] != endSq[1]), \
-               "Tried to create a move that does nothing"
-        assert endPiece >= -6 and endPiece <= 6, \
-               "Tried to create an invalid piece type: " + str(endPiece)
+    def __init__(self, startSq, endSq, endPiece, validate = True):
+        if validate:
+            assert endPiece != 0, "Tried to create move with self-deleting piece"
+            assert (startSq[0] != endSq[0] or startSq[1] != endSq[1]), \
+                "Tried to create a move that does nothing"
+            assert endPiece >= -6 and endPiece <= 6, \
+                "Tried to create an invalid piece type: " + str(endPiece)
         
+        self.validate = validate
+
         #   These are tuples of integers in [0,7]x[0,7]
         self.startSq = startSq
         self.endSq = endSq
@@ -55,9 +58,10 @@ class Move:
     #    be legitimate; function does not check legality of move.
     def getMoveName(self, game):
         piece = abs(game.board[self.startSq[0]][self.startSq[1]])
-        assert piece != 0, \
-               "Tried to name a move that started on an empty square:\n" + \
-               self.toString()
+        if self.validate:
+            assert piece != 0, \
+                "Tried to name a move that started on an empty square:\n" + \
+                self.toString()
             
         #   Piece letter
         if piece == 1:
@@ -93,9 +97,10 @@ class Move:
         move += chr(self.endSq[0]+97) + str(self.endSq[1]+1)
 
         #   Handles promotion
-        if piece == 1 and self.endSq[1] == 0 or self.endSq[1] == 7:
-            assert abs(self.endPiece) >= 2 and abs(self.endPiece) <= 5, \
-                    "Tried to promote to piece " + str(self.endPiece)
+        if piece == 1 and (self.endSq[1] == 0 or self.endSq[1] == 7):
+            if self.validate:
+                assert abs(self.endPiece) >= 2 and abs(self.endPiece) <= 5, \
+                        "Tried to promote to piece " + str(self.endPiece)
             if abs(self.endPiece) == 2:
                 move += '=N'
             elif abs(self.endPiece) == 3:

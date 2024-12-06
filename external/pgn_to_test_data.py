@@ -9,6 +9,9 @@
 
 from pyhere import here
 import numpy as np
+import sys
+
+sys.path.append('..')
 
 import Game
 import board_helper
@@ -43,7 +46,7 @@ def game_to_pairs(game_str):
         
         #   Verify that the move played was legal
         moves = board_helper.getLegalMoves(game)
-        actual_names = [m.getMoveName(game.board) for m in moves]
+        actual_names = [m.getMoveName(game) for m in moves]
         assert move_name in actual_names, f'{move_name}; {" ".join(actual_names)}'
         move_played = moves[misc.match(move_name, actual_names)]
 
@@ -56,13 +59,13 @@ def game_to_pairs(game_str):
                     [int(x[0]) for x in np.where(np.array(game.board) == 5)]
                 )
 
-                fake_move = Move.Move(start_sq, (0, 0), 5)
+                fake_move = Move.Move(start_sq, (0, 0), 5, validate = False)
                 r = 100
             else:
                 start_sq = tuple(
                     [int(x[0]) for x in np.where(np.array(game.board) == 6)]
                 )
-                fake_move = Move.Move(start_sq, (1, 1), 6)
+                fake_move = Move.Move(start_sq, (1, 1), 6, validate = False)
                 r = -100
         else:
             if game.bPieces[5] > 0:
@@ -70,13 +73,13 @@ def game_to_pairs(game_str):
                     [int(x[0]) for x in np.where(np.array(game.board) == -5)]
                 )
 
-                fake_move = Move.Move(start_sq, (0, 0), -5)
+                fake_move = Move.Move(start_sq, (0, 0), -5, validate = False)
                 r = -100
             else:
                 start_sq = tuple(
                     [int(x[0]) for x in np.where(np.array(game.board) == -6)]
                 )
-                fake_move = Move.Move(start_sq, (1, 1), -6)
+                fake_move = Move.Move(start_sq, (1, 1), -6, validate = False)
                 r = 100
 
         out_vecs.append(policy_net.ToOutputVec(game, fake_move, r))
