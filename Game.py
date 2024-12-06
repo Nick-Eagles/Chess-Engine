@@ -306,20 +306,20 @@ class Game:
 
         if self.whiteToMove:
             if not self.quiet:
-                self.annotation += str(self.moveNum) + ". " + move.getMoveName(self.board) + " "
+                self.annotation += str(self.moveNum) + ". " + move.getMoveName(self) + " "
             piecesList = self.wPieces
             oppPiecesList = self.bPieces
         else:
             if not self.quiet:
-                self.annotation += move.getMoveName(self.board) + "\n"
+                self.annotation += move.getMoveName(self) + "\n"
             piecesList = self.bPieces
             oppPiecesList = self.wPieces
 
         startPiece = self.board[move.startSq[0]][move.startSq[1]]
         pieceRemoved = self.board[move.endSq[0]][move.endSq[1]]
-        assert startPiece != 0, "Tried to move a piece from an empty square: " + move.getMoveName(self.board) + self.verbosePrint()
-        assert coeff*pieceRemoved <= 0, "Tried to capture own piece: " + move.getMoveName(self.board) + self.verbosePrint()
-        assert abs(pieceRemoved) != 6, "About to capture opponent's king: " + move.getMoveName(self.board) + self.verbosePrint()       
+        assert startPiece != 0, "Tried to move a piece from an empty square: " + move.getMoveName(self) + self.verbosePrint()
+        assert coeff*pieceRemoved <= 0, "Tried to capture own piece: " + move.getMoveName(self) + self.verbosePrint()
+        assert abs(pieceRemoved) != 6, "About to capture opponent's king: " + move.getMoveName(self) + self.verbosePrint()       
 
         #   Sees if the move is a capture or pawn move
         if pieceRemoved != 0 or abs(startPiece) == 1:

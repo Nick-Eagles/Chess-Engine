@@ -53,8 +53,8 @@ class Move:
     
     #   Prints the move name in algebraic notation. NOTE: the move is assumed to
     #    be legitimate; function does not check legality of move.
-    def getMoveName(self, board):
-        piece = abs(board[self.startSq[0]][self.startSq[1]])
+    def getMoveName(self, game):
+        piece = abs(game.board[self.startSq[0]][self.startSq[1]])
         assert piece != 0, \
                "Tried to name a move that started on an empty square:\n" + \
                self.toString()
@@ -79,14 +79,14 @@ class Move:
                 move = 'K'
         
         #   Deal with potential ambiguity
-        amb = self.isAmbiguous(board)
+        amb = self.isAmbiguous(game)
         if amb[1]:
             move += chr(self.startSq[0]+97)
         if amb[0]:
             move += str(self.startSq[1]+1)
 
         #   Deal with possibility of capture
-        if self.isCapture(board):
+        if self.isCapture(game.board):
             move += 'x'
 
         #   End square
@@ -110,8 +110,8 @@ class Move:
     #   Check if more than one piece would be able to do the move name if the
     #   starting file or rank were not clarified. Returns a 2-tuple of booleans
     #   representing if file and/or rank is ambiguous, in that order.
-    def isAmbiguous(self, board):
-        piece = board[self.startSq[0]][self.startSq[1]]
+    def isAmbiguous(self, game):
+        piece = game.board[self.startSq[0]][self.startSq[1]]
         coeff = 2 * (piece > 0) - 1
 
         if abs(piece) == 1:
@@ -123,15 +123,25 @@ class Move:
         
         elif abs(piece) == 2:
             #   From the move's end square, move like a knight and see if you
-            #   end up on a square with a knight more than once (since the start
-            #   square is not ignored)
+            #   end up on a square with a knight (that can legally move to the
+            #   end square) at least once
             horizontals = [-2, -2, -1, -1, 1, 1, 2, 2]
             verticals = [-1, 1, -2, 2, -2, 2, -1, 1]
             xHits = 0   # number of knights on the same file as the moving knight
             yHits = 0   #   " same rank
             hits = 0
             for x,y in zip(horizontals, verticals):
-                if board_helper.inBounds(self.endSq, (x,y)) and board[self.endSq[0] + x][self.endSq[1] + y] == piece:
+                cond = board_helper.inBounds(self.endSq, (x,y)) and \
+                    game.board[self.endSq[0] + x][self.endSq[1] + y] == piece and \
+                    board_helper.tryMove(
+                        game,
+                        Move(
+                            (self.endSq[0] + x, self.endSq[1] + y),
+                            self.endSq,
+                            piece
+                        )
+                    )
+                if cond :
                     xHits += (self.endSq[0] + x == self.startSq[0])
                     yHits += (self.endSq[1] + y == self.startSq[1])
                     hits += 1
@@ -163,19 +173,30 @@ class Move:
                 i = 1
 
                 #   Move along a line until we encounter a piece. Record the
-                #   file and rank if it matches the piece type
+                #   file and rank if it matches the piece type and that piece
+                #   can legally move to the end square
                 while not decided and board_helper.inBounds(self.endSq, (i*motion[0], i*motion[1])):
-                    current_piece = board[self.endSq[0] + i*motion[0]][self.endSq[1] + i*motion[1]]
-                    if current_piece == piece:
-                        #   We found a piece of the same type
+                    current_piece = game.board[self.endSq[0] + i*motion[0]][self.endSq[1] + i*motion[1]]
+                    cond = current_piece == piece and \
+                        board_helper.tryMove(
+                            game,
+                            Move(
+                                (self.endSq[0] + i*motion[0], self.endSq[1] + i*motion[1]),
+                                self.endSq,
+                                current_piece
+                            )
+                        )
+                    if cond:
+                        #   We found a piece of the same type that can legally
+                        #   move to the end square
                         key_squares.append(
                             (self.endSq[0] + i*motion[0],
                              self.endSq[1] + i*motion[1])
                         )
                         decided = True
                     elif current_piece != 0:
-                        #   The first piece along the "line" is different than
-                        #   the type we are looking for
+                        #   The first piece along the "line" can't move to the
+                        #   end square
                         decided = True
                     else:
                         i += 1
