@@ -51,9 +51,8 @@ class Move:
         text += "self.endPiece: " + str(self.endPiece)
         return text
     
-    #   Prints the move name in chess standard notation.
-    #   NOTE: the move is assumed to be legitimate; function does not check
-    #   legality of move.
+    #   Prints the move name in algebraic notation. NOTE: the move is assumed to
+    #    be legitimate; function does not check legality of move.
     def getMoveName(self, board):
         piece = abs(board[self.startSq[0]][self.startSq[1]])
         assert piece != 0, \

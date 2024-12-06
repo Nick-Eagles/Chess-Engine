@@ -441,7 +441,8 @@ def getLegalMoves(game):
 
 
 #   A variant of getLegalMoves which returns True iff at least one legal move
-#   exists for the current player
+#   exists for the current player. Generally much faster than
+#   length(getLegalMoves(game)) > 0
 def anyLegalMoves(game):
     coeff = 2 * game.whiteToMove - 1
     
