@@ -10,8 +10,10 @@
 from pyhere import here
 import numpy as np
 import sys
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
 
-sys.path.append('..')
+sys.path.append(str(here()))
 
 import Game
 import board_helper
@@ -19,9 +21,11 @@ import misc
 import policy_net
 import Move
 
-pgn_path = here('external', '6980_games.txt')
+pgn_path = here('external', '6956_games.txt')
+test_size = 0.1
+random_state = 0
 
-def game_to_pairs(game_str):    
+def game_to_pairs(game_str, j):    
     move_names = game_str.split(' ')
 
     stated_result = move_names.pop()
@@ -42,12 +46,12 @@ def game_to_pairs(game_str):
     in_vecs = []
     out_vecs = []
     for i, move_name in enumerate(move_names):
-        in_vecs.append(game.toNN_vecs())
+        in_vecs.append(game.toNN_vecs(every = False)[0])
         
         #   Verify that the move played was legal
         moves = board_helper.getLegalMoves(game)
         actual_names = [m.getMoveName(game) for m in moves]
-        assert move_name in actual_names, f'{move_name}; {" ".join(actual_names)}'
+        assert move_name in actual_names, f'game {j}: {move_name}; {" ".join(actual_names)}'
         move_played = moves[misc.match(move_name, actual_names)]
 
         #   If the current color has a queen, create synthetic output that has
@@ -85,7 +89,7 @@ def game_to_pairs(game_str):
         out_vecs.append(policy_net.ToOutputVec(game, fake_move, r))
         
         game.doMove(move_played)
-        
+    
     return (in_vecs, out_vecs)
 
 with open(pgn_path, 'r') as f:
@@ -93,8 +97,9 @@ with open(pgn_path, 'r') as f:
 
 in_vecs = []
 out_vecs = []
-for game in games:
-    temp = game_to_pairs(game)
-    in_vecs += temp[0]
-    out_vecs += temp[1]
-    
+for i, game in enumerate(games):
+    temp = game_to_pairs(game, i)
+    in_vecs.append(temp[0])
+    out_vecs.append(temp[1])
+    if i % 100 == 0:
+        print(f'Done processing game {i}')

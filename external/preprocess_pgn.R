@@ -32,11 +32,14 @@ game = game[(white_elo > elo_cutoff) & (black_elo > elo_cutoff)]
 #   Clean up into a space-separated series of moves ending in a result string
 game = game |>
     #   Delete the header of each game
-    str_replace('.*\\] *1\\. ', '') |>
+    str_replace('.*\\] *', '') |>
     #   Remove numbers before each turn
     str_replace_all('[0-9]+\\. ', '') |>
-    #   The engine doesn't use '+' for check
-    str_replace_all('\\+', '')
+    #   The engine doesn't use '+' or '#' for check or checkmate
+    str_replace_all('[+#]', '')
+
+#   For some reason, there are games with no moves. Drop them
+game = game[!grepl('^(1-0|0-1|1/2-1/2)$', game)]
 
 out_path = sprintf(out_path, length(game))
 writeLines(game, con = out_path)
