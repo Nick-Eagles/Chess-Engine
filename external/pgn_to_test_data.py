@@ -12,6 +12,8 @@ import numpy as np
 import sys
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
+import pickle
+import gzip
 
 sys.path.append(str(here()))
 
@@ -24,6 +26,7 @@ import Move
 pgn_path = here('external', '6956_games.txt')
 test_size = 0.1
 random_state = 0
+out_path = here('external', 'tensor_list.pkl.gz')
 
 def game_to_pairs(game_str, j):    
     move_names = game_str.split(' ')
@@ -103,3 +106,78 @@ for i, game in enumerate(games):
     out_vecs.append(temp[1])
     if i % 100 == 0:
         print(f'Done processing game {i}')
+
+#   Split data by game, not position, at first
+X_train, X_test, y_train, y_test = train_test_split(
+    in_vecs, out_vecs, test_size = test_size, random_state = random_state
+)
+
+#   Format as (N, 839) tensors (includes N positions). The second index (first
+#   axis) of each tensor is the second position in the first game
+X_train = tf.stack(
+    [tf.reshape(pos, (839)) for game in X_train for pos in game], axis = 0
+)
+X_test = tf.stack(
+    [tf.reshape(pos, (839)) for game in X_test for pos in game], axis = 0
+)
+
+#   Format as lists of (N, Mi) tensors (for N positions for different values
+#   of Mi for each output component)
+y_train = [
+    tf.stack(
+        [
+            tf.reshape(game[i][0], (64))
+            for game in y_train for i in range(len(game))
+        ]
+    ),
+    tf.stack(
+        [
+            tf.reshape(game[i][1], (64))
+            for game in y_train for i in range(len(game))
+        ]
+    ),
+    tf.stack(
+        [
+            tf.reshape(game[i][2], (6))
+            for game in y_train for i in range(len(game))
+        ]
+    ),
+    tf.stack(
+        [
+            tf.reshape(game[i][3], (1))
+            for game in y_train for i in range(len(game))
+        ]
+    )
+]
+
+y_test = [
+    tf.stack(
+        [
+            tf.reshape(game[i][0], (64))
+            for game in y_test for i in range(len(game))
+        ]
+    ),
+    tf.stack(
+        [
+            tf.reshape(game[i][1], (64))
+            for game in y_test for i in range(len(game))
+        ]
+    ),
+    tf.stack(
+        [
+            tf.reshape(game[i][2], (6))
+            for game in y_test for i in range(len(game))
+        ]
+    ),
+    tf.stack(
+        [
+            tf.reshape(game[i][3], (1))
+            for game in y_test for i in range(len(game))
+        ]
+    )
+]
+
+#   Write the tensors to disk
+data = (X_train, X_test, y_train, y_test)
+with gzip.open(out_path, 'wb') as f:
+    pickle.dump(data, f)
