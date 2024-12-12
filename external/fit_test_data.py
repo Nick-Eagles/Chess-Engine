@@ -11,6 +11,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import pickle
 import gzip
+import pandas as pd
+import re
 
 sys.path.append(str(here()))
 
@@ -19,7 +21,7 @@ hidden_layer_lens = [200, 100, 50]
 policy_weight = 0.5
 optimizer = 'adam'
 batch_size = 100
-epochs = 20
+epochs = 10
 
 #   Load semi-synthetic data into training and test sets
 with gzip.open(data_path, 'rb') as f:
@@ -89,3 +91,45 @@ history = net.fit(
     epochs = epochs,
     validation_data = (X_test, y_test)
 )
+
+################################################################################
+#   Plot history info
+################################################################################
+
+#-------------------------------------------------------------------------------
+#   Gather history.history into a tidy DataFrame
+#-------------------------------------------------------------------------------
+
+#   Convert history info to DataFrame, making sure column names start with
+#   either 'val_' or 'train_'
+history_df = pd.DataFrame(history.history)
+history_df.rename(
+    lambda x: re.sub(r'^(?!val_)', 'train_', x), axis = 1, inplace = True
+)
+
+#   Add epoch as a column
+history_df.index.name = 'epoch'
+history_df.reset_index(inplace = True)
+
+#   Reformat longer, such that as columns we have 'epoch', 'data_group' (train
+#   or val), and then each tracked metric
+history_df = pd.melt(
+    history_df,
+    id_vars = 'epoch',
+    value_vars = history_df.drop('epoch', axis = 1).columns
+)
+history_df['data_group'] = history_df['variable'].str.extract('^(train|val)')
+history_df['metric'] = history_df['variable'].apply(
+    lambda x: re.sub('^(train|val)_', '', x)
+)
+history_df = (
+    history_df
+        .drop('variable', axis = 1)
+        .pivot(
+            index = ['epoch', 'data_group'],
+            columns = 'metric',
+            values = 'value'
+        )
+        .reset_index()
+)
+history_df.columns.name = None
