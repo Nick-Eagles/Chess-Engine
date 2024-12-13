@@ -16,7 +16,7 @@ Material is added for the whole board (using standard piece values: 1 for pawn, 
 f(s) := {
     0 :               s is a draw;
     mateReward :      s is a win for white;
-    -1 * mateReward : s is a win for white;
+    -1 * mateReward : s is a win for black;
     log(w / b) :      s is not a terminal state
 }
 ```
