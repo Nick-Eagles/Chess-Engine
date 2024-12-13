@@ -24,7 +24,7 @@ with open(pgn_path, 'r') as f:
 
 in_vecs = []
 out_vecs = []
-for i, game in enumerate(games[:500]):
+for i, game in enumerate(games):
     temp = read_pgn.game_to_pairs_real(game, p, i)
     in_vecs.append(temp[0])
     out_vecs.append(temp[1])
