@@ -17,8 +17,8 @@ from plotnine import ggplot, aes, geom_line, coord_cartesian, theme_bw, ggsave, 
 
 sys.path.append(str(here()))
 
-data_path = here('external', 'tensor_list.pkl.gz')
-metrics_plot_path = here('visualization', 'test_metrics.pdf')
+data_path = here('external', 'tensor_list_synthetic.pkl.gz')
+metrics_plot_path = here('visualization', 'synthetic_metrics.pdf')
 hidden_layer_lens = [200, 100, 50]
 policy_weight = 0.5
 optimizer = 'adam'

@@ -19,7 +19,7 @@ import read_pgn
 pgn_path = here('external', '6956_games.txt')
 test_size = 0.1
 random_state = 0
-out_path = here('external', 'tensor_list.pkl.gz')
+out_path = here('external', 'tensor_list_synthetic.pkl.gz')
 
 with open(pgn_path, 'r') as f:
     games = f.read().splitlines()

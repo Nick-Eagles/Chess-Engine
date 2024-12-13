@@ -14,7 +14,7 @@ import Move
 #   Given a single game as a string, return input and output tensors for
 #   training a policy-value network. Output tensors are "synthetic" in that
 #   rather than representing good moves and expected rewards, they are
-#   intentionally simple-- see pgn_to_test_data.py for context.
+#   intentionally simple-- see pgn_to_synthetic_data.py for context.
 #
 #   game_str: a string containing an entire game. See preprocess_pgn.R for
 #       conventions on what is expected here
