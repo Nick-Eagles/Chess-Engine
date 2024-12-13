@@ -2,6 +2,63 @@ from pyhere import here
 
 import policy
 
+# ---------------------------------------------------------------------
+#
+#   Manages user input in a smarter way, preventing the program from
+#   crashing for dumb reasons. Note that input is assumed to be benign
+#   (eval() is used in a way that could do harm outside the program if
+#   you explicitly intended to)
+#
+# ---------------------------------------------------------------------
+
+#   messDef: main/ default string to ask the user for input
+#   messOnErr: message to warn user about invalid input not related
+#       to the input's type
+#   inType: string containing expected variable type of user input
+#   cond: a string containing a condition to be evaluated to determine
+#       if input is valid: Valid examples are "var == 4" or "var[-4] != '.csv'"
+#   explan: an optional string explaining what the input will signify to
+#       to the program
+#   auxVars: a tuple containing an arbitrary number of variables to
+#       include in "cond". Suppose you want a condition to involve the user
+#       input and other variables y and z. Then auxVars = (y,z) and
+#       you might have cond = 'var > 0 and var+auxVars[0]+auxVars[1] < 10'
+#
+#   returns the validated user input
+def getUserInput(messDef, messOnErr, inType, cond, explan='', auxVars=()):
+    valid = False
+    finalIn = ''
+    while not valid:
+        if explan != '':
+            print("Enter '-0' for an explanation.")
+        rawIn = input(messDef)
+        if rawIn == '-0':
+            print(explan)
+        elif len(rawIn) == 0:
+            print("Please check your input.")
+        else:
+            if inType != "str":
+                #   Try to coerce input (a string) to desired type
+                try:
+                    coercedIn = eval(inType + "(" + rawIn + ")")
+                    var = coercedIn
+                    if eval(cond):
+                        finalIn = coercedIn
+                        valid = True
+                    else:
+                        print(messOnErr)
+                except:
+                    print("Please check your input.")
+                    pass
+            else:
+                var = rawIn
+                if eval(cond):
+                    finalIn = rawIn
+                    valid = True
+                else:
+                    print(messOnErr)
+    return finalIn
+
 #   Read a config file where sections are delimited with "#", and each line
 #   of content is a string of the form "[variableName] [value]". Assumes the
 #   config file is legitimate and properly specified.
