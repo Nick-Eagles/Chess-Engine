@@ -14,6 +14,7 @@ import re
 from plotnine import ggplot, aes, geom_line, coord_cartesian, theme_bw, ggsave, facet_wrap, labs
 
 data_path = here('external', 'tensor_list_real.pkl.gz')
+model_path = here('nets', '200_100_50.keras')
 metrics_plot_path = here('visualization', 'real_metrics.pdf')
 hidden_layer_lens = [200, 100, 50]
 policy_weight = 0.5
@@ -161,3 +162,5 @@ p = (
         )
 )
 ggsave(p, filename = metrics_plot_path, width = 10, height = 5)
+
+net.save(model_path)
