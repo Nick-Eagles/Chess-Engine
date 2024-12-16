@@ -83,19 +83,17 @@ class Traversal:
                         if g.gameResult == 17:  
                             moves, fullMovesLen = self.policy(self.net, g, p)
                             stack.append(
-                                [
-                                    {
-                                        'moves': moves,
-                                        'rewards': [],
-                                        'game': g,
-                                        'prev_reward': stack[-1]['prev_reward'] + \
-                                            p['gamma_exec'] * r,
-                                        'alpha': stack[-1]['alpha'],
-                                        'beta': stack[-1]['beta'],
-                                        'nn_inputs': [],
-                                        'move_names': []
-                                    }
-                                ]
+                                {
+                                    'moves': moves,
+                                    'rewards': [],
+                                    'game': g,
+                                    'prev_reward': stack[-1]['prev_reward'] + \
+                                        p['gamma_exec'] * r,
+                                    'alpha': stack[-1]['alpha'],
+                                    'beta': stack[-1]['beta'],
+                                    'nn_inputs': [],
+                                    'move_names': []
+                                }
                             )
                             self.nodeHops += 1
                         elif g.gameResult == 0:
