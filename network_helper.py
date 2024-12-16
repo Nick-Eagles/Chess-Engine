@@ -51,27 +51,15 @@ def net_activity(net, tData):
 
 def display_evaluation(game, bestMoves, r, bestLine):
     if game.whiteToMove:
-        print(str(game.moveNum) + '.')
-        
-        print(
-            '    White to move; playing ' + \
-            bestMoves[0].getMoveName(game.board) + '.'
-        )
+        print(f'{str(game.moveNum)}. White to move; playing {bestMoves[0].getMoveName(game)}.')
     else:
-        print(
-            '    Black to move; playing ' + \
-            bestMoves[0].getMoveName(game.board) + '.'
-        )
+        print(f'    Black to move; playing {bestMoves[0].getMoveName(game)}.')
 
     if not(bestLine is None):
-        print('Considered ' + ' '.join(bestLine))
+        print('    Considered ' + ' '.join(bestLine))
 
     for i in range(len(bestMoves)):
-        print(
-            '        ' + str(i+1) + '.', bestMoves[i].getMoveName(game.board),
-            '(' + str(r[i]) + ')'
-        )
-
+        print(f'        {str(i+1)}. {bestMoves[i].getMoveName(game)} ({str(round(r[i], 3))})')
 
 def bestGame(net, policy_function):
     #   Get parameters, but use a fully greedy policy
