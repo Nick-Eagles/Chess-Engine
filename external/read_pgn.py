@@ -172,7 +172,7 @@ def game_to_pairs_real(game_str, p, j):
 #   random_state: int passed to sklearn.model_selection.train_test_split
 def games_to_tensors(in_vecs, out_vecs, test_size, random_state):
     #   Tensor shapes (excluding batch) for the output layer 
-    OUT_SHAPE = (64, 64, 6, 1)
+    OUT_SHAPE = (4096, 6, 1)
 
     #   Split data by game, not position, at first
     X_train, X_test, y_train, y_test = train_test_split(
