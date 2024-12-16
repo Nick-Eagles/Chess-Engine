@@ -3,7 +3,6 @@
 #   network of the current architecture can learn effectively
 
 from pyhere import here
-import sys
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -14,7 +13,7 @@ import re
 from plotnine import ggplot, aes, geom_line, coord_cartesian, theme_bw, ggsave, facet_wrap, labs
 
 data_path = here('external', 'tensor_list_real.pkl.gz')
-model_path = here('nets', '200_100_50.keras')
+model_path = here('nets', 'first.keras')
 metrics_plot_path = here('visualization', 'real_metrics.pdf')
 hidden_layer_lens = [200, 100, 50]
 policy_weight = 0.5
@@ -43,11 +42,8 @@ for hidden_layer_len in hidden_layer_lens:
         )(x)
 
 #   Output layer
-policy_start_sq = layers.Dense(
-        64, activation = "softmax", name = "policy_start_square"
-    )(x)
-policy_end_sq = layers.Dense(
-        64, activation = "softmax", name = "policy_end_square"
+policy_move_sq = layers.Dense(
+        4096, activation = "softmax", name = "policy_move_square"
     )(x)
 policy_end_piece = layers.Dense(
         6, activation = "softmax", name = "policy_end_piece"
@@ -58,7 +54,7 @@ value = layers.Dense(
 
 net = keras.Model(
     inputs = input_lay,
-    outputs = [policy_start_sq, policy_end_sq, policy_end_piece, value],
+    outputs = [policy_move_sq, policy_end_piece, value],
     name = "network"
 )
 
@@ -66,12 +62,9 @@ net = keras.Model(
 #   Compile and fit the model on the data
 ################################################################################
 
-loss_weights = [
-    policy_weight / 3, policy_weight / 3, policy_weight / 3, 1 - policy_weight
-]
+loss_weights = [policy_weight / 2, policy_weight / 2, 1 - policy_weight]
 loss = [
-    tf.keras.losses.CategoricalCrossentropy(), # policy: start sq
-    tf.keras.losses.CategoricalCrossentropy(), # policy: end sq
+    tf.keras.losses.CategoricalCrossentropy(), # policy: move sq
     tf.keras.losses.CategoricalCrossentropy(), # policy: end piece
     tf.keras.losses.BinaryCrossentropy()       # value
 ]
@@ -81,7 +74,6 @@ net.compile(
     loss = loss,
     loss_weights = loss_weights,
     metrics = [
-        tf.keras.metrics.CategoricalAccuracy(),
         tf.keras.metrics.CategoricalAccuracy(),
         tf.keras.metrics.CategoricalAccuracy(),
         None

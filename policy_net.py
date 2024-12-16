@@ -20,7 +20,7 @@ def ToOutputVec(move, r):
     index = 512 * move.startSq[0] + 64 * move.startSq[1] + 8 * move.endSq[0] + \
         move.endSq[1]
     out_vecs[0][index] = 1
-    out_vecs[0] = tf.constant(out_vecs[0], shape=[1, 64], dtype=tf.float32)
+    out_vecs[0] = tf.constant(out_vecs[0], shape=[1, 4096], dtype=tf.float32)
 
     #   One-hot-encoded end-piece vector
     out_vecs[1][abs(move.endPiece) - 1] = 1

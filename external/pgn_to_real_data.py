@@ -8,13 +8,14 @@ import pickle
 import gzip
 
 sys.path.append(str(here('external')))
+sys.path.append(str(here()))
 
 import input_handling
 import read_pgn
 
 pgn_path = here('external', '6956_games.txt')
 out_path = here('external', 'tensor_list_real.pkl.gz')
-test_size = 0.1
+test_size = 0.15
 random_state = 0
 
 p = input_handling.readConfig()
@@ -24,7 +25,7 @@ with open(pgn_path, 'r') as f:
 
 in_vecs = []
 out_vecs = []
-for i, game in enumerate(games):
+for i, game in enumerate(games[:2000]):
     temp = read_pgn.game_to_pairs_real(game, p, i)
     in_vecs.append(temp[0])
     out_vecs.append(temp[1])

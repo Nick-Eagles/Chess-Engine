@@ -269,7 +269,7 @@ def getEvalsValue(moves, net, game, p):
 
 def getEvalsPolicy(moves, net, game, p):
     #   Compute a probability distribution across legal moves
-    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
+    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:2]
     evals = policy_net.AdjustPolicy(outputs, moves)
     
     return evals
@@ -277,7 +277,7 @@ def getEvalsPolicy(moves, net, game, p):
 
 def getEvalsHybrid(moves, net, game, p):
     #   Compute a probability distribution across legal moves
-    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
+    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:2]
     probs = policy_net.AdjustPolicy(outputs, moves)
 
     #   Get "empirical" rewards resulting from each move
@@ -301,7 +301,7 @@ def getEvalsHybrid(moves, net, game, p):
 
 def getEvalsEmpirical(moves, net, game, p):
     #   Compute a probability distribution across legal moves
-    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:3]
+    outputs = net(game.toNN_vecs(every=False)[0], training=False)[:2]
     probs = policy_net.AdjustPolicy(outputs, moves)
 
     #   Get "empirical" rewards resulting from each move
