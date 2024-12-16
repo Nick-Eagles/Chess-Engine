@@ -290,8 +290,10 @@ def getEvalsHybrid(moves, net, game, p):
     #   Compute a scalar in [0, 1], which is 0 if the most empirically
     #   rewarding move is as rewarding as checkmate, and 1 when all rewards
     #   are 0.
-    scalar = max((p['mateReward'] - np.max(np.abs(rewards))) / \
-                  p['mateReward'], 0) * net.policy_certainty
+    scalar = max(
+        (p['mateReward'] - np.max(np.abs(rewards))) / p['mateReward'],
+        0
+    )
     assert scalar >= 0 and scalar <= 1, scalar
 
     evals = scalar * probs + (1 - scalar) * rewards

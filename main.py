@@ -6,7 +6,6 @@ import Game
 import misc
 import q_learn
 import demonstration
-import board_helper
 import Session
 import buffer
 import policy
@@ -16,17 +15,14 @@ import sys
 import os
 import shutil
 import csv
-import random
 import numpy as np
 from scipy.special import expit, logit
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras import regularizers
 import time
+from pyhere import here
+from tensorflow.keras.models import load_model
 
-sys.path.append('./external/')
-sys.path.append('./experimental/')
+sys.path.append(str(here('external')))
+sys.path.append(str(here('experimental')))
 import read_pgn
 
 
@@ -146,10 +142,8 @@ if __name__ == '__main__':
         
     elif choice == "l":
         filename = input("Load from what file? ")
-
-        session = Session.Session([], [])
-        session.Load('nets/' + filename)
-        print("Loaded successfully.")
+        net = load_model(here('nets', filename))
+        net.value_certainty = 1 # temporary workaround!
 
     messDef = 'Which of the following would you like to do:\n'
     options = [
@@ -172,7 +166,7 @@ if __name__ == '__main__':
 
     choice = 1
     while choice > 0 and choice <= len(options):
-        session.net.summary()
+        net.summary()
         
         cond = 'var >= 0 and var <= ' + str(len(options))
         choice = input_handling.getUserInput(messDef, messOnErr, 'int', cond)
@@ -189,7 +183,7 @@ if __name__ == '__main__':
         elif choice == 2:
             p = input_handling.readConfig()
             print("Generating the current network's 'best' game...")
-            network_helper.bestGame(session.net, policy.getBestMoveTreeEG)
+            network_helper.bestGame(net, policy.getBestMoveTreeEG)
         elif choice == 3:
             dirname = 'nets/' + input("Name a file to save the network to: ")
             session.Save(dirname)
