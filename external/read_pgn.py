@@ -81,7 +81,7 @@ def game_to_pairs_synthetic(game_str, j):
                 fake_move = Move.Move(start_sq, (1, 1), -6, validate = False)
                 r = 100
 
-        out_vecs.append(policy_net.ToOutputVec(game, fake_move, r))
+        out_vecs.append(policy_net.ToOutputVec(fake_move, r))
         
         game.doMove(move_played)
     
@@ -156,7 +156,7 @@ def game_to_pairs_real(game_str, p, j):
     for i in range(len(r_list)):
         in_vecs.append(g_list[i].toNN_vecs(every = False)[0])
         out_vecs.append(
-            policy_net.ToOutputVec(g_list[i], move_list[i], r_list[i])
+            policy_net.ToOutputVec(move_list[i], r_list[i])
         )
 
     return (in_vecs, out_vecs)
@@ -171,6 +171,9 @@ def game_to_pairs_real(game_str, p, j):
 #   test_size: float passed to sklearn.model_selection.train_test_split
 #   random_state: int passed to sklearn.model_selection.train_test_split
 def games_to_tensors(in_vecs, out_vecs, test_size, random_state):
+    #   Tensor shapes (excluding batch) for the output layer 
+    OUT_SHAPE = (64, 64, 6, 1)
+
     #   Split data by game, not position, at first
     X_train, X_test, y_train, y_test = train_test_split(
         in_vecs, out_vecs, test_size = test_size, random_state = random_state
@@ -190,55 +193,21 @@ def games_to_tensors(in_vecs, out_vecs, test_size, random_state):
     y_train = [
         tf.stack(
             [
-                tf.reshape(game[i][0], (64))
-                for game in y_train for i in range(len(game))
-            ]
-        ),
-        tf.stack(
-            [
-                tf.reshape(game[i][1], (64))
-                for game in y_train for i in range(len(game))
-            ]
-        ),
-        tf.stack(
-            [
-                tf.reshape(game[i][2], (6))
-                for game in y_train for i in range(len(game))
-            ]
-        ),
-        tf.stack(
-            [
-                tf.reshape(game[i][3], (1))
+                tf.reshape(game[i][j], (tensor_shape))
                 for game in y_train for i in range(len(game))
             ]
         )
+        for j, tensor_shape in enumerate(OUT_SHAPE)
     ]
 
     y_test = [
         tf.stack(
             [
-                tf.reshape(game[i][0], (64))
-                for game in y_test for i in range(len(game))
-            ]
-        ),
-        tf.stack(
-            [
-                tf.reshape(game[i][1], (64))
-                for game in y_test for i in range(len(game))
-            ]
-        ),
-        tf.stack(
-            [
-                tf.reshape(game[i][2], (6))
-                for game in y_test for i in range(len(game))
-            ]
-        ),
-        tf.stack(
-            [
-                tf.reshape(game[i][3], (1))
+                tf.reshape(game[i][j], (tensor_shape))
                 for game in y_test for i in range(len(game))
             ]
         )
+        for j, tensor_shape in enumerate(OUT_SHAPE)
     ]
 
     return (X_train, X_test, y_train, y_test)

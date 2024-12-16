@@ -139,10 +139,10 @@ def CompileNet(net, p, optim, output_type='value'):
             metrics = [tf.keras.metrics.CategoricalAccuracy()]
         )
 
-#   Given a Game, a Move to perform from the position described in the Game, and
-#   a raw (cumulative) reward observed given that move and future moves (before
-#   calling expit/sigmoid), return the associated "label"
-def ToOutputVec(game, move, r):
+#   Given a Move to perform and a raw (cumulative) reward observed given that
+#   move and future moves (before calling expit/sigmoid), return the associated
+#   "label"
+def ToOutputVec(move, r):
     out_vecs = [
         np.zeros(64),
         np.zeros(64),
@@ -151,7 +151,7 @@ def ToOutputVec(game, move, r):
     ]
 
     ############################################################################
-    #   Encode the policy vector (the first 133 indices of 'out_vec')
+    #   Encode the policy vector
     ############################################################################
     
     #   One-hot encoded start and end squares
@@ -160,8 +160,7 @@ def ToOutputVec(game, move, r):
     out_vecs[1][move.endSq[0] * 8 + move.endSq[1]] = 1
     out_vecs[1] = tf.constant(out_vecs[1], shape=[1, 64], dtype=tf.float32)
 
-    #   "Append" a one-hot encoded end piece vector (length 6, at indices
-    #   [128, 131])
+    #   One-hot-encoded end-piece vector
     out_vecs[2][abs(move.endPiece) - 1] = 1
     out_vecs[2] = tf.constant(out_vecs[2], shape=[1, 6], dtype=tf.float32)
 
