@@ -69,7 +69,7 @@ class Traversal:
                     #   Pop the first move and do it
                     g = stack[-1][2].copy()
                     m = stack[-1][0].pop(0)
-                    stack[-1][7].append([m.getMoveName(g.board)])
+                    stack[-1][7].append([m.getMoveName(g)])
                     r = g.getReward(
                         m, p['mateReward'], simple=True, copy=False
                     )[0]
@@ -124,11 +124,9 @@ def processNode(stack, trav, p):
     #   are at max depth and are unfinished games
     indices = [i for i in range(len(node[6])) if node[6][i] is not None]
     if len(indices) > 1:
+        #   Get the NN evaluations
         nn_vecs = tf.stack([tf.reshape(node[6][i], [839]) for i in indices])
-        nn_out = trav.net(nn_vecs, training=False)
-        #   For policy-value networks, take only the value
-        if isinstance(nn_out, list):
-            nn_out = nn_out[-1]
+        nn_out = trav.net(nn_vecs, training=False)[-1]
         
         nn_evals = p['gamma_exec'] * trav.net.value_certainty * logit(nn_out)
             
@@ -136,10 +134,8 @@ def processNode(stack, trav, p):
             node[1][indices[i]] += float(nn_evals[i])
 
     elif len(indices) == 1:
-        nn_out = trav.net(node[6][indices[0]], training=False)
-        #   For policy-value networks, take only the value
-        if isinstance(nn_out, list):
-            nn_out = nn_out[-1]
+        #   Get the NN evaluation
+        nn_out = trav.net(node[6][indices[0]], training=False)[-1]
         
         nn_eval = p['gamma_exec'] * \
                    trav.net.value_certainty * \

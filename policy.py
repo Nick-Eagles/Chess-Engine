@@ -1,12 +1,8 @@
 import numpy as np
 from scipy.special import logit
-import os
 import tensorflow as tf
-import sys
 
 import policy_net
-import Game
-import network_helper
 import misc
 import board_helper
 import Traversal
@@ -219,7 +215,7 @@ def getBestMoveTreeEG(net, game, p, interactive=False, num_lines=1):
             if interactive:
                 #   Add a list of move names for the top line explored that
                 #   started with this particular move "m"
-                bestLines.append([m.getMoveName(game.board)] + t.bestLine)
+                bestLines.append([m.getMoveName(game)] + t.bestLine)
 
         rTemp += p['gamma_exec'] * baseRs
 
