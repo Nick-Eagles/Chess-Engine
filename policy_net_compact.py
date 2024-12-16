@@ -1,3 +1,10 @@
+#   An older implementation of helper functions for working with a
+#   policy-value neural network. The output layer was a list with tensor shapes
+#   (64, 64, 6, 3, 1) for start sqaure, end square, end piece, and value,
+#   respectively. The more recent approach (not in this file) uses a 4096-length
+#   vector to encode the start and end square, to avoid probabilities in the
+#   start square affecting every end square and vice versa.
+
 import numpy as np
 from scipy.special import expit
 import tensorflow as tf
