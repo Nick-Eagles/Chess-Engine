@@ -13,28 +13,38 @@ sys.path.append(str(here()))
 import input_handling
 import read_pgn
 
-pgn_path = here('external', '6956_games.txt')
-out_path = here('external', 'tensor_list_real.pkl.gz')
-test_size = 0.15
-random_state = 0
+train_paths = [
+    here('external', 'preprocessed_games', f'train_games{i}.txt.gz')
+    for i in range(1, 21)
+]
+test_path = here('external', 'preprocessed_games', 'test_games.txt.gz')
+out_train_paths = [
+    here('external', 'preprocessed_games', f'tensor_list_train_real{i}.pkl.gz')
+    for i in range(1, 21)
+]
+out_test_path = here(
+    'external', 'preprocessed_games', 'tensor_list_test_real.pkl.gz'
+)
 
 p = input_handling.readConfig()
 
-with open(pgn_path, 'r') as f:
-    games = f.read().splitlines()
+for i in range(len(train_paths) + 1):
+    in_path = (train_paths + [test_path])[i]
+    out_path = (out_train_paths + [out_test_path])[i]
 
-in_vecs = []
-out_vecs = []
-for i, game in enumerate(games[:2000]):
-    temp = read_pgn.game_to_pairs_real(game, p, i)
-    in_vecs.append(temp[0])
-    out_vecs.append(temp[1])
-    if i % 100 == 0:
-        print(f'Done processing game {i}')
+    with gzip.open(in_path, 'rt') as f:
+        games = f.read().splitlines()
 
-data = read_pgn.games_to_tensors(
-    in_vecs, out_vecs, test_size, random_state
-)
+    in_vecs = []
+    out_vecs = []
+    for i, game in enumerate(games):
+        temp = read_pgn.game_to_pairs_real(game, p, i)
+        in_vecs.append(temp[0])
+        out_vecs.append(temp[1])
+        if i % 100 == 99:
+            print(f'Done processing game {i+1}')
 
-with gzip.open(out_path, 'wb') as f:
-    pickle.dump(data, f)
+    data = read_pgn.games_to_tensors(in_vecs, out_vecs)
+
+    with gzip.open(out_path, 'wb') as f:
+        pickle.dump(data, f)

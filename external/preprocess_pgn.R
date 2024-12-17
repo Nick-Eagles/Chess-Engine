@@ -69,7 +69,7 @@ games = do.call(c, lapply(pgn_paths, clean_pgn)) |>
 
 #   Out of paranoia, randomly sort the games in case there is some pattern
 #   associated with the order of the games
-games = games[sample(games)]
+games = sample(games)
 
 #   Write test games to file
 out_con = gzfile(out_test_path, 'w')
