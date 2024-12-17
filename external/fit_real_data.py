@@ -6,11 +6,13 @@ from pyhere import here
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import numpy as np
+from scipy.special import logit
 import pickle
 import gzip
 import pandas as pd
 import re
-from plotnine import ggplot, aes, geom_line, theme_bw, ggsave, facet_wrap, labs
+from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
 train_paths = [
     here('external', 'preprocessed_games', f'tensor_list_train_real{i}.pkl.gz')
@@ -20,12 +22,30 @@ test_path = here(
     'external', 'preprocessed_games', 'tensor_list_test_real.pkl.gz'
 )
 model_path = here('nets', 'first.keras')
-metrics_plot_path = here('visualization', 'real_metrics.pdf')
+metrics_plot_paths = [
+    here('visualization', f'{x}.pdf')
+    for x in ['policy_square', 'policy_end_piece', 'value']
+]
 hidden_layer_lens = [200, 100, 50]
 policy_weight = 0.5
 optimizer = 'adam'
 batch_size = 100
 epochs = 1
+
+#   Given input and output tensors and a model 'net', return the cosine
+#   similarity of the model predictions of reward against the labels.
+#   Each sample composes one component of the vectors (e.g. if X is a batch
+#   of 100 samples, cosine similarity is taken across two 100-dimensional
+#   vectors)
+def cos_sim(X, y, net):
+    exp_rew = logit(net(X, training = False)[-1].numpy().flatten())
+    act_rew = logit(y[-1].numpy().flatten())
+    result = float(
+        (exp_rew @ act_rew) /
+        (np.linalg.norm(exp_rew) * np.linalg.norm(act_rew))
+    )
+    
+    return result
 
 ################################################################################
 #   Construct a basic neural network
@@ -94,7 +114,7 @@ with gzip.open(test_path, 'rb') as f:
 
 history_df_list = []
 for epoch_num in range(epochs):
-    for batch_num, train_path in enumerate(train_paths[:2]):
+    for batch_num, train_path in enumerate(train_paths):
         #   Load 1000-game training batch
         with gzip.open(train_path, 'rb') as f:
             X_train, y_train = pickle.load(f)
@@ -108,13 +128,14 @@ for epoch_num in range(epochs):
             validation_data = (X_test, y_test)
         )
         
-        #   Append history, with the appropriate training step number, to the
-        #   ongoing list
+        #   Append history to the ongoing list. Add the appropriate training
+        #   step number, and evaluate cosine similarity of expected and actual
+        #   rewards (not sure how to do this with keras metrics during fitting)
         history_df = pd.DataFrame(history.history)
-        history_df['training_step'] = [
-            epoch_num * len(train_paths) + batch_num + i + 1
-            for i in range(history_df.shape[0])
-        ]
+        history_df['training_step'] = epoch_num * len(train_paths) + \
+            batch_num + 1
+        history_df['value_cos_sim'] = cos_sim(X_train, y_train, net)
+        history_df['val_value_cos_sim'] = cos_sim(X_test, y_test, net)
         history_df_list.append(history_df)
 
 ################################################################################
@@ -139,7 +160,7 @@ history_df = pd.melt(
     history_df,
     id_vars = 'training_step',
     value_vars = history_df.drop('training_step', axis = 1).columns,
-    value_name = 'categorical_accuracy'
+    value_name = 'metric_val'
 )
 history_df['data_group'] = history_df['variable'].str.extract('^(train|val)')
 history_df['metric'] = history_df['variable'].apply(
@@ -147,37 +168,62 @@ history_df['metric'] = history_df['variable'].apply(
 )
 history_df.drop('variable', axis = 1, inplace = True)
 
-#   Now only take the categorical accuracy metrics and construct a column
-#   replacing 'metric' that just has the output-layer name (e.g. 
-#   'policy_end_piece')
-history_df = history_df[
-    history_df['metric'].str.match(r'.*_categorical_accuracy$')
-]
-history_df['output_type'] = history_df['metric'].apply(
-    lambda x: re.sub(r'_categorical_accuracy$', '', x)
+#   Now pivot wider so that each metric is a column in addition to the
+#   'training_step' and 'data_group' columns
+history_df = (
+    history_df
+        .pivot(
+            columns = 'metric',
+            index = ['training_step', 'data_group'],
+            values = 'metric_val'
+        )
+        .reset_index()
 )
-history_df.drop('metric', axis = 1, inplace = True)
 
 #-------------------------------------------------------------------------------
-#   Plot categorical accuracy for each output type across training steps
+#   Plot interesting metrics for policy and value components of outputs
 #-------------------------------------------------------------------------------
 
-p = (
+#   Define parameters to ggplot for each of the three metrics to show
+plot_params = [
+    {
+        'y': 'policy_move_square_categorical_accuracy',
+        'lab_y': 'Categorical Accuracy',
+        'title': 'Policy Square'
+    },
+    {
+        'y': 'policy_end_piece_categorical_accuracy',
+        'lab_y': 'Categorical Accuracy',
+        'title': 'Policy End Piece'
+    },
+    {
+        'y': 'value_cos_sim',
+        'lab_y': 'Cosine Similarity',
+        'title': 'Value'
+    }
+]
+
+#   Produce the plots
+p_list = [
     ggplot(
             history_df,
             aes(
-                x = 'training_step', y = 'categorical_accuracy',
-                color = 'output_type', group = 'output_type'
+                x = 'training_step', y = x['y'], color = 'data_group',
+                group = 'data_group'
             )
         ) +
         geom_line() +
-        facet_wrap('data_group') +
         theme_bw(base_size = 15) +
         labs(
-            x = 'Training Step Number (1000 games each)',
-            y = 'Categorical Accuracy', color = 'Output Type'
+            x = 'Training Step (1000 games each)',
+            y = x['lab_y'], color = 'Data Group',
+            title = x['title']
         )
-)
-ggsave(p, filename = metrics_plot_path, width = 10, height = 5)
+    for x in plot_params
+]
+
+#   Save plots for each metric separately
+for i in range(len(metrics_plot_paths)):
+    ggsave(p_list[i], filename = metrics_plot_paths[i], width = 10, height = 5)
 
 net.save(model_path)
