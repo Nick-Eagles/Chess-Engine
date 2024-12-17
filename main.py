@@ -303,7 +303,7 @@ if __name__ == '__main__':
 
             print("Done. See 'visualization/edge_positions/'.")
         elif choice == 9:
-            demonstration.interact(session.net)
+            demonstration.interact(net)
         elif choice == 10:
             p = input_handling.readConfig()
 

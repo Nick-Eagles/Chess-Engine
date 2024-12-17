@@ -1,12 +1,9 @@
 import numpy as np
-from scipy.special import expit, logit
-import time
+from scipy.special import logit
 
 import Game
 import board_helper
 import input_handling
-import Traversal
-import Move
 import misc
 import policy
 
@@ -40,14 +37,14 @@ def interact(net):
     while (game.gameResult == 17):
         if game.whiteToMove == userStarts:
             moves = board_helper.getLegalMoves(game)
-            moveNames = [m.getMoveName(game.board) for m in moves]
+            moveNames = [m.getMoveName(game) for m in moves]
             userChoice = parseInput(game, moveNames)
             
             game.doMove(moves[misc.match(userChoice, moveNames)])
         else:
             print('Calculating...', end='')
             bestMove = policy.getBestMoveTreeEG(net, game, p)
-            print('Chose ', bestMove.getMoveName(game.board), '.', sep='')
+            print('Chose ', bestMove.getMoveName(game), '.', sep='')
             game.doMove(bestMove)
 
             if p['mode'] >= 1:
