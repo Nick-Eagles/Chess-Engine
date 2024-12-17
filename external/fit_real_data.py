@@ -16,7 +16,7 @@ from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
 train_paths = [
     here('external', 'preprocessed_games', f'tensor_list_train_real{i}.pkl.gz')
-    for i in range(1, 4)
+    for i in range(1, 20)
 ]
 test_path = here(
     'external', 'preprocessed_games', 'tensor_list_test_real.pkl.gz'
@@ -26,7 +26,7 @@ metrics_plot_paths = [
     here('visualization', f'{x}2.pdf')
     for x in ['policy_square', 'policy_end_piece', 'value']
 ]
-hidden_layer_lens = [500, 500]
+hidden_layer_lens = [500, 500, 500, 500]
 policy_weight = 0.5
 optimizer = 'adam'
 batch_size = 100
