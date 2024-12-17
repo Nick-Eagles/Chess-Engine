@@ -15,12 +15,12 @@ import read_pgn
 
 train_paths = [
     here('external', 'preprocessed_games', f'train_games{i}.txt.gz')
-    for i in range(1, 21)
+    for i in range(1, 20)
 ]
 test_path = here('external', 'preprocessed_games', 'test_games.txt.gz')
 out_train_paths = [
     here('external', 'preprocessed_games', f'tensor_list_train_real{i}.pkl.gz')
-    for i in range(1, 21)
+    for i in range(1, 20)
 ]
 out_test_path = here(
     'external', 'preprocessed_games', 'tensor_list_test_real.pkl.gz'
