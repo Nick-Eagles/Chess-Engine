@@ -30,25 +30,24 @@ def ToOutputVec(move, r):
 
 #   outputs: list of policy-related NN outputs (length 2)
 #   Returns a numpy array of probabilities alongside the passed legal moves list
-def AdjustPolicy(outputs, legal_moves):
+def AdjustPolicy(outputs, legal_moves, board):
     move_squares, end_piece = outputs
     
     assert move_squares.shape == (1, 4096), move_squares.shape
     assert end_piece.shape == (1, 6), end_piece.shape
 
-    #   Take the outer product of the two policy vectors, so that the
-    #   (i, j)th entry of the result is the probability of picking the
-    #   ith move squares and jth end piece
-    raw_policy = move_squares.numpy().T @ end_piece.numpy()
-    assert raw_policy.shape == (4096, 6), raw_policy.shape
-
-    #   Grab the raw probabilities for the combinations of move squares,
-    #   end piece that are legal
+    #   Grab the raw probabilities for the legal moves
     new_policy = np.zeros(len(legal_moves))
     for i, m in enumerate(legal_moves):
         move_index = 512 * m.startSq[0] + 64 * m.startSq[1] + 8 * m.endSq[0] + \
             m.endSq[1]
-        new_policy[i] = raw_policy[move_index, abs(m.endPiece) - 1]
+        new_policy[i] = move_squares[0, move_index]
+
+        #   For pawn promotion, adjust the probability of promoting to this
+        #   specific piece
+        if abs(board[m.startSq[0]][m.endSq[1]]) != abs(m.endPiece):
+            new_policy[i] *= end_piece[0, abs(m.endPiece) - 1]
+        
 
     #   Normalize, since probabilities for illegal combinations will have a
     #   nonzero sum (though it should become smaller with training)
