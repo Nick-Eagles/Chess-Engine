@@ -13,6 +13,7 @@ data/*/*Buffer*.pkl.gz
 data/*/*.csv
 external/*.txt
 external/*.pgn
+external/preprocessed_games
 external/tensor_list_*.pkl.gz
 installation/chess_env
 __pycache__
