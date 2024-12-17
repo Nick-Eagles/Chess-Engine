@@ -45,6 +45,10 @@ clean_pgn = function(pgn_path) {
         as.numeric()
     game = game[(white_elo > elo_cutoff) & (black_elo > elo_cutoff)]
 
+    #   Some games are not standard chess but chess960, which we don't care
+    #   about
+    game = game[!grepl('Chess960', game)]
+
     #   Clean up into a space-separated series of moves ending in a result
     #   string
     game = game |>
@@ -77,7 +81,7 @@ writeLines(games[1:test_size], con = out_con)
 close(out_con)
 
 #   Write training games in batches of predetermined size
-for (i in seq_len(ceiling((length(games) - test_size) / train_batch_size))) {
+for (i in seq_len((length(games) - test_size) %/% train_batch_size)) {
     out_con = gzfile(sprintf(out_train_path, i))
     these_games = games[
         (test_size + (i - 1) * train_batch_size + 1):
