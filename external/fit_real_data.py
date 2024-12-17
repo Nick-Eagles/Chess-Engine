@@ -16,17 +16,17 @@ from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
 train_paths = [
     here('external', 'preprocessed_games', f'tensor_list_train_real{i}.pkl.gz')
-    for i in range(1, 20)
+    for i in range(1, 5)
 ]
 test_path = here(
     'external', 'preprocessed_games', 'tensor_list_test_real.pkl.gz'
 )
-model_path = here('nets', 'first.keras')
+model_path = here('nets', 'second.keras')
 metrics_plot_paths = [
     here('visualization', f'{x}.pdf')
     for x in ['policy_square', 'policy_end_piece', 'value']
 ]
-hidden_layer_lens = [200, 100, 50]
+hidden_layer_lens = [500, 500]
 policy_weight = 0.5
 optimizer = 'adam'
 batch_size = 100
@@ -114,7 +114,9 @@ with gzip.open(test_path, 'rb') as f:
 
 history_df_list = []
 for epoch_num in range(epochs):
+    print(f'Starting epoch {epoch_num+1}.')
     for batch_num, train_path in enumerate(train_paths):
+        print(f'Starting batch {batch_num+1}.')
         #   Load 1000-game training batch
         with gzip.open(train_path, 'rb') as f:
             X_train, y_train = pickle.load(f)
