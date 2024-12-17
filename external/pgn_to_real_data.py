@@ -37,12 +37,12 @@ for i in range(len(train_paths) + 1):
 
     in_vecs = []
     out_vecs = []
-    for i, game in enumerate(games):
-        temp = read_pgn.game_to_pairs_real(game, p, i)
+    for j, game in enumerate(games):
+        temp = read_pgn.game_to_pairs_real(game, p, j)
         in_vecs.append(temp[0])
         out_vecs.append(temp[1])
-        if i % 100 == 99:
-            print(f'Done processing game {i+1}')
+        if j % 100 == 99:
+            print(f'Done processing game {j+1}')
 
     data = read_pgn.games_to_tensors(in_vecs, out_vecs)
 
