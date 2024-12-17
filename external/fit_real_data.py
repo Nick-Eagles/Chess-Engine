@@ -10,21 +10,22 @@ import pickle
 import gzip
 import pandas as pd
 import re
-from plotnine import ggplot, aes, geom_line, coord_cartesian, theme_bw, ggsave, facet_wrap, labs
+from plotnine import ggplot, aes, geom_line, theme_bw, ggsave, facet_wrap, labs
 
-data_path = here('external', 'tensor_list_real.pkl.gz')
+train_paths = [
+    here('external', 'preprocessed_games', f'tensor_list_train_real{i}.pkl.gz')
+    for i in range(1, 20)
+]
+test_path = here(
+    'external', 'preprocessed_games', 'tensor_list_test_real.pkl.gz'
+)
 model_path = here('nets', 'first.keras')
 metrics_plot_path = here('visualization', 'real_metrics.pdf')
 hidden_layer_lens = [200, 100, 50]
 policy_weight = 0.5
 optimizer = 'adam'
 batch_size = 100
-epochs = 5
-
-#   Load semi-synthetic data into training and test sets
-with gzip.open(data_path, 'rb') as f:
-    X_train, X_test, y_train, y_test = pickle.load(f)
-
+epochs = 1
 
 ################################################################################
 #   Construct a basic neural network
@@ -59,7 +60,7 @@ net = keras.Model(
 )
 
 ################################################################################
-#   Compile and fit the model on the data
+#   Compile the model
 ################################################################################
 
 loss_weights = [policy_weight / 2, policy_weight / 2, 1 - policy_weight]
@@ -80,13 +81,41 @@ net.compile(
     ]
 )
 
-history = net.fit(
-    X_train,
-    y_train,
-    batch_size = batch_size,
-    epochs = epochs,
-    validation_data = (X_test, y_test)
-)
+################################################################################
+#   Fit the model
+################################################################################
+
+#   Because the full training set is too large to fit in memory on a 8GB laptop,
+#   training is performed in 1000-game batches
+
+#   Load the 1000-game test set
+with gzip.open(test_path, 'rb') as f:
+    X_test, y_test = pickle.load(f)
+
+history_df_list = []
+for epoch_num in range(epochs):
+    for batch_num, train_path in enumerate(train_paths[:2]):
+        #   Load 1000-game training batch
+        with gzip.open(train_path, 'rb') as f:
+            X_train, y_train = pickle.load(f)
+        
+        #   Train
+        history = net.fit(
+            X_train,
+            y_train,
+            batch_size = batch_size,
+            epochs = 1,
+            validation_data = (X_test, y_test)
+        )
+        
+        #   Append history, with the appropriate training step number, to the
+        #   ongoing list
+        history_df = pd.DataFrame(history.history)
+        history_df['training_step'] = [
+            epoch_num * len(train_paths) + batch_num + i + 1
+            for i in range(history_df.shape[0])
+        ]
+        history_df_list.append(history_df)
 
 ################################################################################
 #   Plot history info
@@ -96,23 +125,20 @@ history = net.fit(
 #   Gather history.history into a tidy DataFrame
 #-------------------------------------------------------------------------------
 
-#   Convert history info to DataFrame, making sure column names start with
-#   either 'val_' or 'train_'
-history_df = pd.DataFrame(history.history)
+history_df = pd.concat(history_df_list, axis = 0)
+
+#   Make sure column names start with either 'val_' or 'train_'
 history_df.rename(
-    lambda x: re.sub(r'^(?!val_)', 'train_', x), axis = 1, inplace = True
+    lambda x: re.sub(r'^(?!val_|training_step)', 'train_', x),
+    axis = 1, inplace = True
 )
 
-#   Add epoch as a column
-history_df.index.name = 'epoch'
-history_df.reset_index(inplace = True)
-
-#   Reformat longer, such that as columns we have 'epoch', 'data_group' (train
-#   or val), metric name, and value for that metric
+#   Reformat longer, such that as columns we have 'training_step', 'data_group'
+#   (train or val), metric name, and value for that metric
 history_df = pd.melt(
     history_df,
-    id_vars = 'epoch',
-    value_vars = history_df.drop('epoch', axis = 1).columns,
+    id_vars = 'training_step',
+    value_vars = history_df.drop('training_step', axis = 1).columns,
     value_name = 'categorical_accuracy'
 )
 history_df['data_group'] = history_df['variable'].str.extract('^(train|val)')
@@ -133,24 +159,23 @@ history_df['output_type'] = history_df['metric'].apply(
 history_df.drop('metric', axis = 1, inplace = True)
 
 #-------------------------------------------------------------------------------
-#   Plot categorical accuracy for each output type across epochs
+#   Plot categorical accuracy for each output type across training steps
 #-------------------------------------------------------------------------------
 
 p = (
     ggplot(
             history_df,
             aes(
-                x = 'epoch', y = 'categorical_accuracy', color = 'output_type',
-                group = 'output_type'
+                x = 'training_step', y = 'categorical_accuracy',
+                color = 'output_type', group = 'output_type'
             )
         ) +
         geom_line() +
         facet_wrap('data_group') +
-        # coord_cartesian(ylim = [0, 1]) +
         theme_bw(base_size = 15) +
         labs(
-            x = 'Epoch Number', y = 'Categorical Accuracy',
-            color = 'Output Type'
+            x = 'Training Step Number (1000 games each)',
+            y = 'Categorical Accuracy', color = 'Output Type'
         )
 )
 ggsave(p, filename = metrics_plot_path, width = 10, height = 5)
