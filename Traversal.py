@@ -6,23 +6,38 @@ import tensorflow as tf
 
 class Traversal:
     def __init__(self, game, net, p):
-        #   Parameters for traversal
-        self.game = game
-        self.net = net         
+        #   Parameters for monitoring extent and results of search
         self.nodeHops = 0
         self.pruneCuts = 0
-
         self.bestLine = []
-        self.baseR = 0
-        
-        self.policy = getattr(policy, p['policyFun'])
 
+        self.net = net
+        self.baseR = 0
+        self.policy = getattr(policy, p['policyFun'])
         self.p = p
+
         #   A value not too far above the maximal number of node hops that can
         #   occur given the user's parameter specifications
         self.limit = 4 * p['breadth']**p['depth']
-        
 
+        #   The maximum reward that could possibly be received from any position
+        MAX_R = p['gamma_exec'] * p['mateReward']
+
+        #   Initialize the stack, each element of which represents a game
+        #   position. Adding an element to the stack will represent exploring
+        #   one position deeper at the current position in the tree.
+        #   One element (node) on the stack is composed of the following:
+        #   [moves, rewards, Game, reward up to this, alpha, beta, list of
+        #    NN inputs, move names]
+        moves, _ = self.policy(self.net, game, p)
+        self.stack = [
+            {
+                'moves': moves, 'rewards': [], 'game': game,
+                'prev_reward': 0, 'alpha': -1 * MAX_R, 'beta': MAX_R,
+                'nn_inputs': [], 'move_names': []
+            }
+        ]
+        
     #   From a base game, performs a depth-first tree traversal with the goal of
     #   approximating the reward along realistic move sequences. Breadth
     #   determines how many move options the engine explores from any node;
@@ -36,26 +51,13 @@ class Traversal:
             return
 
         p = self.p
+        stack = self.stack
+
         if p['mode'] >= 3:
             np.random.seed(0)
         else:
             np.random.seed()
-
-        #   The maximum reward that could possibly be received from any position
-        MAX_R = p['gamma_exec'] * p['mateReward']
         
-        moves, fullMovesLen = self.policy(self.net, self.game, p)
-
-        #   One element (node) on the stack is composed of the following:
-        #   [moves, rewards, Game, reward up to this, alpha, beta, list of
-        #    NN inputs, move names]
-        stack = [
-            {
-                'moves': moves, 'rewards': [], 'game': self.game,
-                'prev_reward': 0, 'alpha': -1 * MAX_R, 'beta': MAX_R,
-                'nn_inputs': [], 'move_names': []
-            }
-        ]
         while len(stack) > 0:
             assert len(stack) <= p['depth'] + 1, "Tried to explore too far"
             assert self.nodeHops < self.limit, \
