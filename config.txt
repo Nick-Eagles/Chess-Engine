@@ -7,12 +7,11 @@ gamma 0.9
 #	Tree traversal
 gamma_exec 0.95
 breadth 12
-depth 4
+depth 3
 curiosity 5
 epsSearch 0.01
-minCertainty 0.1
 policyFun "sampleMovesEG"
-evalFun "getEvalsEmpirical"
+evalFun "getEvalsPolicy"
 #	Network/ training-related
 memDecay 0.01
 weightDec 0.00001

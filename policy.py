@@ -227,38 +227,24 @@ def getBestMoveTreeEG(net, game, p, interactive=False, num_lines=1):
 #   A helper function to compute depth-1 evaluations of a list of moves. Returns
 #   a list the same length as 'moves', with each component being the sum of the
 #   immediate reward for performing the respective move and a scaled
-#   NN-evaluation of the resulting position. The NN evaluation is computed only
-#   if net.certainty is positive, in which case net.certainty is the scalar to
-#   the NN-evaluation. Note that evals are flipped: larger values match to
-#   better moves for the current player!
+#   NN-evaluation of the resulting position. Note that evals are flipped: larger
+#   values match to better moves for the current player!
 def getEvalsValue(moves, net, game, p):
-    #   Compute NN evaluations on each move if certainty is positive
-    if net.value_certainty > p['minCertainty']:
-        scalar = p['gamma_exec'] * net.value_certainty
-        r_real = np.zeros(len(moves))
-        net_inputs = []
-        for i, m in enumerate(moves):
-            r, vec = game.getReward(m, p['mateReward'])
-            r_real[i] = r
-            net_inputs.append(tf.reshape(vec, (839,)))
+    #   Compute NN evaluations on each move
+    r_real = np.zeros(len(moves))
+    net_inputs = []
+    for i, m in enumerate(moves):
+        r, vec = game.getReward(m, p['mateReward'])
+        r_real[i] = r
+        net_inputs.append(tf.reshape(vec, (839,)))
 
-        #   Get the value output from the network, regardless of whether net is
-        #   of type "policy-value" or "value"
-        value = logit(net(tf.stack(net_inputs), training=False)).flatten()
-        if isinstance(value, list):
-            value = value[-1]
-        
-        evals = r_real + scalar * value
-    else:
-        evals = np.array(
-            [game.getReward(m, p['mateReward'], True)[0] for m in moves]
-        )
-
-        #   If evals are not all unique, add a tiny amount of noise to eliminate
-        #   bias for moves occuring earlier in the list of legal moves
-        if not misc.is_unique(evals):
-            noise = np.random.normal(scale=0.0001, size=evals.shape)
-            evals = evals + noise
+    #   Get the value output from the network, regardless of whether net is
+    #   of type "policy-value" or "value"
+    value = logit(net(tf.stack(net_inputs), training=False)).flatten()
+    if isinstance(value, list):
+        value = value[-1]
+    
+    evals = r_real + p['gamma_exec'] * value
     
     if not game.whiteToMove:
         evals = -1 * evals

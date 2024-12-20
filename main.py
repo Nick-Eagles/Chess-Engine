@@ -143,7 +143,6 @@ if __name__ == '__main__':
     elif choice == "l":
         filename = input("Load from what file? ")
         net = load_model(here('nets', filename))
-        net.value_certainty = 1 # temporary workaround!
 
     messDef = 'Which of the following would you like to do:\n'
     options = [

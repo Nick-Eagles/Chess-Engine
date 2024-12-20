@@ -45,9 +45,6 @@ class Traversal:
     def traverse(self):
         #   Handle the case where the game is already finished
         if self.game.gameResult != 17:
-            #   Here it is assumed reward for the move resulting in the position given by
-            #   self.game is already accounted for
-            self.baseR = 0
             return
 
         p = self.p
@@ -59,9 +56,6 @@ class Traversal:
             np.random.seed()
         
         while len(stack) > 0:
-            assert len(stack) <= p['depth'] + 1, "Tried to explore too far"
-            assert self.nodeHops < self.limit, \
-                   "Exceeded the number of node hops required to perform the entire traversal"
             if len(stack[-1]['moves']) > 0:   # if there are moves left to explore
                 #   alpha-beta pruning
                 if stack[-1]['beta'] <= stack[-1]['alpha']:
@@ -106,23 +100,23 @@ class Traversal:
                             stack[-1]['moves'] = []
                             self.nodeHops += 2
                     #   At a leaf, we want to add the NN evaluation of the
-                    #   position, scaled by our confidence in the NN, to make
-                    #   sure rewards are not simply undone later in the game
-                    elif self.net.value_certainty > p['minCertainty'] and g.gameResult == 17:
+                    #   position to make sure rewards are not simply undone
+                    #   later in the game
+                    elif g.gameResult == 17:
                         in_vec = g.toNN_vecs(every=False)[0]
                         stack[-1]['nn_inputs'].append(in_vec)
                     else:
                         stack[-1]['nn_inputs'].append(None)
 
             else:   # otherwise hop down one node
-                processNode(stack, self, p)
+                processNode(self)
 
 
 #   Descend one step of depth in the search after all moves for a node have been
 #   explored. Pass reward down (minimax), along with alpha or beta as
 #   appropriate.
-def processNode(stack, trav, p):
-    node = stack.pop()
+def processNode(trav):
+    node = trav.stack.pop()
 
     #   Adjust reward by adding NN evaluations, for whichever positions (if any)
     #   are at max depth and are unfinished games
@@ -137,7 +131,7 @@ def processNode(stack, trav, p):
         )
         nn_out = trav.net(nn_vecs, training=False)[-1]
         
-        nn_evals = p['gamma_exec'] * trav.net.value_certainty * logit(nn_out)
+        nn_evals = trav.p['gamma_exec'] * logit(nn_out)
             
         for i in range(nn_evals.shape[0]):
             node['rewards'][indices[i]] += float(nn_evals[i])
@@ -146,9 +140,7 @@ def processNode(stack, trav, p):
         #   Get the NN evaluation
         nn_out = trav.net(node['nn_inputs'][indices[0]], training=False)[-1]
         
-        nn_eval = p['gamma_exec'] * \
-                   trav.net.value_certainty * \
-                   float(logit(nn_out))
+        nn_eval = trav.p['gamma_exec'] * float(logit(nn_out))
         
         node['rewards'][indices[0]] += nn_eval
 
@@ -156,32 +148,32 @@ def processNode(stack, trav, p):
     #   update alpha or beta if applicable
     if node['game'].whiteToMove:
         index = np.argmax(node['rewards'])
-        r = p['gamma_exec'] * node['rewards'][index]
+        r = trav.p['gamma_exec'] * node['rewards'][index]
         this_line = node['move_names'][index]
         
         #   Update beta if necessary
-        if len(stack) > 0:
-            stack[-1]['beta'] = min(
-                stack[-1]['beta'], stack[-1]['prev_reward'] + r
+        if len(trav.stack) > 0:
+            trav.stack[-1]['beta'] = min(
+                trav.stack[-1]['beta'], trav.stack[-1]['prev_reward'] + r
             )
     else:
         index = np.argmin(node['rewards'])
-        r = p['gamma_exec'] * node['rewards'][index]
+        r = trav.p['gamma_exec'] * node['rewards'][index]
         this_line = node['move_names'][index]
 
         #   Update alpha if necessary
-        if len(stack) > 0:
-            stack[-1]['alpha'] = max(
-                stack[-1]['alpha'], stack[-1]['prev_reward'] + r
+        if len(trav.stack) > 0:
+            trav.stack[-1]['alpha'] = max(
+                trav.stack[-1]['alpha'], trav.stack[-1]['prev_reward'] + r
             )
 
     #   Pass reward and best move name down if applicable
     assert len(this_line) >= 1, len(this_line)
-    if len(stack) > 0:
-        stack[-1]['rewards'][-1] += r
-        stack[-1]['move_names'][-1] += this_line
+    if len(trav.stack) > 0:
+        trav.stack[-1]['rewards'][-1] += r
+        trav.stack[-1]['move_names'][-1] += this_line
     else:
-        trav.baseR = r / p['gamma_exec']
+        trav.baseR = r / trav.p['gamma_exec']
         trav.bestLine = this_line
 
     trav.nodeHops += 1
