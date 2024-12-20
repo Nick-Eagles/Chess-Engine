@@ -302,3 +302,13 @@ def getEvalsEmpirical(moves, net, game, p):
     evals = net.policy_certainty * probs + \
             VAR_RATIO * (1 - net.policy_certainty) * rewards
     return evals
+
+#   For debugging/ testing purposes, return evals based on the move names in
+#   alphabetical order (e.g. 'Re2' receives a worse eval than 'Bf5')
+def getEvalsDebug(moves, net, game, p):
+    move_names = [m.getMoveName(game) for m in moves]
+
+    evals = np.linspace(0, 1, len(move_names))[
+        [misc.match(x, sorted(move_names, reverse = True)) for x in move_names]
+    ]
+    return evals
