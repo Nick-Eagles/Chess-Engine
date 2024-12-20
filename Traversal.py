@@ -16,10 +16,6 @@ class Traversal:
         self.policy = getattr(policy, p['policyFun'])
         self.p = p
 
-        #   A value not too far above the maximal number of node hops that can
-        #   occur given the user's parameter specifications
-        self.limit = 4 * p['breadth']**p['depth']
-
         #   The maximum reward that could possibly be received from any position
         MAX_R = p['gamma_exec'] * p['mateReward']
 
@@ -39,10 +35,12 @@ class Traversal:
         ]
         
     #   From a base game, performs a depth-first tree traversal with the goal of
-    #   approximating the reward along realistic move sequences. Breadth
-    #   determines how many move options the engine explores from any node;
-    #   reward is determined using a minimax search.
-    def traverse(self):
+    #   approximating the reward along realistic move sequences. Reward is
+    #   determined using a minimax search.
+    #
+    #   num_steps: int or None. If None, perform the entire traversal. If an
+    #       int, perform only that number of steps (useful for unit testing)
+    def traverse(self, num_steps = None):
         #   Handle the case where the game is already finished
         if self.game.gameResult != 17:
             return
@@ -55,7 +53,9 @@ class Traversal:
         else:
             np.random.seed()
         
-        while len(stack) > 0:
+        step = 0
+        while (len(stack) > 0) and ((num_steps is None) or (step < num_steps)):
+            step += 1
             if len(stack[-1]['moves']) > 0:   # if there are moves left to explore
                 #   alpha-beta pruning
                 if stack[-1]['beta'] <= stack[-1]['alpha']:
