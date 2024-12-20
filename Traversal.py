@@ -5,13 +5,18 @@ from scipy.special import logit
 import tensorflow as tf
 
 class Traversal:
-    def __init__(self, game, net, p):
+    def __init__(self, game, net, p, fake_evals = False):
         #   Parameters for monitoring extent and results of search
         self.nodeHops = 0
         self.pruneCuts = 0
         self.bestLine = []
 
+        #   The neural network to use. If fake_evals, simulate small evaluations
+        #   at leaves in the tree search (for testing). Otherwise use the neural
+        #   network
         self.net = net
+        self.fakeEvals = fake_evals
+
         self.baseR = 0
         self.policy = getattr(policy, p['policyFun'])
         self.p = p
@@ -125,16 +130,21 @@ def processNode(trav):
         if node['nn_inputs'][i] is not None
     ]
     if len(indices) >= 1:
-        #   Get the NN evaluation(s)
-        nn_vecs = tf.stack(
-            [tf.reshape(node['nn_inputs'][i], [839]) for i in indices]
-        )
-        nn_out = trav.net(nn_vecs, training=False)[-1]
-        
-        nn_evals = trav.p['gamma_exec'] * logit(nn_out)
+        if trav.fakeEvals:
+            #   Just fake a reward of 0.1 for non-terminal positions
+            for i in indices:
+                node['rewards'][i] += 0.1
+        else:
+            #   Get the real NN evaluation(s)
+            nn_vecs = tf.stack(
+                [tf.reshape(node['nn_inputs'][i], [839]) for i in indices]
+            )
+            nn_out = trav.net(nn_vecs, training=False)[-1]
             
-        for i in range(nn_evals.shape[0]):
-            node['rewards'][indices[i]] += float(nn_evals[i])
+            nn_evals = trav.p['gamma_exec'] * logit(nn_out)
+                
+            for i in range(nn_evals.shape[0]):
+                node['rewards'][indices[i]] += float(nn_evals[i])
 
     #   Pass reward down or set trav.baseR (whichever is applicable);
     #   update alpha or beta if applicable
