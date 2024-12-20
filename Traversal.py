@@ -46,12 +46,12 @@ class Traversal:
     #   num_steps: int or None. If None, perform the entire traversal. If an
     #       int, perform only that number of steps (useful for unit testing)
     def traverse(self, num_steps = None):
-        #   Handle the case where the game is already finished
-        if self.game.gameResult != 17:
-            return
-
         p = self.p
         stack = self.stack
+
+        #   Handle the case where the game is already finished
+        if stack[0]['game'].gameResult != 17:
+            return
 
         if p['mode'] >= 3:
             np.random.seed(0)
