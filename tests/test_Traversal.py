@@ -9,7 +9,10 @@ import board_helper
 tol = 0.00001
 
 def test_traverse():
-    #   Manually produce a particular position
+    ############################################################################
+    #   First position
+    ############################################################################
+
     game = Game.Game()
     game.board = [
         [0, 0, 0, 0, 0, 0, 0, 0],
@@ -70,4 +73,48 @@ def test_traverse():
     trav.traverse(num_steps = 3)
     assert len(trav.stack) == 0, len(trav.stack)
     assert abs(trav.baseR - expected_reward) < tol
-    assert trav.bestLine == ['Kxh3', 'Kh1', 'Rf1'], trav.bestLine 
+    assert trav.bestLine == ['Kxh3', 'Kh1', 'Rf1'], trav.bestLine
+
+    ############################################################################
+    #   Second position
+    ############################################################################
+
+    game = Game.Game()
+    game.board = [
+        [0, 0, 0, 0, 0, 0, 0, -6],
+        [0, 0, 0, 0, 1, 1, 4, 0],
+        [0, 0, 0, 0, 1, 6, 0, 0],
+        [0, 0, 0, 0, 1, 1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0]
+    ]
+    game.invBoard = board_helper.invert(game.board)
+    game.wPieces = [6, 0, 0, 0, 1, 0]
+    game.bPieces = [0, 0, 0, 0, 0, 0]
+    game.canW_K_Castle = False
+    game.canW_Q_Castle = False
+    game.canB_K_Castle = False
+    game.canB_Q_Castle = False
+    game.moveNum = 20
+    game.updateValues()
+
+    p = {
+        'depth': 1,
+        'breadth': 2,
+        'gamma_exec': 0.8,
+        'mateReward': 3,
+        'policyFun': "sampleMovesEG",
+        'evalFun': policy.getEvalsDebug,
+        'mode': 3,
+        'epsSearch': 0
+    }
+
+    trav = Traversal.Traversal(game, None, p, fake_evals = True)
+    trav.traverse(num_steps = 4)
+    assert len(trav.stack) == 0, len(trav.stack)
+
+    #   The best move is 'Ra7', where the only reward is the fake eval of 0.1
+    assert abs(trav.baseR - 0.1) < tol
+    assert trav.bestLine == ['Ra7'], trav.bestLine
