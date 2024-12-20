@@ -124,8 +124,8 @@ def processNode(trav):
         i for i in range(len(node['nn_inputs']))
         if node['nn_inputs'][i] is not None
     ]
-    if len(indices) > 1:
-        #   Get the NN evaluations
+    if len(indices) >= 1:
+        #   Get the NN evaluation(s)
         nn_vecs = tf.stack(
             [tf.reshape(node['nn_inputs'][i], [839]) for i in indices]
         )
@@ -135,14 +135,6 @@ def processNode(trav):
             
         for i in range(nn_evals.shape[0]):
             node['rewards'][indices[i]] += float(nn_evals[i])
-
-    elif len(indices) == 1:
-        #   Get the NN evaluation
-        nn_out = trav.net(node['nn_inputs'][indices[0]], training=False)[-1]
-        
-        nn_eval = trav.p['gamma_exec'] * float(logit(nn_out))
-        
-        node['rewards'][indices[0]] += nn_eval
 
     #   Pass reward down or set trav.baseR (whichever is applicable);
     #   update alpha or beta if applicable
