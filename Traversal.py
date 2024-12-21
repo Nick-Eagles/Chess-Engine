@@ -7,7 +7,7 @@ import tensorflow as tf
 class Traversal:
     def __init__(self, game, net, p, fake_evals = False):
         #   Parameters for monitoring extent and results of search
-        self.nodeHops = 0
+        self.numLeaves = 0
         self.pruneCuts = 0
         self.bestLine = []
 
@@ -96,22 +96,21 @@ class Traversal:
                                     'move_names': []
                                 }
                             )
-                            self.nodeHops += 1
-                        elif g.gameResult == 0:
-                            self.nodeHops += 2
-                        else:
+                        elif abs(g.gameResult) == 1:
                             #   Signal to stop branching here since we found a
                             #   mate (the strongest possible move)
                             stack[-1]['moves'] = []
-                            self.nodeHops += 2
+
                     #   At a leaf, we want to add the NN evaluation of the
                     #   position to make sure rewards are not simply undone
                     #   later in the game
                     elif g.gameResult == 17:
                         in_vec = g.toNN_vecs(every=False)[0]
                         stack[-1]['nn_inputs'].append(in_vec)
+                        self.numLeaves += 1
                     else:
                         stack[-1]['nn_inputs'].append(None)
+                        self.numLeaves += 1
 
             else:   # otherwise hop down one node
                 processNode(self)
@@ -177,6 +176,3 @@ def processNode(trav):
     else:
         trav.baseR = r / trav.p['gamma_exec']
         trav.bestLine = this_line
-
-    trav.nodeHops += 1
-    
