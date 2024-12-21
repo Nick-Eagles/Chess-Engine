@@ -5,10 +5,10 @@ from scipy.special import logit
 import tensorflow as tf
 
 class Traversal:
-    def __init__(self, game, net, p, fake_evals = False):
+    def __init__(self, game, net, p, fake_evals = False, prune = True):
         #   Parameters for monitoring extent and results of search
         self.numLeaves = 0
-        self.pruneCuts = 0
+        self.prune = prune
         self.bestLine = []
 
         #   The neural network to use. If fake_evals, simulate small evaluations
@@ -63,9 +63,8 @@ class Traversal:
             step += 1
             if len(stack[-1]['moves']) > 0:   # if there are moves left to explore
                 #   alpha-beta pruning
-                if stack[-1]['beta'] <= stack[-1]['alpha']:
+                if self.prune and (stack[-1]['beta'] <= stack[-1]['alpha']):
                     #   None of the remaining lines are relevant in this case
-                    self.pruneCuts += len(stack[-1]['moves'])
                     stack[-1]['moves'] = []
                 else:
                     #   Pop the first move and do it

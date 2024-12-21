@@ -1,5 +1,8 @@
 import numpy as np
+from pyhere import here
+import sys
 
+sys.path.append(str(here()))
 import policy
 import Traversal
 import Game
@@ -118,3 +121,142 @@ def test_traverse():
     #   The best move is 'Ra7', where the only reward is the fake eval of 0.1
     assert abs(trav.baseR - 0.1) < tol
     assert trav.bestLine == ['Ra7'], trav.bestLine
+
+    ############################################################################
+    #   Empirically test alpha-beta pruning
+    ############################################################################
+
+    #---------------------------------------------------------------------------
+    #   Position 1
+    #---------------------------------------------------------------------------
+
+    game = Game.Game()
+    game.board = [
+        [4, 0, 1, 0, 0, -1, 0, -4],
+        [0, 0, 0, 1, 0, 0, -1, 0],
+        [0, 1, -2, 0, 0, 0, -5, 0],
+        [0, 2, 3, 2, -1, 0, -3, 0],
+        [4, 0, 0, 0, 1, -1, -3, 0],
+        [0, 1, 0, 0, 0, 0, -1, -4],
+        [6, 1, 0, 5, 0, 0, -1, -6],
+        [0, 1, 0, 0, 0, -1, 0, 0]
+    ]
+    game.invBoard = board_helper.invert(game.board)
+    game.wPieces = [7, 2, 1, 0, 2, 1]
+    game.bPieces = [7, 1, 1, 1, 2, 1]
+    game.canW_K_Castle = False
+    game.canW_Q_Castle = False
+    game.canB_K_Castle = False
+    game.canB_Q_Castle = False
+    game.moveNum = 18
+    game.updateValues()
+
+    p = {
+        'depth': 4,
+        'breadth': 4,
+        'gamma_exec': 0.7,
+        'mateReward': 4,
+        'policyFun': "sampleMovesEG",
+        'evalFun': policy.getEvalsDebug,
+        'mode': 3,
+        'epsSearch': 0
+    }
+
+    trav1 = Traversal.Traversal(game, None, p, fake_evals = True, prune = False)
+    trav1.traverse()
+    trav2 = Traversal.Traversal(game, None, p, fake_evals = True, prune = True)
+    trav2.traverse()
+    assert trav1.bestLine == trav2.bestLine
+    assert trav1.baseR == trav2.baseR
+    assert trav1.numLeaves > trav2.numLeaves
+
+    #---------------------------------------------------------------------------
+    #   Position 2
+    #---------------------------------------------------------------------------
+
+    game = Game.Game()
+    game.board = [
+        [0, 0, 0, 3, 0, -6, 0, 0],
+        [0, 0, 1, 0, -3, 0, 0, 0],
+        [0, 0, 0, 0, -1, 0, 0, 0],
+        [0, 0, 1, 2, 0, 0, 0, 0],
+        [0, 1, 1, 6, 1, 1, 0, 0],
+        [0, 0, 4, 1, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0]
+    ]
+    game.invBoard = board_helper.invert(game.board)
+    game.wPieces = [8, 1, 1, 0, 1, 0]
+    game.bPieces = [1, 0, 1, 0, 0, 0]
+    game.canW_K_Castle = False
+    game.canW_Q_Castle = False
+    game.canB_K_Castle = False
+    game.canB_Q_Castle = False
+    game.moveNum = 35
+    game.updateValues()
+
+    p = {
+        'depth': 4,
+        'breadth': 6,
+        'gamma_exec': 0.95,
+        'mateReward': 2.6,
+        'policyFun': "sampleMovesEG",
+        'evalFun': policy.getEvalsDebug,
+        'mode': 3,
+        'epsSearch': 0
+    }
+
+    trav1 = Traversal.Traversal(game, None, p, fake_evals = True, prune = False)
+    trav1.traverse()
+    trav2 = Traversal.Traversal(game, None, p, fake_evals = True, prune = True)
+    trav2.traverse()
+    assert trav1.bestLine == trav2.bestLine
+    assert trav1.baseR == trav2.baseR
+    assert trav1.numLeaves > trav2.numLeaves
+
+    #---------------------------------------------------------------------------
+    #   Position 3
+    #---------------------------------------------------------------------------
+
+    game = Game.Game()
+    game.board = [
+        [0, 6, 0, 0, 0, 0, 0, 0],
+        [3, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 4, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, -1, 0, 0, 0, 0, 2, -6]
+    ]
+    game.invBoard = board_helper.invert(game.board)
+    game.wPieces = [1, 1, 1, 0, 0, 0]
+    game.bPieces = [2, 0, 0, 0, 1, 0]
+    game.canW_K_Castle = False
+    game.canW_Q_Castle = False
+    game.canB_K_Castle = False
+    game.canB_Q_Castle = False
+    game.moveNum = 41
+    game.updateValues()
+
+    p = {
+        'depth': 5,
+        'breadth': 4,
+        'gamma_exec': 0.75,
+        'mateReward': 2.8,
+        'policyFun': "sampleMovesEG",
+        'evalFun': policy.getEvalsDebug,
+        'mode': 3,
+        'epsSearch': 0
+    }
+
+    #   The optimal move sequence here is intentionally put as the path to the last
+    #   leaf, so pruning should not occur (and would interfere with calculation of
+    #   optimal sequence otherwise)
+    trav1 = Traversal.Traversal(game, None, p, fake_evals = True, prune = False)
+    trav1.traverse()
+    trav2 = Traversal.Traversal(game, None, p, fake_evals = True, prune = True)
+    trav2.traverse()
+    assert trav1.bestLine == trav2.bestLine
+    assert trav1.baseR == trav2.baseR
+    assert trav1.numLeaves == trav2.numLeaves
