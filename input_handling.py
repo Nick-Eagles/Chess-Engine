@@ -108,10 +108,6 @@ def validateP(p):
         assert p['breadth'] >= 1, p['breadth']
         assert p['depth'] >= 1, p['depth']
         assert p['epsSearch'] >= 0 and p['epsSearch'] <= 1, p['epsSearch']
-
-        assert p['minCertainty'] < 1, p['minCertainty']
-        if p['minCertainty'] < 0 and p['mode'] >= 1:
-            print("Warning: 'minCertainty' is negative- is this intended?")
             
         assert p['policyFun'] == "sampleMovesEG" \
                or p['policyFun'] == "sampleMovesSoft", p['policyFun']
