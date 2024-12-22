@@ -49,8 +49,7 @@ The config `config.txt` is broken into sections beginning with a comment descrip
 - 1: (Normal) Print significant output and some additional info  
 - 2: (Verbose/ Debug) Print all information about the program's execution, including debug info, and perform any tasks helpful for debugging.  
 
-`baseBreadth`: positive integer dependent on the training mode. For deep Q-learning, this is the number of data generation tasks, run asynchronously in parallel on the available CPUs. Each task involves the agent playing itself in chess for a total of "maxSteps" moves. For tree-search data generation, this is the number of root nodes from which the search begins (also performed asynchronously in parallel).  
-`epsGreedy`: float in [0,1]. For deep Q-learning mode with "policy" set to "sampleMovesEG", this is the choice of epsilon as the agent performs moves under an epsilon-greedy policy. This also applies for tree-search mode within the tree search itself, but not in deciding the root nodes.  
+`baseBreadth`: positive integer dependent on the training mode. For deep Q-learning, this is the number of data generation tasks, run asynchronously in parallel on the available CPUs. Each task involves the agent playing itself in chess for a total of "maxSteps" moves. For tree-search data generation, this is the number of root nodes from which the search begins (also performed asynchronously in parallel).    
 `mateReward`: positive float (or integer). See "definition of 'reward'" for advice on choosing a particular value. This is the reward received by an agent for performing a checkmate. A value of 3-5 is probably a reasonable choice given the rewards of various captures- for reference, capturing a pawn as the first capture of the game has a reward of just above 0.02.  
 `gamma`: float in (0,1]. As per convention, the decay in reward received per action (half-move).
 
@@ -60,16 +59,14 @@ The config `config.txt` is broken into sections beginning with a comment descrip
 `breadth`: positive integer. The number of branches for any non-leaf node in the tree search. In this case, the number of moves searched from any (non-leaf) position in the tree search.  
 `depth`: integer >= 1. The number of subsequent half-moves considered for a tree search performed from a given state (board position). A depth of at least 2 is recommended due to overhead in parallelizing the search, which occurs at all depths.  
 `curiosity`: non-negative float. When policy "sampleMovesSoft" is used, the probability of each legal move being selected is the softmax of the reward for that move plus the expected reward from the resulting position. `curiosity` is the inverse "temperature" for that softmax function. Thus a value of 0 makes all moves equally probable; large values approach a purely greedy policy.  
-`epsSearch`: float in [0,1]. The probability that all moves from a given node are selected randomly, when performing the tree search (note that the decision to either randomly or informatively choose is made per potential move). This does not impact which move sequence is ultimately chosen from the completed tree search; the parameter `epsGreedy` exists for this purpose.  
 `policyFun`: a string determining the function in `policy.py` that the agent uses to select a particular subset of moves from the ones legally available, when performing a tree search to ultimately determine the best move. Currently two choices are available:  
 - "sampleMovesSoft": take the softmax of the expected cumulative rewards for each move, with exponential coefficient `curiosity`  
-- "sampleMovesEG": with moves ranked by their expected cumulative rewards, select one move by an epsilon-greedy policy. Epsilon is `epsGreedy` in the "General variabes" section.  
+- "sampleMovesStatic": return the top `breadth` moves by evaluation  
 
 `evalFun`: a string determining the function in `policy.py` that the agent uses to numerically score a set of potential moves (immediate branches) from a node in a tree search (`policyFun` determines which moves to choose given a set of move evaluations). There are currently four possible choices:  
 - "getEvalsValue": [TODO]
 - "getEvalsPolicy": [TODO]
 - "getEvalsHybrid": [TODO]
-- "getEvalsEmpirical": [TODO]
 
 #### Network/ training-related
 

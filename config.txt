@@ -1,16 +1,14 @@
 #	General settings (apply everywhere or in multiple categories)
 mode 2
 baseBreadth 15
-epsGreedy 0.15
 mateReward 3
 gamma 0.9
 #	Tree traversal
 gamma_exec 0.95
-breadth 12
+breadth 8
 depth 3
 curiosity 5
-epsSearch 0.01
-policyFun "sampleMovesEG"
+policyFun "sampleMovesStatic"
 evalFun "getEvalsPolicy"
 #	Network/ training-related
 memDecay 0.01

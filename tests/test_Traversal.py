@@ -43,7 +43,7 @@ def test_traverse():
         'breadth': 4,
         'gamma_exec': 0.9,
         'mateReward': 3,
-        'policyFun': "sampleMovesEG",
+        'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
         'mode': 3,
         'epsSearch': 0
@@ -108,7 +108,7 @@ def test_traverse():
         'breadth': 2,
         'gamma_exec': 0.8,
         'mateReward': 3,
-        'policyFun': "sampleMovesEG",
+        'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
         'mode': 3,
         'epsSearch': 0
@@ -156,7 +156,7 @@ def test_traverse():
         'breadth': 4,
         'gamma_exec': 0.7,
         'mateReward': 4,
-        'policyFun': "sampleMovesEG",
+        'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
         'mode': 3,
         'epsSearch': 0
@@ -200,7 +200,7 @@ def test_traverse():
         'breadth': 6,
         'gamma_exec': 0.95,
         'mateReward': 2.6,
-        'policyFun': "sampleMovesEG",
+        'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
         'mode': 3,
         'epsSearch': 0
@@ -244,7 +244,7 @@ def test_traverse():
         'breadth': 4,
         'gamma_exec': 0.75,
         'mateReward': 2.8,
-        'policyFun': "sampleMovesEG",
+        'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
         'mode': 3,
         'epsSearch': 0

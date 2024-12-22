@@ -89,7 +89,6 @@ def readConfig(f_name = here('config.txt')):
 def validateP(p):
     #   General settings
     assert p['baseBreadth'] > 0, p['baseBreadth']
-    assert p['epsGreedy'] >= 0 and p['epsGreedy'] <= 1, p['epsGreedy']
     assert p['mateReward'] > 0, "Mate reward must be positive to be " + \
            "consistent with rewards for captures"
     
@@ -107,10 +106,6 @@ def validateP(p):
 
         assert p['breadth'] >= 1, p['breadth']
         assert p['depth'] >= 1, p['depth']
-        assert p['epsSearch'] >= 0 and p['epsSearch'] <= 1, p['epsSearch']
-            
-        assert p['policyFun'] == "sampleMovesEG" \
-               or p['policyFun'] == "sampleMovesSoft", p['policyFun']
         
     #   Network/ training
     if 'memDecay' in p:
