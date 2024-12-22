@@ -21,7 +21,6 @@ def sampleMovesSoft(net, game, p):
     #   Get legal moves and NN evaluations on the positions that result from
     #   them
     moves = board_helper.getLegalMoves(game)
-    fullMovesLen = len(moves)
     evals = p['evalFun'](moves, net, game, p)
 
     temp = np.exp(p['curiosity'] * evals)
@@ -34,7 +33,7 @@ def sampleMovesSoft(net, game, p):
 
     assert len(finalMoves) > 0 and len(finalMoves) <= p['breadth'], \
            len(finalMoves)
-    return (finalMoves, fullMovesLen)
+    return finalMoves
 
 #   An alternative to "sampleMovesSoft". This uses what is intended to be a
 #   multiple-move analogue of an epsilon-greedy decision policy: N distinct
@@ -45,26 +44,23 @@ def sampleMovesEG(net, game, p):
     moves = board_helper.getLegalMoves(game)
 
     #   Simply choose all moves if the breadth spans this far
-    fullMovesLen = len(moves)
-    assert fullMovesLen > 0
-    if p['breadth'] >= fullMovesLen:
-        return (moves, fullMovesLen)
+    if p['breadth'] >= len(moves):
+        return moves
 
     #   More efficiently handle a trivial case
     if p['epsSearch'] == 0:
         evals = p['evalFun'](moves, net, game, p)
-        return ([moves[i] for i in misc.topN(evals, p['breadth'])], \
-                fullMovesLen)
+        return [moves[i] for i in misc.topN(evals, p['breadth'])]
     
     #   Determine which moves should be chosen randomly
-    subMovesLen = min(p['breadth'], fullMovesLen)
+    subMovesLen = min(p['breadth'], len(moves))
     #   This is the choice of epsilon such that if [subMovesLen] moves are
     #   chosen under an epsilon-greedy strategy, with each move constrained to
     #   be distinct, then the probability that none of those moves have the
     #   highest NN evaluation is eps.
-    epsEffective = (fullMovesLen * p['epsSearch'] / (fullMovesLen - subMovesLen))**(1/subMovesLen)
+    epsEffective = (len(moves) * p['epsSearch'] / (len(moves) - subMovesLen))**(1/subMovesLen)
     inds = []
-    remainInds = list(range(fullMovesLen))
+    remainInds = list(range(len(moves)))
     numRandom = np.random.binomial(subMovesLen, epsEffective)
     
     #   If all moves are to be chosen randomly, don't even compute their evals
@@ -91,7 +87,7 @@ def sampleMovesEG(net, game, p):
             inds.append(temp)
         
 
-    return ([moves[i] for i in inds], fullMovesLen)
+    return [moves[i] for i in inds]
 
 #################################################################################
 #   Functions for picking a single legal move to play
@@ -191,7 +187,7 @@ def getBestMoveTreeEG(net, game, p, interactive=False, num_lines=1):
         p_copy['depth'] -= 1
         p = p_copy
         
-        moves, fullMovesLen = sampleMovesEG(net, game, p)
+        moves = sampleMovesEG(net, game, p)
         
         rTemp = np.zeros(len(moves))
         baseRs = np.zeros(len(moves))

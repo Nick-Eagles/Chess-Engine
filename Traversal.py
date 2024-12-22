@@ -81,7 +81,7 @@ class Traversal:
                     #   moves/probs and add to the stack
                     if len(stack) < p['depth']:
                         if g.gameResult == 17:  
-                            moves, fullMovesLen = self.policy(self.net, g, p)
+                            moves = self.policy(self.net, g, p)
                             stack.append(
                                 {
                                     'moves': moves,
