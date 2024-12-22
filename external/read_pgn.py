@@ -1,8 +1,8 @@
 import sys
 import numpy as np
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
 from pyhere import here
+import random
 
 sys.path.append(str(here()))
 import board_helper
@@ -162,7 +162,7 @@ def game_to_pairs_real(game_str, p, j):
     return (in_vecs, out_vecs)
 
 #   Convert many games, as output by generate_raw_pairs or similar, to a tuple
-#   of tensors (X, y).
+#   of tensors (X, y). Positions are returned in random order
 #
 #   in_vecs: list of games (list) of positions (tensors) to use an inputs to
 #       a policy-value neural network
@@ -172,22 +172,26 @@ def games_to_tensors(in_vecs, out_vecs):
     #   Tensor shapes (excluding batch) for the output layer 
     OUT_SHAPE = (4096, 6, 1)
 
-    #   Format as (N, 839) tensors (includes N positions). The second index (first
-    #   axis) of each tensor is the second position in the first game
-    X = tf.stack(
-        [tf.reshape(pos, (839)) for game in in_vecs for pos in game], axis = 0
-    )
+    #   First, flatten as a list of (839) tensors
+    X_ordered = [tf.reshape(pos, (839)) for game in in_vecs for pos in game]
 
-    #   Format as lists of (N, Mi) tensors (for N positions for different values
-    #   of Mi for each output component)
-    y = [
-        tf.stack(
-            [
-                tf.reshape(game[i][j], (tensor_shape))
-                for game in out_vecs for i in range(len(game))
-            ]
-        )
-        for j, tensor_shape in enumerate(OUT_SHAPE)
-    ]
+    #   Now form a (N, 839) tensor of N randomly ordered positions
+    permute = list(range(len(X_ordered)))
+    random.shuffle(permute)
+    X = tf.stack([X_ordered[i] for i in permute], axis = 0)
+
+    y = []
+    for j, tensor_shape in enumerate(OUT_SHAPE):
+        #   For this piece of the output layer, flatten as a list of tensors of
+        #   the appropriate shape
+        yj_ordered = [
+            tf.reshape(pos[j], (tensor_shape))
+            for game in out_vecs for pos in game
+        ]
+
+        #   Now randomly order the positions and append to the list of output
+        #   tensors (one (N, tensor_shape) tensor per output layer component)
+        yj = tf.stack([yj_ordered[i] for i in permute], axis = 0)
+        y.append(yj)
 
     return (X, y)
