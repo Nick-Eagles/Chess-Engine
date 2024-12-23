@@ -3,6 +3,7 @@
 #   position 
 
 from pyhere import here
+from pathlib import Path
 import sys
 import pickle
 import gzip
@@ -19,12 +20,19 @@ train_paths = [
 ]
 test_path = here('external', 'preprocessed_games', 'test_games.txt.gz')
 out_train_paths = [
-    here('external', 'preprocessed_games', f'tensor_list_train_real{i}.pkl.gz')
+    here(
+        'external', 'preprocessed_games', 'g75',
+        f'tensor_list_train_real{i}.pkl.gz'
+    )
     for i in range(1, 20)
 ]
-out_test_path = here(
-    'external', 'preprocessed_games', 'tensor_list_test_real.pkl.gz'
+out_test_path = Path(
+    here(
+        'external', 'preprocessed_games', 'g75', 'tensor_list_test_real.pkl.gz'
+    )
 )
+
+out_test_path.parent.mkdir(exist_ok = True)
 
 p = input_handling.readConfig()
 

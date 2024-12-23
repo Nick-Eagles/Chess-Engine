@@ -11,6 +11,8 @@ import misc
 import policy_net
 import Move
 
+random.seed(0)
+
 #   Given a single game as a string, return input and output tensors for
 #   training a policy-value network. Output tensors are "synthetic" in that
 #   rather than representing good moves and expected rewards, they are
