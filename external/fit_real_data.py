@@ -16,15 +16,15 @@ import pandas as pd
 import re
 from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
-net_name = "res"
+net_name = "first"
 
 #   If True, load the existing model and history. If False, construct a new
 #   model
-resume = False
+resume = True
 
 #   Hyperparameters (ignored if 'resume' is True)
 hidden_layer_lens = [500, 500, 500, 500]
-loss_weights = [0.4, 0.1, 0.5]
+loss_weights = [0.16, 0.04, 0.8]
 optimizer = 'adam'
 batch_size = 100
 epochs = 1
@@ -82,6 +82,25 @@ else:
             )(x)
         x = layers.BatchNormalization()(x)
 
+    #   Linear projection to match block input and output lengths
+    # x = layers.Dense(400, name='linear_projection')(x)
+
+    # for i in range(2):
+    #     block_input = x
+    #     x = layers.Dense(
+    #         400,
+    #         activation="relu",
+    #     )(x)
+    #     x = layers.BatchNormalization()(x)
+    #     x = layers.Dense(
+    #         400,
+    #         activation="relu"
+    #     )(x)
+
+    #     #   Residual connection, with batch norm afterward
+    #     x = layers.add([x, block_input], name = f'residual_conn{i}')
+    #     x = layers.BatchNormalization()(x)
+
     #   Output layer
     policy_move_sq = layers.Dense(
             4096, activation = "softmax", name = "policy_move_square"
@@ -103,23 +122,22 @@ else:
 #   Compile the model
 ################################################################################
 
-if not resume:
-    loss = [
-        tf.keras.losses.CategoricalCrossentropy(), # policy: move sq
-        tf.keras.losses.CategoricalCrossentropy(), # policy: end piece
-        tf.keras.losses.BinaryCrossentropy()       # value
-    ]
+loss = [
+    tf.keras.losses.CategoricalCrossentropy(), # policy: move sq
+    tf.keras.losses.CategoricalCrossentropy(), # policy: end piece
+    tf.keras.losses.BinaryCrossentropy()       # value
+]
 
-    net.compile(
-        optimizer = optimizer,
-        loss = loss,
-        loss_weights = loss_weights,
-        metrics = [
-            tf.keras.metrics.CategoricalAccuracy(),
-            tf.keras.metrics.CategoricalAccuracy(),
-            None
-        ]
-    )
+net.compile(
+    optimizer = optimizer,
+    loss = loss,
+    loss_weights = loss_weights,
+    metrics = [
+        tf.keras.metrics.CategoricalAccuracy(),
+        tf.keras.metrics.CategoricalAccuracy(),
+        None
+    ]
+)
 
 ################################################################################
 #   Fit the model
