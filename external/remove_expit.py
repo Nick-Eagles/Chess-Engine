@@ -61,6 +61,9 @@ for i in range(len(train_paths_in)):
     with gzip.open(train_paths_in[i], 'rb') as f:
         X_train, y_train = pickle.load(f)
 
+    permute = list(range(y_train[-1].shape[0]))
+    random.shuffle(permute)
+
     #   First shuffle examples
     X_train = tf.constant(
         X_train.numpy()[permute, :], shape = X_train.shape, dtype = tf.float32
