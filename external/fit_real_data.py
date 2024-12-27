@@ -6,7 +6,7 @@ from pyhere import here
 from pathlib import Path
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
+from tensorflow.keras import layers, regularizers
 from tensorflow.keras.models import load_model
 import numpy as np
 from scipy.special import logit
@@ -16,28 +16,29 @@ import pandas as pd
 import re
 from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
-net_name = "first"
+net_name = "res_no_expit"
 
 #   If True, load the existing model and history. If False, construct a new
 #   model
-resume = True
+resume = False
 
 #   Hyperparameters (ignored if 'resume' is True)
 hidden_layer_lens = [500, 500, 500, 500]
-loss_weights = [0.16, 0.04, 0.8]
+loss_weights = [0.08, 0.02, 0.9]
 optimizer = 'adam'
 batch_size = 100
 epochs = 1
 
 train_paths = [
     here(
-        'external', 'preprocessed_games', 'g75',
+        'external', 'preprocessed_games', 'g75_no_expit',
         f'tensor_list_train_real{i}.pkl.gz'
     )
     for i in range(1, 20)
 ]
 test_path = here(
-    'external', 'preprocessed_games', 'g75', 'tensor_list_test_real.pkl.gz'
+    'external', 'preprocessed_games', 'g75_no_expit',
+    'tensor_list_test_real.pkl.gz'
 )
 model_path = Path(here('nets', net_name, 'model.keras'))
 history_path = here('nets', net_name, 'history.csv')
@@ -54,8 +55,8 @@ model_path.parent.mkdir(exist_ok = True)
 #   of 100 samples, cosine similarity is taken across two 100-dimensional
 #   vectors)
 def cos_sim(X, y, net):
-    exp_rew = logit(net(X, training = False)[-1].numpy().flatten())
-    act_rew = logit(y[-1].numpy().flatten())
+    exp_rew = net(X, training = False)[-1].numpy().flatten()
+    act_rew = y[-1].numpy().flatten()
     result = float(
         (exp_rew @ act_rew) /
         (np.linalg.norm(exp_rew) * np.linalg.norm(act_rew))
@@ -75,31 +76,31 @@ else:
     x = input_lay
 
     #   Dense hidden layers
-    for hidden_layer_len in hidden_layer_lens:
-        x = layers.Dense(
-                hidden_layer_len,
-                activation = "relu"
-            )(x)
-        x = layers.BatchNormalization()(x)
+    # for hidden_layer_len in hidden_layer_lens:
+    #     x = layers.Dense(
+    #             hidden_layer_len,
+    #             activation = "relu"
+    #         )(x)
+    #     x = layers.BatchNormalization()(x)
 
     #   Linear projection to match block input and output lengths
-    # x = layers.Dense(400, name='linear_projection')(x)
+    x = layers.Dense(400, name='linear_projection')(x)
 
-    # for i in range(2):
-    #     block_input = x
-    #     x = layers.Dense(
-    #         400,
-    #         activation="relu",
-    #     )(x)
-    #     x = layers.BatchNormalization()(x)
-    #     x = layers.Dense(
-    #         400,
-    #         activation="relu"
-    #     )(x)
+    for i in range(2):
+        block_input = x
+        x = layers.Dense(
+            400,
+            activation="relu",
+        )(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Dense(
+            400,
+            activation="relu"
+        )(x)
 
-    #     #   Residual connection, with batch norm afterward
-    #     x = layers.add([x, block_input], name = f'residual_conn{i}')
-    #     x = layers.BatchNormalization()(x)
+        #   Residual connection, with batch norm afterward
+        x = layers.add([x, block_input], name = f'residual_conn{i}')
+        x = layers.BatchNormalization()(x)
 
     #   Output layer
     policy_move_sq = layers.Dense(
@@ -109,7 +110,7 @@ else:
             6, activation = "softmax", name = "policy_end_piece"
         )(x)
     value = layers.Dense(
-            1, activation = "sigmoid", name = "value",
+            1, kernel_regularizer=regularizers.l2(0.1), name = "value",
         )(x)
 
     net = keras.Model(
@@ -125,7 +126,7 @@ else:
 loss = [
     tf.keras.losses.CategoricalCrossentropy(), # policy: move sq
     tf.keras.losses.CategoricalCrossentropy(), # policy: end piece
-    tf.keras.losses.BinaryCrossentropy()       # value
+    tf.keras.losses.MeanSquaredError()         # value
 ]
 
 net.compile(
