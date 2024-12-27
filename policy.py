@@ -178,9 +178,8 @@ def getEvalsHybrid(moves, net, game, p):
         (p['mateReward'] - np.max(np.abs(rewards))) / p['mateReward'],
         0
     )
-    assert scalar >= 0 and scalar <= 1, scalar
 
-    evals = scalar * probs + (1 - scalar) * rewards
+    evals = scalar * probs * p['mateReward'] + (1 - scalar) * rewards
     return evals
 
 #   For debugging/ testing purposes, return evals based on the move names in
