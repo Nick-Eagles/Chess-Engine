@@ -1,15 +1,13 @@
 import numpy as np
-from scipy.special import expit
 import tensorflow as tf
 
 #   Given a Move to perform and a raw (cumulative) reward observed given that
-#   move and future moves (before calling expit/sigmoid), return the associated
-#   "label"
+#   move and future moves, return the associated "label"
 def ToOutputVec(move, r):
     out_vecs = [
         np.zeros(4096),
         np.zeros(6),
-        tf.constant(expit(r), shape=[1, 1], dtype=tf.float32)
+        tf.constant(r, shape=[1, 1], dtype=tf.float32)
     ]
 
     ############################################################################

@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.special import logit
 import tensorflow as tf
 
 import policy_net
@@ -28,7 +27,8 @@ def sampleMovesSoft(net, game, p):
     cumProbs = np.cumsum(probs)
 
     finalMoves = [
-        moves[i] for i in misc.sampleCDF(cumProbs, min(breadth, len(moves)))
+        moves[i]
+        for i in misc.sampleCDF(cumProbs, min(p['breadth'], len(moves)))
     ]
 
     assert len(finalMoves) > 0 and len(finalMoves) <= p['breadth'], \
@@ -142,12 +142,8 @@ def getEvalsValue(moves, net, game, p):
         r_real[i] = r
         net_inputs.append(tf.reshape(vec, (839,)))
 
-    #   Get the value output from the network, regardless of whether net is
-    #   of type "policy-value" or "value"
-    value = logit(net(tf.stack(net_inputs), training=False)).flatten()
-    if isinstance(value, list):
-        value = value[-1]
-    
+    #   Get the value output from the network
+    value = net(tf.stack(net_inputs), training=False)[-1]
     evals = r_real + p['gamma_exec'] * value
     
     if not game.whiteToMove:
