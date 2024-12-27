@@ -1,6 +1,7 @@
 import network_helper
 import input_handling
 import policy
+import demonstration
 
 from pyhere import here
 from tensorflow.keras.models import load_model
@@ -31,6 +32,6 @@ if __name__ == '__main__':
         if choice == 1:
             p = input_handling.readConfig()
             print("Generating the current network's 'best' game...")
-            network_helper.bestGame(net, policy.getBestMoveTreeEG
+            network_helper.bestGame(net, policy.getBestMoveTreeEG)
         elif choice == 2:
             demonstration.interact(net)

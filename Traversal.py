@@ -30,7 +30,7 @@ class Traversal:
         #   One element (node) on the stack is composed of the following:
         #   [moves, rewards, Game, reward up to this, alpha, beta, list of
         #    NN inputs, move names]
-        moves, _ = self.policy(self.net, game, p)
+        moves = self.policy(self.net, game, p)
         self.stack = [
             {
                 'moves': moves, 'rewards': [], 'game': game,
