@@ -4,6 +4,7 @@ import Game
 import board_helper
 import input_handling
 import misc
+import Traversal
 
 def parseInput(moveNames):
     cond = 'var in auxVars'
@@ -17,6 +18,29 @@ def parseInput(moveNames):
         cond,
         auxVars=moveNames
     )
+
+def describeTraversal(trav, game, p):
+    if p['mode'] > 1:
+        #   Print evaluation before performing move
+        expRew = trav.net(game.toNN_vecs(), training=False)[-1]
+        print(
+            "Expected reward from the current position is", 
+            round(float(expRew), 3)
+        )
+
+        print(f'Chose {trav.bestLine[0]}. Top lines:')
+
+        #   Indices of best lines and rewards based on evaluation
+        indices = [
+            misc.match(x, trav.rewards)
+            for x in sorted(trav.rewards, reverse = game.whiteToMove)
+        ]
+
+        #   Print top lines and associated rewards in order of evaluation
+        for i in indices:
+            print(f'  ({round(trav.rewards[i], 2)}) {" ".join(trav.bestLines[i])}')
+    else:
+        print(f'Chose {trav.bestLine[0]}.')
 
 def interact(net):
     p = input_handling.readConfig()
@@ -38,21 +62,10 @@ def interact(net):
             
             game.doMove(moves[misc.match(userChoice, moveNames)])
         else:
-            print('Calculating...', end='')
             trav = Traversal.Traversal(game, net, p)
             trav.traverse()
-            bestMove = trav.bestMove
-            print('Chose ', bestMove.getMoveName(game), '.', sep='')
-            game.doMove(bestMove)
-
-            if p['mode'] >= 1:
-                expRew = net(game.toNN_vecs(every=False)[0], training=False)[-1]
-                
-                print(
-                    "Expected reward from the current position is", 
-                    round(float(expRew), 4)
-                )
-
+            describeTraversal(trav, game, p)
+            game.doMove(trav.bestMove)
 
     if game.gameResult == 2 * userStarts - 1:
         print("This is checkmate; you won.")

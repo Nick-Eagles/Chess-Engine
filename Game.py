@@ -1,5 +1,6 @@
 import numpy as np
 import datetime
+import tensorflow as tf
 
 import Move
 import board_helper
@@ -96,7 +97,7 @@ class Game:
         if simple:
             NN_vecs = None
         else:
-            NN_vecs = g.toNN_vecs(every=False)[0]
+            NN_vecs = g.toNN_vecs()
             
         if abs(g.gameResult) == 1:
             r = g.gameResult * mateRew
@@ -117,111 +118,52 @@ class Game:
         print("-------------")
 
     #   Converts the board into a standardized input vector for the NN:
-    #   for each square, the input vector has 13 entries so that only one
+    #   for each square, the input vector has 12 entries so that at most one
     #   entry has a value of 1 (the remaining are zero), corresponding to
     #   the piece occupying that square. The remaining pieces of information
     #   necessary to specify a unique board are appended to the vector:
-    #   game.whiteToMove, game.enPassant, castling permissions, and moves
-    #   since a pawn move or capture. All entries are again 0/1 except
-    #   game.movesSinceAction: {0,1,...,50}
-    #
-    #   This function by default returns additional permutations of the game
-    #   board when possible while retaining expected game outcome (possibly
-    #   inverted). This behavior is suppressed (and only a single NN input
-    #   returned) by setting every=False. In both cases, a list of at least
-    #   one numpy array is returned.
-    def toNN_vecs(self, every=True):
-        #   The original position as-is
-        all_vecs = [
-            board_helper.generate_NN_vec(self, False, False, False, False)
-        ]
+    #   game.enPassant, castling permissions, and moves since a pawn move or
+    #   capture. All entries are again 0/1 except game.movesSinceAction (which
+    #   is still in [0, 1))
+    def toNN_vecs(self):
+        netInput = np.zeros((774,))
 
-        if every:
-            #   The position inverted by rank and color
-            all_vecs.append(
-                board_helper.generate_NN_vec(self, True, False, True, False)
-            )
+        c = 0
+        if self.whiteToMove:
+            for file in range(8):
+                for rank in range(8):
+                    piece = self.board[rank][file]
+                    if piece > 0:
+                        netInput[c + piece + 5] = 1
+                    elif piece < 0:
+                        netInput[c + piece + 6] = 1
+                    c += 12
+        else:
+            for file in range(8):
+                for rank in range(8):
+                    piece = -1 * self.board[file][7-rank]
+                    if piece > 0:
+                        netInput[c + piece + 5] = 1
+                    elif piece < 0:
+                        netInput[c + piece + 6] = 1
+                    c += 12
 
-            #   If castling is impossible, the board can be reflected by file
-            if not any([self.canW_K_Castle, self.canW_Q_Castle, self.canB_K_Castle, self.canB_Q_Castle]):
-                #   The positions we've appended so far but inverted by file
-                all_vecs.append(
-                    board_helper.generate_NN_vec(
-                        self, False, True, False, False
-                    )
-                )
-                all_vecs.append(
-                    board_helper.generate_NN_vec(
-                        self, True, True, True, False
-                    )
-                )
+        netInput[768] = int(self.enPassant)
+        if self.whiteToMove:
+            netInput[769] = int(self.canW_K_Castle)
+            netInput[770] = int(self.canW_Q_Castle)
+            netInput[771] = int(self.canB_K_Castle)
+            netInput[772] = int(self.canB_Q_Castle)
+        else:
+            netInput[769] = int(self.canB_K_Castle)
+            netInput[770] = int(self.canB_Q_Castle)
+            netInput[771] = int(self.canW_K_Castle)
+            netInput[772] = int(self.canW_Q_Castle)
+            
+        #   Normalize so it fits in [0, ~1)
+        netInput[773] = self.movesSinceAction / 50
 
-                #   If there are no pawns on the board, it can also be rotated arbitrarily
-                if self.wPieces[0] + self.bPieces[0] == 0:
-                    #   All other unique permutations involving reflections and rotations
-                    #   of the board- to make 16 total
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, False, False, False, True
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, False, False, True, False
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, False, False, True, True
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, False, True, False, True
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, False, True, True, False
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, False, True, True, True
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, True, False, False, False
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, True, False, False, True
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, True, False, True, True
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, True, True, False, False
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, True, True, False, True
-                        )
-                    )
-                    all_vecs.append(
-                        board_helper.generate_NN_vec(
-                            self, True, True, True, True
-                        )
-                    )
-
-        return all_vecs
+        return tf.constant(netInput, shape=(1,774), dtype=tf.float32)
                 
 
     #   Returns a tuple: the first entry is the game result; the second is a string

@@ -109,7 +109,7 @@ class Traversal:
                     #   position to make sure rewards are not simply undone
                     #   later in the game
                     elif g.gameResult == 17:
-                        in_vec = g.toNN_vecs(every=False)[0]
+                        in_vec = g.toNN_vecs()
                         stack[-1]['nn_inputs'].append(in_vec)
                         self.numLeaves += 1
                     else:
@@ -140,7 +140,7 @@ def processNode(trav):
         else:
             #   Get the real NN evaluation(s)
             nn_vecs = tf.stack(
-                [tf.reshape(node['nn_inputs'][i], [839]) for i in indices]
+                [tf.reshape(node['nn_inputs'][i], [774]) for i in indices]
             )
             nn_out = trav.net(nn_vecs, training=False)[-1]
             

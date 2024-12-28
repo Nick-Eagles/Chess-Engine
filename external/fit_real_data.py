@@ -71,7 +71,7 @@ if resume:
     net = load_model(model_path)
 else:
     #   Input layer
-    input_lay = keras.Input(shape = (839,), name = "game_position")
+    input_lay = keras.Input(shape = (774,), name = "game_position")
     x = input_lay
 
     #   Dense hidden layers

@@ -1,8 +1,3 @@
-## TODO
-
-- `Game.toNN_vecs(every = True)` unfortunately needs unit tests. It's far too
-complex to assume it just works
-
 ## Misc thoughts/worries:
 
 - Despite the policy network picking a master's move as the top move ~25% of

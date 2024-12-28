@@ -43,7 +43,7 @@ def game_to_pairs_synthetic(game_str, j):
     in_vecs = []
     out_vecs = []
     for i, move_name in enumerate(move_names):
-        in_vecs.append(game.toNN_vecs(every = False)[0])
+        in_vecs.append(game.toNN_vecs())
         
         #   Verify that the move played was legal
         moves = board_helper.getLegalMoves(game)
@@ -156,7 +156,7 @@ def game_to_pairs_real(game_str, p, j):
     in_vecs = []
     out_vecs = []
     for i in range(len(r_list)):
-        in_vecs.append(g_list[i].toNN_vecs(every = False)[0])
+        in_vecs.append(g_list[i].toNN_vecs())
         out_vecs.append(
             policy_net.ToOutputVec(move_list[i], r_list[i])
         )
@@ -174,10 +174,10 @@ def games_to_tensors(in_vecs, out_vecs):
     #   Tensor shapes (excluding batch) for the output layer 
     OUT_SHAPE = (4096, 6, 1)
 
-    #   First, flatten as a list of (839) tensors
-    X_ordered = [tf.reshape(pos, (839)) for game in in_vecs for pos in game]
+    #   First, flatten as a list of (774) tensors
+    X_ordered = [tf.reshape(pos, (774)) for game in in_vecs for pos in game]
 
-    #   Now form a (N, 839) tensor of N randomly ordered positions
+    #   Now form a (N, 774) tensor of N randomly ordered positions
     permute = list(range(len(X_ordered)))
     random.shuffle(permute)
     X = tf.stack([X_ordered[i] for i in permute], axis = 0)

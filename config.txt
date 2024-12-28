@@ -2,14 +2,14 @@
 mode 2
 baseBreadth 15
 mateReward 3
-gamma 0.9
+gamma 0.75
 #	Tree traversal
 gamma_exec 0.95
-breadth 8
+breadth 15
 depth 3
 curiosity 5
 policyFun "sampleMovesStatic"
-evalFun "getEvalsPolicy"
+evalFun "getEvalsHybrid"
 #	Network/ training-related
 memDecay 0.01
 weightDec 0.00001
