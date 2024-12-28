@@ -4,9 +4,8 @@ import Game
 import board_helper
 import input_handling
 import misc
-import policy
 
-def parseInput(game, moveNames):
+def parseInput(moveNames):
     cond = 'var in auxVars'
     messDef = 'Enter your move: '
     messOnErr = 'Not a legal move; the following moves are legal:\n' + \
@@ -21,8 +20,6 @@ def parseInput(game, moveNames):
 
 def interact(net):
     p = input_handling.readConfig()
-    p['epsGreedy'] = 0
-    p['epsSearch'] = 0
 
     game = Game.Game(quiet=False)
 
@@ -37,12 +34,14 @@ def interact(net):
         if game.whiteToMove == userStarts:
             moves = board_helper.getLegalMoves(game)
             moveNames = [m.getMoveName(game) for m in moves]
-            userChoice = parseInput(game, moveNames)
+            userChoice = parseInput(moveNames)
             
             game.doMove(moves[misc.match(userChoice, moveNames)])
         else:
             print('Calculating...', end='')
-            bestMove = policy.getBestMoveTreeEG(net, game, p)
+            trav = Traversal.Traversal(game, net, p)
+            trav.traverse()
+            bestMove = trav.bestMove
             print('Chose ', bestMove.getMoveName(game), '.', sep='')
             game.doMove(bestMove)
 

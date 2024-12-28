@@ -18,6 +18,9 @@ class Traversal:
 
         self.baseR = 0
         self.bestMove = None
+        self.bestLines = []
+        self.rewards = []
+
         self.policy = getattr(policy, p['policyFun'])
         self.p = p
 
@@ -180,3 +183,5 @@ def processNode(trav):
         trav.baseR = r / trav.p['gamma_exec']
         trav.bestMove = best_move
         trav.bestLine = this_line
+        trav.rewards = [x / trav.p['gamma_exec'] for x in node['rewards']]
+        trav.bestLines = node['move_names']
