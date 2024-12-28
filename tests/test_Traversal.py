@@ -45,8 +45,7 @@ def test_traverse():
         'mateReward': 3,
         'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
-        'mode': 3,
-        'epsSearch': 0
+        'mode': 3
     }
 
     trav = Traversal.Traversal(game, None, p, fake_evals = True)
@@ -111,8 +110,7 @@ def test_traverse():
         'mateReward': 3,
         'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
-        'mode': 3,
-        'epsSearch': 0
+        'mode': 3
     }
 
     trav = Traversal.Traversal(game, None, p, fake_evals = True)
@@ -160,8 +158,7 @@ def test_traverse():
         'mateReward': 4,
         'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
-        'mode': 3,
-        'epsSearch': 0
+        'mode': 3
     }
 
     trav1 = Traversal.Traversal(game, None, p, fake_evals = True, prune = False)
@@ -205,8 +202,7 @@ def test_traverse():
         'mateReward': 2.6,
         'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
-        'mode': 3,
-        'epsSearch': 0
+        'mode': 3
     }
 
     trav1 = Traversal.Traversal(game, None, p, fake_evals = True, prune = False)
@@ -250,8 +246,7 @@ def test_traverse():
         'mateReward': 2.8,
         'policyFun': "sampleMovesStatic",
         'evalFun': policy.getEvalsDebug,
-        'mode': 3,
-        'epsSearch': 0
+        'mode': 3
     }
 
     #   The optimal move sequence here is intentionally put as the path to the last
