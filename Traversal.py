@@ -1,7 +1,6 @@
 import policy
 
 import numpy as np
-from scipy.special import logit
 import tensorflow as tf
 
 class Traversal:
@@ -139,7 +138,7 @@ def processNode(trav):
             )
             nn_out = trav.net(nn_vecs, training=False)[-1]
             
-            nn_evals = trav.p['gamma_exec'] * logit(nn_out)
+            nn_evals = trav.p['gamma_exec'] * nn_out
                 
             for i in range(nn_evals.shape[0]):
                 node['rewards'][indices[i]] += float(nn_evals[i])
