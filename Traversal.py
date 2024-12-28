@@ -17,6 +17,7 @@ class Traversal:
         self.fakeEvals = fake_evals
 
         self.baseR = 0
+        self.bestMove = None
         self.policy = getattr(policy, p['policyFun'])
         self.p = p
 
@@ -34,7 +35,7 @@ class Traversal:
             {
                 'moves': moves, 'rewards': [], 'game': game,
                 'prev_reward': 0, 'alpha': -1 * MAX_R, 'beta': MAX_R,
-                'nn_inputs': [], 'move_names': []
+                'nn_inputs': [], 'move_names': [], 'moves_done': []
             }
         ]
         
@@ -70,6 +71,7 @@ class Traversal:
                     g = stack[-1]['game'].copy()
                     m = stack[-1]['moves'].pop(0)
                     stack[-1]['move_names'].append([m.getMoveName(g)])
+                    stack[-1]['moves_done'].append(m)
                     r = g.getReward(
                         m, p['mateReward'], simple=True, copy=False
                     )[0]
@@ -91,7 +93,8 @@ class Traversal:
                                     'alpha': stack[-1]['alpha'],
                                     'beta': stack[-1]['beta'],
                                     'nn_inputs': [],
-                                    'move_names': []
+                                    'move_names': [],
+                                    'moves_done': []
                                 }
                             )
                         elif abs(g.gameResult) == 1:
@@ -149,6 +152,7 @@ def processNode(trav):
         index = np.argmax(node['rewards'])
         r = trav.p['gamma_exec'] * node['rewards'][index]
         this_line = node['move_names'][index]
+        best_move = node['moves_done'][index]
         
         #   Update beta if necessary
         if len(trav.stack) > 0:
@@ -159,6 +163,7 @@ def processNode(trav):
         index = np.argmin(node['rewards'])
         r = trav.p['gamma_exec'] * node['rewards'][index]
         this_line = node['move_names'][index]
+        best_move = node['moves_done'][index]
 
         #   Update alpha if necessary
         if len(trav.stack) > 0:
@@ -173,4 +178,5 @@ def processNode(trav):
         trav.stack[-1]['move_names'][-1] += this_line
     else:
         trav.baseR = r / trav.p['gamma_exec']
+        trav.bestMove = best_move
         trav.bestLine = this_line

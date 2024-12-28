@@ -77,6 +77,7 @@ def test_traverse():
     assert len(trav.stack) == 0, len(trav.stack)
     assert abs(trav.baseR - expected_reward) < tol
     assert trav.bestLine == ['Kxh3', 'Kh1', 'Rf1'], trav.bestLine
+    assert trav.bestMove.getMoveName(game) == 'Kxh3', trav.bestMove.getMoveName(game)
 
     ############################################################################
     #   Second position
@@ -121,6 +122,7 @@ def test_traverse():
     #   The best move is 'Ra7', where the only reward is the fake eval of 0.1
     assert abs(trav.baseR - 0.1) < tol
     assert trav.bestLine == ['Ra7'], trav.bestLine
+    assert trav.bestMove.getMoveName(game) == 'Ra7', trav.bestMove.getMoveName(game)
 
     ############################################################################
     #   Empirically test alpha-beta pruning
@@ -167,6 +169,7 @@ def test_traverse():
     trav2 = Traversal.Traversal(game, None, p, fake_evals = True, prune = True)
     trav2.traverse()
     assert trav1.bestLine == trav2.bestLine
+    assert trav1.bestMove.equals(trav2.bestMove)
     assert trav1.baseR == trav2.baseR
     assert trav1.numLeaves > trav2.numLeaves
 
@@ -211,6 +214,7 @@ def test_traverse():
     trav2 = Traversal.Traversal(game, None, p, fake_evals = True, prune = True)
     trav2.traverse()
     assert trav1.bestLine == trav2.bestLine
+    assert trav1.bestMove.equals(trav2.bestMove)
     assert trav1.baseR == trav2.baseR
     assert trav1.numLeaves > trav2.numLeaves
 
@@ -258,5 +262,6 @@ def test_traverse():
     trav2 = Traversal.Traversal(game, None, p, fake_evals = True, prune = True)
     trav2.traverse()
     assert trav1.bestLine == trav2.bestLine
+    assert trav1.bestMove.equals(trav2.bestMove)
     assert trav1.baseR == trav2.baseR
     assert trav1.numLeaves == trav2.numLeaves
