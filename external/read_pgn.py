@@ -83,7 +83,7 @@ def game_to_pairs_synthetic(game_str, j):
                 fake_move = Move.Move(start_sq, (1, 1), -6, validate = False)
                 r = 100
 
-        out_vecs.append(policy_net.ToOutputVec(fake_move, r))
+        out_vecs.append(policy_net.ToOutputVec(fake_move, r, game))
         
         game.doMove(move_played)
     
@@ -158,7 +158,7 @@ def game_to_pairs_real(game_str, p, j):
     for i in range(len(r_list)):
         in_vecs.append(g_list[i].toNN_vecs())
         out_vecs.append(
-            policy_net.ToOutputVec(move_list[i], r_list[i])
+            policy_net.ToOutputVec(move_list[i], r_list[i], g_list[i])
         )
 
     return (in_vecs, out_vecs)

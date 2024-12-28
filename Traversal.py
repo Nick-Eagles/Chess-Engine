@@ -144,7 +144,8 @@ def processNode(trav):
             )
             nn_out = trav.net(nn_vecs, training=False)[-1]
             
-            nn_evals = trav.p['gamma_exec'] * nn_out
+            coef = 2 * node['game'].whiteToMove - 1
+            nn_evals = trav.p['gamma_exec'] * coef * nn_out
                 
             for i in range(nn_evals.shape[0]):
                 node['rewards'][indices[i]] += float(nn_evals[i])

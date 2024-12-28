@@ -81,7 +81,7 @@ def getBestMoveRawPolicy(net, game, p, interactive=False, num_lines=1):
     
     #   Compute a probability distribution across legal moves
     outputs = net(game.toNN_vecs(), training=False)[:2]
-    probs = policy_net.AdjustPolicy(outputs, moves, game.board)
+    probs = policy_net.AdjustPolicy(outputs, moves, game)
 
     return returnBestMove(
         moves, probs, game, num_lines, interactive, None, False
@@ -143,8 +143,9 @@ def getEvalsValue(moves, net, game, p):
         net_inputs.append(tf.reshape(vec, (774,)))
 
     #   Get the value output from the network
+    coef = 2 * game.whiteToMove - 1
     value = net(tf.stack(net_inputs), training=False)[-1]
-    evals = r_real + p['gamma_exec'] * value
+    evals = r_real + p['gamma_exec'] * coef * value
     
     if not game.whiteToMove:
         evals = -1 * evals
@@ -155,14 +156,14 @@ def getEvalsValue(moves, net, game, p):
 def getEvalsPolicy(moves, net, game, p):
     #   Compute a probability distribution across legal moves
     outputs = net(game.toNN_vecs(), training=False)[:2]
-    evals = policy_net.AdjustPolicy(outputs, moves, game.board)
+    evals = policy_net.AdjustPolicy(outputs, moves, game)
     
     return evals
 
 def getEvalsHybrid(moves, net, game, p):
     #   Compute a probability distribution across legal moves
     outputs = net(game.toNN_vecs(), training=False)[:2]
-    probs = policy_net.AdjustPolicy(outputs, moves, game.board)
+    probs = policy_net.AdjustPolicy(outputs, moves, game)
 
     #   Get "empirical" rewards resulting from each move
     rewards = np.array(
