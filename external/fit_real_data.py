@@ -9,18 +9,17 @@ from tensorflow import keras
 from tensorflow.keras import layers, regularizers
 from tensorflow.keras.models import load_model
 import numpy as np
-from scipy.special import logit
 import pickle
 import gzip
 import pandas as pd
 import re
 from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
-net_name = "res_no_expit"
+net_name = "res_deeper"
 
 #   If True, load the existing model and history. If False, construct a new
 #   model
-resume = False
+resume = True
 
 #   Hyperparameters (ignored if 'resume' is True)
 hidden_layer_lens = [500, 500, 500, 500]
@@ -86,7 +85,7 @@ else:
     #   Linear projection to match block input and output lengths
     x = layers.Dense(400, name='linear_projection')(x)
 
-    for i in range(2):
+    for i in range(3):
         block_input = x
         x = layers.Dense(
             400,
@@ -109,8 +108,12 @@ else:
     policy_end_piece = layers.Dense(
             6, activation = "softmax", name = "policy_end_piece"
         )(x)
+    
+    for i in range(3):
+        x = layers.Dense(50, activation = "relu")(x)
+        x = layers.BatchNormalization()(x)
     value = layers.Dense(
-            1, kernel_regularizer=regularizers.l2(0.1), name = "value",
+            1, kernel_regularizer=regularizers.l2(0.01), name = "value",
         )(x)
 
     net = keras.Model(
