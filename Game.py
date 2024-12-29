@@ -433,6 +433,8 @@ class Game:
         
         #   Start with an empty board and later fill in
         game.board = [[0] * 8] * 8
+        game.wPieces = [0] * 6
+        game.bPieces = [0] * 6
 
         #   Fill in the board
         rank = 7
@@ -447,6 +449,23 @@ class Game:
                     #   Otherwise fill the current square with its piece
                     piece = 'kqrbnp0PNBRQK'.index(fen_str[index]) - 6
                     game.board[file][rank] = piece
+
+                    #   Update number of each piece
+                    if piece in [-1, -2]:
+                        game.bPieces[abs(piece) - 1] += 1
+                    elif piece == -3:
+                        #   Account for light vs. dark-squared bishops
+                        game.bPieces[2 + (file + rank + 1) % 2]
+                    elif piece in [-4, -5]:
+                        game.bPieces[abs(piece)] += 1
+                    elif piece in [1, 2]:
+                        game.wPieces[piece - 1] += 1
+                    elif piece == 3:
+                        #   Account for light vs. dark-squared bishops
+                        game.wPieces[2 + (file + rank + 1) % 2]
+                    elif piece in [4, 5]:
+                        game.wPieces[piece] += 1
+                    
                     file += 1
                 index += 1
             index += 1 # to step over '/'
@@ -463,7 +482,7 @@ class Game:
         game.canB_K_Castle = 'k' in castling_str
         game.canB_Q_Castle = 'q' in castling_str
 
-        #   TODO: set game.wPieces, game.bPieces, game.wValue, game.bValue
+        game.updateValues()
 
         game.movesSinceAction = int(fen_str(' ')[4]) / 2
         game.moveNum = int(fen_str.split(' ')[5])
