@@ -432,7 +432,7 @@ class Game:
         game = cls()
         
         #   Start with an empty board and later fill in
-        game.board = [[0] * 8] * 8
+        game.board = [[0 for i in range(8)] for j in range(8)]
         game.wPieces = [0] * 6
         game.bPieces = [0] * 6
 
@@ -455,19 +455,20 @@ class Game:
                         game.bPieces[abs(piece) - 1] += 1
                     elif piece == -3:
                         #   Account for light vs. dark-squared bishops
-                        game.bPieces[2 + (file + rank + 1) % 2]
+                        game.bPieces[2 + (file + rank + 1) % 2] += 1
                     elif piece in [-4, -5]:
                         game.bPieces[abs(piece)] += 1
                     elif piece in [1, 2]:
                         game.wPieces[piece - 1] += 1
                     elif piece == 3:
                         #   Account for light vs. dark-squared bishops
-                        game.wPieces[2 + (file + rank + 1) % 2]
+                        game.wPieces[2 + (file + rank + 1) % 2] += 1
                     elif piece in [4, 5]:
                         game.wPieces[piece] += 1
                     
                     file += 1
                 index += 1
+            rank -= 1
             index += 1 # to step over '/'
         assert fen_str[index] in 'wb', fen_str[index]
 
@@ -484,7 +485,7 @@ class Game:
 
         game.updateValues()
 
-        game.movesSinceAction = int(fen_str(' ')[4]) / 2
+        game.movesSinceAction = int(fen_str.split(' ')[4]) / 2
         game.moveNum = int(fen_str.split(' ')[5])
 
         #   Update game result and game.inCheck
