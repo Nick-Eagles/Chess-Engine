@@ -1,6 +1,7 @@
 import numpy as np
 import datetime
 import tensorflow as tf
+import re
 
 import Move
 import board_helper
@@ -417,3 +418,57 @@ class Game:
 
         with open(filename, 'w') as pgn_file:
             pgn_file.write(txt)
+    
+    #   Create a Game object from a FEN string. There are 3 limitations
+    #   currently:
+    #
+    #   - game.annotation is impossible to correctly specify
+    #   - game.lastMove is impossible to correctly specify
+    #   - game.enPassant is theoretically possible to specify, but not supported
+    #     right now. The only consequences are that en passant is not seen as a
+    #     legal move when it might really be
+    @classmethod
+    def fromFEN(cls, fen_str):
+        game = cls()
+        
+        #   Start with an empty board and later fill in
+        game.board = [[0] * 8] * 8
+
+        #   Fill in the board
+        rank = 7
+        index = 0
+        while rank >= 0:
+            file = 0
+            while file < 8:
+                if re.search(r'[1-8]', fen_str[index]):
+                    #   If a number, just skip over the empty files
+                    file += int(fen_str[index])
+                else:
+                    #   Otherwise fill the current square with its piece
+                    piece = 'kqrbnp0PNBRQK'.index(fen_str[index]) - 6
+                    game.board[file][rank] = piece
+                    file += 1
+                index += 1
+            index += 1 # to step over '/'
+        assert fen_str[index] in 'wb', fen_str[index]
+
+        game.invBoard = board_helper.invert(game.board)
+
+        game.whiteToMove = bool("bw".index(fen_str.split(' ')[1]))
+
+        #   Set castling permissions
+        castling_str = fen_str.split(' ')[2]
+        game.canW_K_Castle = 'K' in castling_str
+        game.canW_Q_Castle = 'Q' in castling_str
+        game.canB_K_Castle = 'k' in castling_str
+        game.canB_Q_Castle = 'q' in castling_str
+
+        #   TODO: set game.wPieces, game.bPieces, game.wValue, game.bValue
+
+        game.movesSinceAction = int(fen_str(' ')[4]) / 2
+        game.moveNum = int(fen_str.split(' ')[5])
+
+        #   Update game result and game.inCheck
+        game.gameResult, game.gameResultStr = game.updateResult()
+
+        return game
