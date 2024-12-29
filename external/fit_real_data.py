@@ -15,7 +15,7 @@ import pandas as pd
 import re
 from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
-net_name = "res_deeper"
+net_name = "deepv"
 
 #   If True, load the existing model and history. If False, construct a new
 #   model
@@ -30,13 +30,13 @@ epochs = 1
 
 train_paths = [
     here(
-        'external', 'preprocessed_games', 'g75_no_expit',
+        'external', 'preprocessed_games', 'g75_new',
         f'tensor_list_train_real{i}.pkl.gz'
     )
     for i in range(1, 20)
 ]
 test_path = here(
-    'external', 'preprocessed_games', 'g75_no_expit',
+    'external', 'preprocessed_games', 'g75_new',
     'tensor_list_test_real.pkl.gz'
 )
 model_path = Path(here('nets', net_name, 'model.keras'))
