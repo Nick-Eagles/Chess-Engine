@@ -223,3 +223,22 @@ class Move:
         else:
             #   King moves are never ambiguous
             return (False, False)
+    
+    @classmethod
+    def from_uci(cls, uci, game):
+        start_square = (
+            "abcdefgh".index(uci[0]), int(uci[1]) - 1
+        )
+        end_square = (
+            "abcdefgh".index(uci[2]), int(uci[3]) - 1
+        )
+
+        #   This should occur only for pawn promotion
+        if len(uci) > 4:
+            end_piece = "nbrq".index(uci[4]) + 2
+        else:
+            #   Moves that aren't pawn promotion start and end with the same
+            #   piece
+            end_piece = abs(game.board[start_square[0]][start_square[1]])
+        
+        return cls(start_square, end_square, end_piece)

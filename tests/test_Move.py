@@ -32,3 +32,22 @@ def test_getMoveName():
 
     #   Seemingly ambiguous, but not, because of a pin
     assert Move.Move((4, 3), (2, 4), 2).getMoveName(g) == 'Nc5'
+
+def test_from_uci():
+    #   Test e4
+    g = Game.Game(quiet=True)
+    assert Move.Move.from_uci('e2e4', g).equals(Move.Move((4, 1), (4, 3), 1))
+
+    #   Test pawn promotion
+    g = Game.Game(quiet=True)
+    g.board = [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 6, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, -4],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, -6]
+    ]
+    assert Move.Move.from_uci('d7e8r', g).equals(Move.Move((3, 6), (4, 7), 4))
