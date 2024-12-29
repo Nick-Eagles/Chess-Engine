@@ -15,6 +15,8 @@ external/*.txt
 external/*.pgn
 external/preprocessed_games
 external/tensor_list_*.pkl.gz
+external/preprocessed_tactics
+external/lichess_db_puzzle.csv
 installation/chess_env
 __pycache__
 config.txt
