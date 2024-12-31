@@ -239,7 +239,7 @@ class Move:
 
         #   This should occur only for pawn promotion
         if len(uci) > 4:
-            end_piece = "nbrq".index(uci[4]) + 2
+            end_piece = (2 * game.whiteToMove - 1) * ("nbrq".index(uci[4]) + 2)
         else:
             #   Moves that aren't pawn promotion start and end with the same
             #   piece
