@@ -239,6 +239,6 @@ class Move:
         else:
             #   Moves that aren't pawn promotion start and end with the same
             #   piece
-            end_piece = abs(game.board[start_square[0]][start_square[1]])
+            end_piece = game.board[start_square[0]][start_square[1]]
         
         return cls(start_square, end_square, end_piece)
