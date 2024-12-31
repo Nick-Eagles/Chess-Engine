@@ -26,4 +26,5 @@ read_csv(tactics_path) |>
     ) |>
     #   Filter too-short tactical sequences
     filter(num_moves > min_num_extra_moves + 2) |>
+    slice_sample(prop = 1) |>
     write_csv(out_path)
