@@ -1,3 +1,5 @@
+import re
+
 import board_helper
 import misc
 
@@ -226,6 +228,8 @@ class Move:
     
     @classmethod
     def from_uci(cls, uci, game):
+        assert re.search(r'^([a-h][1-8]){2}[nbrq]?$', uci), uci
+
         start_square = (
             "abcdefgh".index(uci[0]), int(uci[1]) - 1
         )
