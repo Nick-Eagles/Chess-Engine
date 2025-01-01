@@ -74,4 +74,17 @@ def interact(net):
         print("You lost to a weak engine.")
     else:
         print("This is a draw. You can probably do better than that?")
+
+def bestGame(net):
+    p = input_handling.readConfig()
+
+    game = Game.Game(quiet=False)
+
+    while (game.gameResult == 17):
+        trav = Traversal.Traversal(game, net, p)
+        trav.traverse()
+        describeTraversal(trav, game, p)
+        game.doMove(trav.bestMove)
+
+    game.toPGN()
             

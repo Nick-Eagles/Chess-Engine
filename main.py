@@ -1,6 +1,4 @@
-import network_helper
 import input_handling
-import policy
 import demonstration
 
 from pyhere import here
@@ -32,6 +30,6 @@ if __name__ == '__main__':
         if choice == 1:
             p = input_handling.readConfig()
             print("Generating the current network's 'best' game...")
-            network_helper.bestGame(net, policy.getBestMoveTreeEG)
+            demonstration.bestGame(net)
         elif choice == 2:
             demonstration.interact(net)
