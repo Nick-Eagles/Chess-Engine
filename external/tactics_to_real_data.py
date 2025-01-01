@@ -12,7 +12,7 @@ import read_tactics
 import read_pgn
 
 batch_size = 40000
-num_batches = 1
+num_batches = 30
 
 tactics_path = here('external', 'preprocessed_tactics', 'all_tactics.csv.gz')
 train_paths = [
@@ -43,7 +43,7 @@ for batch_num in range(num_batches):
     
     data = read_pgn.games_to_tensors(in_vecs, out_vecs)
     assert data[0].shape[0] == batch_size, data[0].shape[0]
-    assert data[1].shape[0] == batch_size, data[1].shape[0]
+    assert data[1][0].shape[0] == batch_size, data[1][0].shape[0]
 
     out_path = ([test_path] + train_paths)[batch_num]
     with gzip.open(out_path, 'wb') as f:
