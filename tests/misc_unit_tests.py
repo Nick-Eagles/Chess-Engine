@@ -41,18 +41,6 @@ assert len(expected) == len(actual), len(actual)
 misc.expect_equal(expected[0], actual[0])
 
 ################################################################################
-#   is_unique
-################################################################################
-
-print('Testing "is_unique" (False case)...')
-a = np.array([1.5, 4, 2.6, 1.5, 7, -3.98])
-misc.expect_equal(misc.is_unique(a), False)
-
-print('Testing "is_unique" (True case)...')
-a = np.array([-3.6, -2, 1.77, 0, -9])
-misc.expect_equal(misc.is_unique(a), True)
-
-################################################################################
 #   match
 ################################################################################
 

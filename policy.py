@@ -10,31 +10,6 @@ import Traversal
 #   Functions for sampling several legal moves (subsetting search tree)
 #################################################################################
 
-#   A function defining the policy choice for the net given the current game.
-#   A subset of moves (min(breadth, len(legalMoves))) is selected by sampling
-#   the legal moves available with probability equal to the softmax of the
-#   NN evaluations, constraining each move to be distinct (w/o replacement).
-#   "curiosity" is the coefficient to the exponential function, thus favoring
-#   highly evaluated moves more when increased.
-def sampleMovesSoft(net, game, p): 
-    #   Get legal moves and NN evaluations on the positions that result from
-    #   them
-    moves = board_helper.getLegalMoves(game)
-    evals = p['evalFun'](moves, net, game, p)
-
-    temp = np.exp(p['curiosity'] * evals)
-    probs = temp / np.sum(temp) # softmax of evals
-    cumProbs = np.cumsum(probs)
-
-    finalMoves = [
-        moves[i]
-        for i in misc.sampleCDF(cumProbs, min(p['breadth'], len(moves)))
-    ]
-
-    assert len(finalMoves) > 0 and len(finalMoves) <= p['breadth'], \
-           len(finalMoves)
-    return finalMoves
-
 #   Return the top p['breadth'] moves by evaluation
 def sampleMovesStatic(net, game, p):
     moves = board_helper.getLegalMoves(game)
