@@ -22,7 +22,8 @@ def parseInput(moveNames):
 def describeTraversal(trav, game, p):
     if p['mode'] > 1:
         #   Print evaluation before performing move
-        expRew = trav.net(game.toNN_vecs(), training=False)[-1]
+        expRew = (2 * game.whiteToMove - 1) * \
+            trav.net(game.toNN_vecs(), training=False)[-1]
         print(
             "Expected reward from the current position is", 
             round(float(expRew), 3)
