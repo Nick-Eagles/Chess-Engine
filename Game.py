@@ -419,6 +419,63 @@ class Game:
         with open(filename, 'w') as pgn_file:
             pgn_file.write(txt)
     
+    #   Return a FEN string representing the current position in the Game
+    def toFEN(self):
+        fen_str = ''
+
+        #   First fill in the board piece of the FEN string
+        rank = 7
+        while rank >= 0:
+            file = 0
+            num_empty = 0
+            while file < 8:
+                piece = self.board[file][rank]
+
+                if piece == 0:
+                    num_empty += 1
+                    if file == 7:
+                        fen_str += str(num_empty)
+                else:
+                    if num_empty > 0:
+                        fen_str += str(num_empty)
+                        num_empty = 0
+                    fen_str += 'kqrbnp0PNBRQK'[piece + 6]
+                
+                file += 1
+                
+            if rank != 0:
+                fen_str += '/'
+            
+            rank -= 1
+        
+        #   Player to move
+        if self.whiteToMove:
+            fen_str += ' w '
+        else:
+            fen_str += ' b '
+        
+        #   Castling permissions
+        if self.canW_K_Castle:
+            fen_str += 'K'
+        if self.canW_Q_Castle:
+            fen_str += 'Q'
+        if self.canB_K_Castle:
+            fen_str += 'k'
+        if self.canB_Q_Castle:
+            fen_str += 'q'
+
+        #   En passant square if applicable
+        if self.enPassant:
+            rank_adj = 2 * self.whiteToMove - 1
+            fen_str += f' {"abcdefgh"[self.lastMove.endSq[0]]}{self.lastMove.endSq[1] + rank_adj} '
+        else:
+            fen_str += ' - '
+        
+        #   Half and full move counters
+        fen_str += f'{int(2 * self.movesSinceAction)} {self.moveNum}'
+
+        return fen_str
+
     #   Create a Game object from a FEN string. There are 3 limitations
     #   currently:
     #
