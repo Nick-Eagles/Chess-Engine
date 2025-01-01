@@ -1,6 +1,7 @@
-#   Following preprocessing in 'pgn_to_test_data.py', this script trains a
-#   neural network on the generated real data to see if a policy-value
-#   network of the current architecture can learn effectively
+#   Following preprocessing in 'pgn_to_test_data.py' and
+#   'tactics_to_real_data.py', this script trains a neural network on the
+#   generated real data to see if a policy-value network of the current
+#   architecture can learn effectively
 
 from pyhere import here
 from pathlib import Path
@@ -15,11 +16,14 @@ import pandas as pd
 import re
 from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
-net_name = "deepv"
+net_name = "first"
 
 #   If True, load the existing model and history. If False, construct a new
 #   model
-resume = True
+resume = False
+
+#   Per batch
+num_tactics_positions = 20000
 
 #   Hyperparameters (ignored if 'resume' is True)
 hidden_layer_lens = [500, 500, 500, 500]
@@ -27,17 +31,25 @@ loss_weights = [0.08, 0.02, 0.9]
 optimizer = 'adam'
 batch_size = 100
 epochs = 1
+num_batches = 4
 
-train_paths = [
+train_game_paths = [
     here(
         'external', 'preprocessed_games', 'g75_new',
-        f'tensor_list_train_real{i}.pkl.gz'
+        f'tensor_list_train_real{i+1}.pkl.gz'
     )
-    for i in range(1, 20)
+    for i in range(num_batches)
 ]
-test_path = here(
+test_game_path = here(
     'external', 'preprocessed_games', 'g75_new',
     'tensor_list_test_real.pkl.gz'
+)
+train_tactics_paths = [
+    here('external', 'preprocessed_tactics', 'g75', f'train{i+1}.pkl.gz')
+    for i in range(num_batches)
+]
+test_tactics_path = here(
+    'external', 'preprocessed_tactics', 'g75', 'test.pkl.gz'
 )
 model_path = Path(here('nets', net_name, 'model.keras'))
 history_path = here('nets', net_name, 'history.csv')
@@ -108,7 +120,7 @@ else:
     policy_end_piece = layers.Dense(
             6, activation = "softmax", name = "policy_end_piece"
         )(x)
-    
+
     for i in range(3):
         x = layers.Dense(50, activation = "relu")(x)
         x = layers.BatchNormalization()(x)
@@ -148,11 +160,22 @@ net.compile(
 ################################################################################
 
 #   Because the full training set is too large to fit in memory on a 8GB laptop,
-#   training is performed in 1000-game batches
+#   training is performed in batches consisting of 1000 games and up to 40000
+#   tactical positions
 
-#   Load the 1000-game test set
-with gzip.open(test_path, 'rb') as f:
+#   Load the 1000-game test set and tactical test set, then combine
+print('Loading test positions...')
+with gzip.open(test_game_path, 'rb') as f:
     X_test, y_test = pickle.load(f)
+
+with gzip.open(test_tactics_path, 'rb') as f:
+    X_test_t, y_test_t = pickle.load(f)
+
+X_test = tf.concat([X_test, X_test_t[:num_tactics_positions, :]], axis = 0)
+y_test = [
+    tf.concat([x, y[:num_tactics_positions, :]], axis = 0)
+    for x, y in zip(y_test, y_test_t)
+]
 
 #   If resuming, read in the training history. Offset the training step number
 #   later by how many training steps were already performed
@@ -165,11 +188,23 @@ else:
 history_df_list = []
 for epoch_num in range(epochs):
     print(f'Starting epoch {epoch_num+1}.')
-    for batch_num, train_path in enumerate(train_paths):
+    for batch_num in range(num_batches):
         print(f'Starting batch {batch_num+1}.')
-        #   Load 1000-game training batch
-        with gzip.open(train_path, 'rb') as f:
+        #   Load 1000-game training batch and tactical training batch, then
+        #   combine
+        with gzip.open(train_game_paths[batch_num], 'rb') as f:
             X_train, y_train = pickle.load(f)
+        
+        with gzip.open(train_tactics_paths[batch_num], 'rb') as f:
+            X_train_t, y_train_t = pickle.load(f)
+        
+        X_train = tf.concat(
+            [X_train, X_train_t[:num_tactics_positions, :]], axis = 0
+        )
+        y_train = [
+            tf.concat([x, y[:num_tactics_positions, :]], axis = 0)
+            for x, y in zip(y_train, y_train_t)
+        ]
         
         #   Train
         history = net.fit(
@@ -177,14 +212,15 @@ for epoch_num in range(epochs):
             y_train,
             batch_size = batch_size,
             epochs = 1,
-            validation_data = (X_test, y_test)
+            validation_data = (X_test, y_test),
+            shuffle = True
         )
         
         #   Append history to the ongoing list. Add the appropriate training
         #   step number, and evaluate cosine similarity of expected and actual
         #   rewards (not sure how to do this with keras metrics during fitting)
         history_df = pd.DataFrame(history.history)
-        history_df['training_step'] = epoch_num * len(train_paths) + \
+        history_df['training_step'] = epoch_num * num_batches + \
             batch_num + step_offset + 1
         history_df['value_cos_sim'] = cos_sim(X_train, y_train, net)
         history_df['val_value_cos_sim'] = cos_sim(X_test, y_test, net)
