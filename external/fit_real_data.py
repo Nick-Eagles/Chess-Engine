@@ -16,33 +16,32 @@ import pandas as pd
 import re
 from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
-net_name = "first"
+net_name = "second"
 
 #   If True, load the existing model and history. If False, construct a new
 #   model
-resume = False
+resume = True
 
 #   Per batch
 num_tactics_positions = 20000
 
 #   Hyperparameters (ignored if 'resume' is True)
-hidden_layer_lens = [500, 500, 500, 500]
+hidden_layer_len = 400
 loss_weights = [0.08, 0.02, 0.9]
 optimizer = 'adam'
 batch_size = 100
-epochs = 1
-num_batches = 4
+epochs = 2
+num_batches = 26
 
 train_game_paths = [
     here(
-        'external', 'preprocessed_games', 'g75_new',
-        f'tensor_list_train_real{i+1}.pkl.gz'
+        'external', 'preprocessed_games', 'g75',
+        f'train{i+1}.pkl.gz'
     )
     for i in range(num_batches)
 ]
 test_game_path = here(
-    'external', 'preprocessed_games', 'g75_new',
-    'tensor_list_test_real.pkl.gz'
+    'external', 'preprocessed_games', 'g75', 'test.pkl.gz'
 )
 train_tactics_paths = [
     here('external', 'preprocessed_tactics', 'g75', f'train{i+1}.pkl.gz')
@@ -86,32 +85,21 @@ else:
     input_lay = keras.Input(shape = (774,), name = "game_position")
     x = input_lay
 
-    #   Dense hidden layers
-    # for hidden_layer_len in hidden_layer_lens:
-    #     x = layers.Dense(
-    #             hidden_layer_len,
-    #             activation = "relu"
-    #         )(x)
-    #     x = layers.BatchNormalization()(x)
-
     #   Linear projection to match block input and output lengths
-    x = layers.Dense(400, name='linear_projection')(x)
+    x = layers.Dense(hidden_layer_len, name='linear_projection')(x)
 
-    for i in range(3):
+    #   Residual blocks
+    for i in range(4):
         block_input = x
-        x = layers.Dense(
-            400,
-            activation="relu",
-        )(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Dense(
-            400,
-            activation="relu"
-        )(x)
 
-        #   Residual connection, with batch norm afterward
+        #   Two dense layers
+        for j in range(2):
+            x = layers.Dense(hidden_layer_len)(x)
+            x = layers.BatchNormalization()(x)
+            x = layers.ReLU()(x)
+
+        #   Residual connection
         x = layers.add([x, block_input], name = f'residual_conn{i}')
-        x = layers.BatchNormalization()(x)
 
     #   Output layer
     policy_move_sq = layers.Dense(
@@ -121,9 +109,10 @@ else:
             6, activation = "softmax", name = "policy_end_piece"
         )(x)
 
-    for i in range(3):
-        x = layers.Dense(50, activation = "relu")(x)
+    for i in range(2):
+        x = layers.Dense(50)(x)
         x = layers.BatchNormalization()(x)
+        x = layers.ReLU()(x)
     value = layers.Dense(
             1, kernel_regularizer=regularizers.l2(0.01), name = "value",
         )(x)
@@ -133,6 +122,8 @@ else:
         outputs = [policy_move_sq, policy_end_piece, value],
         name = "network"
     )
+
+    net.summary()
 
 ################################################################################
 #   Compile the model
@@ -187,9 +178,8 @@ else:
 
 history_df_list = []
 for epoch_num in range(epochs):
-    print(f'Starting epoch {epoch_num+1}.')
     for batch_num in range(num_batches):
-        print(f'Starting batch {batch_num+1}.')
+        print(f'Starting epoch {epoch_num+1}, batch {batch_num+1}.')
         #   Load 1000-game training batch and tactical training batch, then
         #   combine
         with gzip.open(train_game_paths[batch_num], 'rb') as f:
