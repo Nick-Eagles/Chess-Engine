@@ -16,20 +16,18 @@ import read_pgn
 
 train_paths = [
     here('external', 'preprocessed_games', f'train_games{i}.txt.gz')
-    for i in range(1, 20)
+    for i in range(1, 27)
 ]
 test_path = here('external', 'preprocessed_games', 'test_games.txt.gz')
 out_train_paths = [
     here(
-        'external', 'preprocessed_games', 'g75_new',
-        f'tensor_list_train_real{i}.pkl.gz'
+        'external', 'preprocessed_games', 'g75',
+        f'train{i}.pkl.gz'
     )
-    for i in range(1, 20)
+    for i in range(1, 27)
 ]
 out_test_path = Path(
-    here(
-        'external', 'preprocessed_games', 'g75_new', 'tensor_list_test_real.pkl.gz'
-    )
+    here('external', 'preprocessed_games', 'g75', 'test.pkl.gz')
 )
 
 out_test_path.parent.mkdir(exist_ok = True)

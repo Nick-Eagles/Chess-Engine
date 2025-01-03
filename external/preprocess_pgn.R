@@ -1,7 +1,8 @@
-#   First, 3 zip files of PGN data were downloaded from the URLs:
+#   First, 4 zip files of PGN data were downloaded from the URLs:
 #   https://theweekinchess.com/zips/twic1569g.zip
 #   https://theweekinchess.com/zips/twic1570g.zip
 #   https://theweekinchess.com/zips/twic1571g.zip
+#   https://theweekinchess.com/zips/twic1572g.zip
 #   (unclear if the URLs are permanent), and extracted as a PGN file in this
 #   directory. This script was run interactively to preprocess and filter the
 #   messy original files into an easy-to-read format for the engine
@@ -11,7 +12,7 @@ library(here)
 
 pgn_paths = here(
     'external',
-    c('twic1569.pgn', 'twic1570.pgn', 'twic1571.pgn')
+    c('twic1569.pgn', 'twic1570.pgn', 'twic1571.pgn', 'twic1572.pgn')
 )
 out_test_path = here('external', 'preprocessed_games', 'test_games.txt.gz')
 out_train_path = here('external', 'preprocessed_games', 'train_games%s.txt.gz')
@@ -74,6 +75,8 @@ games = do.call(c, lapply(pgn_paths, clean_pgn)) |>
 #   Out of paranoia, randomly sort the games in case there is some pattern
 #   associated with the order of the games
 games = sample(games)
+
+message("Writing ", length(games), " games.")
 
 #   Write test games to file
 out_con = gzfile(out_test_path, 'w')
