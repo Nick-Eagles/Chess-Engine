@@ -16,10 +16,10 @@ num_batches = 30
 
 tactics_path = here('external', 'preprocessed_tactics', 'all_tactics.csv.gz')
 train_paths = [
-    here('external', 'preprocessed_tactics', 'g75', f'train{i+1}.pkl.gz')
+    here('external', 'preprocessed_tactics', 'g75_conv', f'train{i+1}.pkl.gz')
     for i in range(num_batches-1)
 ]
-test_path = Path(here('external', 'preprocessed_tactics', 'g75', 'test.pkl.gz'))
+test_path = Path(here('external', 'preprocessed_tactics', 'g75_conv', 'test.pkl.gz'))
 
 test_path.parent.mkdir(exist_ok = True)
 

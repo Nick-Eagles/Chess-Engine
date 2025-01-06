@@ -16,39 +16,40 @@ import pandas as pd
 import re
 from plotnine import ggplot, aes, geom_line, theme_bw, labs, ggsave
 
-net_name = "second"
+net_name = "first_conv"
 
 #   If True, load the existing model and history. If False, construct a new
 #   model
-resume = True
+resume = False
 
 #   Per batch
 num_tactics_positions = 20000
 
 #   Hyperparameters (ignored if 'resume' is True)
-hidden_layer_len = 400
+num_filters = 15
+num_residual_blocks = 3
 loss_weights = [0.08, 0.02, 0.9]
 optimizer = 'adam'
 batch_size = 100
-epochs = 2
-num_batches = 26
+epochs = 1
+num_batches = 10
 
 train_game_paths = [
     here(
-        'external', 'preprocessed_games', 'g75',
+        'external', 'preprocessed_games', 'g75_conv',
         f'train{i+1}.pkl.gz'
     )
     for i in range(num_batches)
 ]
 test_game_path = here(
-    'external', 'preprocessed_games', 'g75', 'test.pkl.gz'
+    'external', 'preprocessed_games', 'g75_conv', 'test.pkl.gz'
 )
 train_tactics_paths = [
-    here('external', 'preprocessed_tactics', 'g75', f'train{i+1}.pkl.gz')
+    here('external', 'preprocessed_tactics', 'g75_conv', f'train{i+1}.pkl.gz')
     for i in range(num_batches)
 ]
 test_tactics_path = here(
-    'external', 'preprocessed_tactics', 'g75', 'test.pkl.gz'
+    'external', 'preprocessed_tactics', 'g75_conv', 'test.pkl.gz'
 )
 model_path = Path(here('nets', net_name, 'model.keras'))
 history_path = here('nets', net_name, 'history.csv')
@@ -81,27 +82,67 @@ def cos_sim(X, y, net):
 if resume:
     net = load_model(model_path)
 else:
+    #---------------------------------------------------------------------------
     #   Input layer
-    input_lay = keras.Input(shape = (774,), name = "game_position")
+    #---------------------------------------------------------------------------
+
+    input_lay = keras.Input(shape = (8, 8, 15), name = "game_position")
     x = input_lay
 
-    #   Linear projection to match block input and output lengths
-    x = layers.Dense(hidden_layer_len, name='linear_projection')(x)
-
+    #   Perform one convolution so residual block inputs and outputs match
+    #   shape
+    x = layers.Conv2D(
+        num_filters,
+        kernel_size = (3, 3),
+        padding = "same",
+        data_format = "channels_last"
+    )(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
+    
+    #---------------------------------------------------------------------------
     #   Residual blocks
-    for i in range(4):
+    #---------------------------------------------------------------------------
+
+    for i in range(num_residual_blocks):
         block_input = x
 
         #   Two dense layers
         for j in range(2):
-            x = layers.Dense(hidden_layer_len)(x)
+            x = layers.Conv2D(
+                num_filters,
+                kernel_size = (3, 3),
+                padding = "same",
+                data_format = "channels_last"
+            )(x)
             x = layers.BatchNormalization()(x)
             x = layers.ReLU()(x)
 
         #   Residual connection
         x = layers.add([x, block_input], name = f'residual_conn{i}')
+    
+    #---------------------------------------------------------------------------
+    #   Data compression
+    #---------------------------------------------------------------------------
 
+    #   Perform a convolution with fewer filters, pool to a 4x4 board, and
+    #   flatten to control the number of weights (mostly between the first flat
+    #   layer and the policy square)
+    # x = layers.Conv2D(
+    #     20,
+    #     kernel_size = (3, 3),
+    #     padding = "same",
+    #     data_format = "channels_last"
+    # )(x)
+    # x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
+    x = layers.MaxPooling2D(pool_size = (2, 2))(x)
+    x = layers.Flatten()(x)
+
+    #---------------------------------------------------------------------------
     #   Output layer
+    #---------------------------------------------------------------------------
+
     policy_move_sq = layers.Dense(
             4096, activation = "softmax", name = "policy_move_square"
         )(x)
@@ -140,7 +181,9 @@ net.compile(
     loss = loss,
     loss_weights = loss_weights,
     metrics = [
-        tf.keras.metrics.CategoricalAccuracy(),
+        tf.keras.metrics.TopKCategoricalAccuracy(
+            k = 3, name = 'categorical_accuracy'
+        ),
         tf.keras.metrics.CategoricalAccuracy(),
         None
     ]
@@ -272,7 +315,7 @@ history_df.to_csv(history_path, index = False)
 plot_params = [
     {
         'y': 'policy_move_square_categorical_accuracy',
-        'lab_y': 'Categorical Accuracy',
+        'lab_y': 'Top-3 Categorical Accuracy',
         'title': 'Policy Square'
     },
     {

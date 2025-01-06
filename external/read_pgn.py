@@ -171,13 +171,14 @@ def game_to_pairs_real(game_str, p, j):
 #   out_vecs: a list of games (list) of output-layer (lists) of tensors to use
 #       as outputs to a policy-value neural network
 def games_to_tensors(in_vecs, out_vecs):
-    #   Tensor shapes (excluding batch) for the output layer 
+    #   Tensor shapes (excluding batch) for the input and output layer
+    IN_SHAPE = (8, 8, 15)
     OUT_SHAPE = (4096, 6, 1)
 
-    #   First, flatten as a list of (774) tensors
-    X_ordered = [tf.reshape(pos, (774)) for game in in_vecs for pos in game]
+    #   First, flatten as a list of tensors of shape IN_SHAPE
+    X_ordered = [tf.reshape(pos, IN_SHAPE) for game in in_vecs for pos in game]
 
-    #   Now form a (N, 774) tensor of N randomly ordered positions
+    #   Now form a (N, IN_SHAPE) tensor of N randomly ordered positions
     permute = list(range(len(X_ordered)))
     random.shuffle(permute)
     X = tf.stack([X_ordered[i] for i in permute], axis = 0)

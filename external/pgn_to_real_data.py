@@ -16,18 +16,18 @@ import read_pgn
 
 train_paths = [
     here('external', 'preprocessed_games', f'train_games{i}.txt.gz')
-    for i in range(1, 27)
+    for i in range(26, 27)
 ]
 test_path = here('external', 'preprocessed_games', 'test_games.txt.gz')
 out_train_paths = [
     here(
-        'external', 'preprocessed_games', 'g75',
+        'external', 'preprocessed_games', 'g75_conv',
         f'train{i}.pkl.gz'
     )
-    for i in range(1, 27)
+    for i in range(26, 27)
 ]
 out_test_path = Path(
-    here('external', 'preprocessed_games', 'g75', 'test.pkl.gz')
+    here('external', 'preprocessed_games', 'g75_conv', 'test.pkl.gz')
 )
 
 out_test_path.parent.mkdir(exist_ok = True)
@@ -48,7 +48,7 @@ for i in range(len(train_paths) + 1):
         in_vecs.append(temp[0])
         out_vecs.append(temp[1])
         if j % 100 == 99:
-            print(f'Done processing game {j+1}')
+            print(f'Done processing batch {i+1}, game {j+1}')
 
     data = read_pgn.games_to_tensors(in_vecs, out_vecs)
 

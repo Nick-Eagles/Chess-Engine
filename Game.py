@@ -126,7 +126,7 @@ class Game:
     #   game.enPassant, castling permissions, and moves since a pawn move or
     #   capture. All entries are again 0/1 except game.movesSinceAction (which
     #   is still in [0, 1))
-    def toNN_vecs(self):
+    def toNN_vecs_old(self):
         netInput = np.zeros((774,))
 
         c = 0
@@ -165,7 +165,51 @@ class Game:
         netInput[773] = self.movesSinceAction / 50
 
         return tf.constant(netInput, shape=(1,774), dtype=tf.float32)
+    
+    #   Convert a Game to an input tensor for a convolutional neural network
+    def toNN_vecs(self):
+        net_input = np.zeros((1, 8, 8, 15), dtype = np.float32)
+
+        #   Fill in the piece occupancy channels of the input
+        for file in range(8):
+            for rank in range(8):
+                #   Select the piece at this rank and file. Invert the board by
+                #   color and rank if black
+                if self.whiteToMove:
+                    piece = self.board[file][rank]
+                else:
+                    piece = -1 * self.board[file][7-rank]
                 
+                #   Ensure piece has values in {0, 1, ..., 11}. Each piece is a
+                #   different channel
+                if piece > 0:
+                    net_input[0, file, rank, piece + 5] = 1
+                elif piece < 0:
+                    net_input[0, file, rank, piece + 6] = 1
+
+        #   Fill in the castling channel of the input. Here a 1 is placed on
+        #   every square where either king can land after legally castling
+        if (self.whiteToMove and self.canW_K_Castle) or (not self.whiteToMove and self.canB_K_Castle):
+            net_input[0, 6, 0, 12] = 1
+        if (self.whiteToMove and self.canW_Q_Castle) or (not self.whiteToMove and self.canB_Q_Castle):
+            net_input[0, 2, 0, 12] = 1
+        if (self.whiteToMove and self.canB_K_Castle) or (not self.whiteToMove and self.canW_K_Castle):
+            net_input[0, 6, 7, 12] = 1
+        if (self.whiteToMove and self.canB_Q_Castle) or (not self.whiteToMove and self.canW_Q_Castle):
+            net_input[0, 2, 7, 12] = 1
+        
+        #   Fill in the en-passant channel of the input. Place a 1 where there's
+        #   a pawn that can be captured en passant
+        if self.enPassant:
+            if self.whiteToMove:
+                net_input[0, self.lastMove.endSq[0], self.lastMove.endSq[1], 13] = 1
+            else:
+                net_input[0, self.lastMove.endSq[0], 7 - self.lastMove.endSq[1], 13] = 1
+        
+        #   Normalize so it fits in [0, ~1)
+        net_input[0, :, :, 14] = self.movesSinceAction / 50
+
+        return tf.constant(net_input, shape=(1, 8, 8, 15), dtype=tf.float32)
 
     #   Returns a tuple: the first entry is the game result; the second is a string
     #   describing details (such as "Draw by stalemate")
