@@ -26,13 +26,18 @@ resume = False
 num_tactics_positions = 20000
 
 #   Hyperparameters (ignored if 'resume' is True)
-num_filters = 15
-num_residual_blocks = 3
+num_filters = 40
+num_residual_blocks = 4
 loss_weights = [0.08, 0.02, 0.9]
 optimizer = 'adam'
-batch_size = 100
+batch_size = 64
 epochs = 1
-num_batches = 10
+num_batches = 8
+
+#   How many training batches pass before cosine similarity is computed on
+#   the training and validation data
+calc_train_similarity_period = 4
+calc_val_similarity_period = 2
 
 train_game_paths = [
     here(
@@ -64,16 +69,20 @@ model_path.parent.mkdir(exist_ok = True)
 #   similarity of the model predictions of reward against the labels.
 #   Each sample composes one component of the vectors (e.g. if X is a batch
 #   of 100 samples, cosine similarity is taken across two 100-dimensional
-#   vectors)
-def cos_sim(X, y, net):
-    exp_rew = net(X, training = False)[-1].numpy().flatten()
-    act_rew = y[-1].numpy().flatten()
-    result = float(
-        (exp_rew @ act_rew) /
-        (np.linalg.norm(exp_rew) * np.linalg.norm(act_rew))
-    )
+#   vectors). Perform and average across batches to save memory
+def cos_sim(X, y, net, num_batches = 5):
+    result = 0
+    batch_size = X.shape[0] // num_batches
+    for batch_num in range(num_batches):
+        start_index = batch_num * batch_size
+        exp_rew = net(X[start_index: start_index + batch_size], training = False)[-1].numpy().flatten()
+        act_rew = y[-1][start_index: start_index + batch_size].numpy().flatten()
+        result += float(
+            (exp_rew @ act_rew) /
+            (np.linalg.norm(exp_rew) * np.linalg.norm(act_rew))
+        )
     
-    return result
+    return result / num_batches
 
 ################################################################################
 #   Construct a basic neural network (or load an existing one)
@@ -255,8 +264,19 @@ for epoch_num in range(epochs):
         history_df = pd.DataFrame(history.history)
         history_df['training_step'] = epoch_num * num_batches + \
             batch_num + step_offset + 1
-        history_df['value_cos_sim'] = cos_sim(X_train, y_train, net)
-        history_df['val_value_cos_sim'] = cos_sim(X_test, y_test, net)
+        
+        if (epoch_num * num_batches + batch_num) % calc_train_similarity_period == 0:
+            print("Calculating training cos. similarity...")
+            history_df['value_cos_sim'] = cos_sim(X_train, y_train, net)
+        else:
+            history_df['value_cos_sim'] = np.nan
+        
+        if (epoch_num * num_batches + batch_num) % calc_val_similarity_period == 0:
+            print("Calculating validation cos. similarity...")
+            history_df['val_value_cos_sim'] = cos_sim(X_test, y_test, net)
+        else:
+            history_df['val_value_cos_sim'] = np.nan
+
         history_df_list.append(history_df)
 
 ################################################################################
