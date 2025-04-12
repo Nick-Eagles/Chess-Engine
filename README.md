@@ -1,4 +1,29 @@
-# Self-contained Chess Engine: Deep Q-learning Agent
+# Neural-Network-Powered Chess Engine
+
+## Overview
+
+This repository includes code both to train a neural-network-powered chess
+engine and play against it. It's an active work in progress, with features
+accessible through invoking `main.py`.
+
+### Training Data
+
+A combination of positions from master-level games (available from
+[This Week in Chess](https://theweekinchess.com/)) and tactical puzzle positions
+from [Lichess](https://database.lichess.org) are used to train a policy-value
+neural network (i.e. its goal is to predict the move and likelihood of winning,
+given a particular position). See [the Philosophy section](#philosophy) for more
+on the value piece of the neural network.
+
+### Model Architecture
+
+While many aspects of the neural-network architecture are configurable, in
+general a convolutional architecture is used, often with residual connections.
+Briefly, input tensors are constructed such that each unique piece is
+represented in its own board-sized plane, with additional planes for castling
+and en passant. This is fairly similar to [AlphaZero's](https://deepmind.google/discover/blog/alphazero-shedding-new-light-on-chess-shogi-and-go/)
+design. Two separate output layers encode a representation of a chess move and
+an estimate of upcoming change in material or checkmate possibility.
 
 ## Philosophy
 
